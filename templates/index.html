@@ -218,6 +218,72 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   .map-toolbar-right { width: 100%; }
   #map-filter-type, #map-filter-country { flex: 1; min-width: 0; }
 }
+
+/* ── REDESIGN ─────────────────────────────────────────────── */
+
+/* Tab — wskaźnik aktywnej zakładki */
+.tab { position: relative; }
+.tab.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 24px; height: 3px;
+  background: var(--blue);
+  border-radius: 0 0 4px 4px;
+}
+
+/* Karty — głębszy cień, subtelna ramka */
+.card {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
+}
+.card:active { transform: scale(0.985); opacity: 1; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+/* Nagłówek szczegółów podróży — gradient */
+.detail-header-gradient {
+  padding: 52px 16px 20px;
+  border-bottom: none;
+  position: relative;
+  overflow: hidden;
+}
+.detail-header-gradient .back-btn { color: rgba(255,255,255,0.92); }
+.detail-header-gradient .detail-title { color: #fff; font-size: 26px; text-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+.detail-header-gradient .detail-sub { color: rgba(255,255,255,0.82); }
+.travel-header-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.22);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 20px; padding: 5px 12px;
+  font-size: 12px; color: #fff; font-weight: 600;
+  margin-top: 12px;
+}
+
+/* Sekcje — subtelna ramka */
+.section {
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  border: 1px solid var(--border);
+}
+.purpose-bar {
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+}
+
+/* Statystyki — karty z gradientem */
+.stat-card { box-shadow: 0 4px 14px rgba(0,0,0,0.1); border: none; }
+.stat-card.sc-blue   { background: linear-gradient(135deg,#1a6fdb,#0d47a1); color:#fff; }
+.stat-card.sc-orange { background: linear-gradient(135deg,#f97316,#c2410c); color:#fff; }
+.stat-card.sc-green  { background: linear-gradient(135deg,#059669,#065f46); color:#fff; }
+.stat-card.sc-purple { background: linear-gradient(135deg,#7c3aed,#4c1d95); color:#fff; }
+.stat-card.sc-rose   { background: linear-gradient(135deg,#e11d48,#9f1239); color:#fff; }
+.stat-card.sc-teal   { background: linear-gradient(135deg,#0891b2,#164e63); color:#fff; }
+.stat-card[class*="sc-"] .stat-label { color: rgba(255,255,255,0.75); }
+
+/* Page header — lekki gradient tła */
+.page-header {
+  background: linear-gradient(180deg, var(--card) 85%, transparent);
+}
 </style>
 </head>
 <body>
@@ -342,6 +408,26 @@ function purposeColor(p) {
   if (l.includes('wakacje')) return 'badge-orange';
   if (l.includes('służbow')) return 'badge-blue';
   return 'badge-purple';
+}
+
+function purposeGradient(p) {
+  if (!p) return 'linear-gradient(135deg,#475569,#1e293b)';
+  const l = p.toLowerCase();
+  if (l.includes('wakacje') || l.includes('urlop')) return 'linear-gradient(135deg,#f97316,#dc2626)';
+  if (l.includes('służbow') || l.includes('biznes')) return 'linear-gradient(135deg,#1a6fdb,#1e3a8a)';
+  if (l.includes('rodzin')) return 'linear-gradient(135deg,#059669,#065f46)';
+  if (l.includes('kultu') || l.includes('zwiedza')) return 'linear-gradient(135deg,#7c3aed,#4c1d95)';
+  return 'linear-gradient(135deg,#475569,#1e293b)';
+}
+
+function purposeIconBg(p) {
+  if (!p) return 'var(--orange-light)';
+  const l = p.toLowerCase();
+  if (l.includes('wakacje') || l.includes('urlop')) return '#fff7ed';
+  if (l.includes('służbow') || l.includes('biznes')) return '#eff6ff';
+  if (l.includes('rodzin')) return '#f0fdf4';
+  if (l.includes('kultu') || l.includes('zwiedza')) return '#f5f3ff';
+  return 'var(--orange-light)';
 }
 
 function locationIcon(t) {
@@ -550,7 +636,7 @@ async function renderTravels(q = '') {
   list.innerHTML = '<div class="card-list">' + travels.map(t => {
     const done = t.is_description_complete;
     return '<div class="card' + (done ? ' completed' : '') + '" onclick="openTravel(' + t.id + ')">' +
-      '<div class="card-inner"><div class="card-icon" style="background:var(--orange-light)">' + purposeIcon(t.purpose) + '</div>' +
+      '<div class="card-inner"><div class="card-icon" style="background:' + purposeIconBg(t.purpose) + '">' + purposeIcon(t.purpose) + '</div>' +
       '<div class="card-body"><div class="card-title">' + (t.name || '(bez nazwy)') + (done ? ' ✓' : '') + '</div>' +
       '<div class="card-subtitle">' + fmtDate(t.start_date) + ' – ' + fmtDate(t.end_date) + ' · ' + daysCount(t.start_date, t.end_date) + ' dni</div>' +
       '<div class="card-meta">' +
@@ -581,10 +667,11 @@ async function openTravel(id) {
   view.innerHTML = `<div class="spinner"></div>`;
   const t = await api('/api/travels/' + id);
   view.innerHTML = `
-    <div class="detail-header">
+    <div class="detail-header-gradient" style="background:${purposeGradient(t.purpose)}">
       <button class="back-btn" onclick="showTab('travels')">‹ Podróże</button>
       <div class="detail-title">${t.name || '(bez nazwy)'}</div>
       <div class="detail-sub">${fmtDate(t.start_date)} – ${fmtDate(t.end_date)}</div>
+      <div class="travel-header-pill">${purposeIcon(t.purpose)} ${t.purpose || 'Podróż'} · ${daysCount(t.start_date, t.end_date)} dni${t.rating ? ' · ' + stars(t.rating) : ''}</div>
     </div>
     <div class="detail-body">
       <div class="section"><div class="section-title">Szczegóły</div>
@@ -1491,16 +1578,16 @@ async function renderStats() {
     }
   }
   html += '<div class="stats-grid">';
-  html += '<div class="stat-card"><div class="stat-icon">✈️</div><div class="stat-value">'+s.total_trips+'</div><div class="stat-label">Podróży</div></div>';
-  html += '<div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value">'+s.total_days+'</div><div class="stat-label">Dni w trasie</div></div>';
-  html += '<div class="stat-card"><div class="stat-icon">🌍</div><div class="stat-value">'+s.countries+'</div><div class="stat-label">Krajów</div></div>';
-  html += '<div class="stat-card"><div class="stat-icon">📍</div><div class="stat-value">'+s.locations+'</div><div class="stat-label">Miejsc</div></div>';
-  html += '<div class="stat-card"><div class="stat-icon">🛫</div><div class="stat-value">'+s.flights+'</div><div class="stat-label">Lotów</div></div>';
-  html += '<div class="stat-card"><div class="stat-icon">📷</div><div class="stat-value">'+s.albums+'</div><div class="stat-label">Albumów</div></div>';
-  html += '<div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-value">'+(s.avg_rating||'–')+'</div><div class="stat-label">Śr. ocena</div></div>';
-  html += '<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" style="font-size:15px">'+(s.total_amount>0?Math.round(s.total_amount).toLocaleString('pl-PL'):'–')+'</div><div class="stat-label">PLN wydane</div></div>';
-  html += '<div class="stat-card"><div class="stat-icon">📆</div><div class="stat-value">'+(s.avg_trip_days||'–')+'</div><div class="stat-label">Śr. długość (dni)</div></div>';
-  if (s.progress) html += '<div class="stat-card"><div class="stat-icon">✍️</div><div class="stat-value">'+s.progress.described+'/'+s.progress.total+'</div><div class="stat-label">Opisanych</div></div>';
+  html += '<div class="stat-card sc-blue"><div class="stat-icon">✈️</div><div class="stat-value">'+s.total_trips+'</div><div class="stat-label">Podróży</div></div>';
+  html += '<div class="stat-card sc-orange"><div class="stat-icon">📅</div><div class="stat-value">'+s.total_days+'</div><div class="stat-label">Dni w trasie</div></div>';
+  html += '<div class="stat-card sc-green"><div class="stat-icon">🌍</div><div class="stat-value">'+s.countries+'</div><div class="stat-label">Krajów</div></div>';
+  html += '<div class="stat-card sc-purple"><div class="stat-icon">📍</div><div class="stat-value">'+s.locations+'</div><div class="stat-label">Miejsc</div></div>';
+  html += '<div class="stat-card sc-teal"><div class="stat-icon">🛫</div><div class="stat-value">'+s.flights+'</div><div class="stat-label">Lotów</div></div>';
+  html += '<div class="stat-card sc-green"><div class="stat-icon">📷</div><div class="stat-value">'+s.albums+'</div><div class="stat-label">Albumów</div></div>';
+  html += '<div class="stat-card sc-orange"><div class="stat-icon">⭐</div><div class="stat-value">'+(s.avg_rating||'–')+'</div><div class="stat-label">Śr. ocena</div></div>';
+  html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div class="stat-value" style="font-size:15px">'+(s.total_amount>0?Math.round(s.total_amount).toLocaleString('pl-PL'):'–')+'</div><div class="stat-label">PLN wydane</div></div>';
+  html += '<div class="stat-card sc-blue"><div class="stat-icon">📆</div><div class="stat-value">'+(s.avg_trip_days||'–')+'</div><div class="stat-label">Śr. długość (dni)</div></div>';
+  if (s.progress) html += '<div class="stat-card sc-purple"><div class="stat-icon">✍️</div><div class="stat-value">'+s.progress.described+'/'+s.progress.total+'</div><div class="stat-label">Opisanych</div></div>';
   html += '</div>';
   if (s.purposes && s.purposes.length) html += purposeSection('Cel podróży', s.purposes, p=>p.name||'Inne', p=>p.count, s.total_trips, 'var(--blue)');
   if (s.participation) {
