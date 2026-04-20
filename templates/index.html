@@ -258,6 +258,8 @@ let map = null;
 let markerClusterGroup = null;
 let allMapLocations = [];
 let allMapMarkers = [];
+let allLocationsCache = [];
+let pendingMapLocationIds = null;
 
 const MAP_TYPE_COLORS = {
   'miasto':'#e74c3c','wyspa':'#3498db','region':'#2ecc71',
@@ -437,13 +439,26 @@ async function loadMapLocations() {
     const res = await fetch('/api/map-locations');
     allMapLocations = await res.json();
     buildMapFilters(allMapLocations);
-    renderMapMarkers(allMapLocations);
-    if (allMapLocations.length > 0) fitMapToMarkers();
-    else document.getElementById('map-counter').textContent = '0 miejsc';
+    if (pendingMapLocationIds) {
+      const ids = pendingMapLocationIds;
+      pendingMapLocationIds = null;
+      const filtered = allMapLocations.filter(l => ids.includes(l.id));
+      renderMapMarkers(filtered.length ? filtered : allMapLocations);
+      if ((filtered.length || allMapLocations.length) > 0) fitMapToMarkers();
+    } else {
+      renderMapMarkers(allMapLocations);
+      if (allMapLocations.length > 0) fitMapToMarkers();
+      else document.getElementById('map-counter').textContent = '0 miejsc';
+    }
   } catch (err) {
     console.error('Błąd mapy:', err);
     document.getElementById('map-counter').textContent = 'błąd';
   }
+}
+
+function showTravelOnMap(locationIds) {
+  pendingMapLocationIds = locationIds;
+  showTab('map');
 }
 
 function buildMapFilters(locations) {
@@ -587,7 +602,10 @@ async function openTravel(id) {
       <div class="section" id="section-locations">
         <div class="section-header">
           <div class="section-title">Odwiedzone miejsca${t.locations && t.locations.length ? ' (' + t.locations.length + ')' : ''}</div>
-          <button class="btn-add-small" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
+          <div style="display:flex;gap:6px">
+            ${t.locations && t.locations.length ? `<button class="btn-add-small" onclick="showTravelOnMap([${t.locations.map(l=>l.location_id).join(',')}])" style="background:var(--blue-light);color:var(--blue)">🗺 Mapa</button>` : ''}
+            <button class="btn-add-small" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
+          </div>
         </div>
         <div id="locations-list">
           ${(t.locations && t.locations.length) ? t.locations.map(l => `
@@ -779,6 +797,9 @@ async function renderLocations(q = '') {
     view.innerHTML = `
       <div class="page-header"><div class="page-title">Miejsca</div>
         <div class="search-box"><input type="search" placeholder="Szukaj miejsca lub kraju..." id="loc-search" oninput="onLocSearch(this.value)"></div>
+        <select id="loc-type-filter" onchange="applyLocTypeFilter()" style="width:100%;margin-top:8px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;cursor:pointer">
+          <option value="">Wszystkie typy</option>
+        </select>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button onclick="openDictionaryModal('/api/countries','Kraje')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🌍 Kraje</button>
           <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy miejsc</button>
@@ -790,6 +811,23 @@ async function renderLocations(q = '') {
   const list = document.getElementById('loc-list');
   list.innerHTML = '<div class="spinner"></div>';
   const locs = await api('/api/locations' + (q ? '?q='+encodeURIComponent(q) : ''));
+  allLocationsCache = locs;
+  const filterEl = document.getElementById('loc-type-filter');
+  if (filterEl) {
+    const selected = filterEl.value;
+    const types = [...new Set(locs.map(l => l.location_type))].sort();
+    filterEl.innerHTML = '<option value="">Wszystkie typy</option>' + types.map(t => `<option value="${t}"${t===selected?' selected':''}>${t}</option>`).join('');
+  }
+  renderLocList(locs);
+}
+
+function applyLocTypeFilter() {
+  const type = document.getElementById('loc-type-filter')?.value || '';
+  renderLocList(type ? allLocationsCache.filter(l => l.location_type === type) : allLocationsCache);
+}
+
+function renderLocList(locs) {
+  const list = document.getElementById('loc-list');
   if (!locs.length) { list.innerHTML = `<div class="empty">Brak wyników</div>`; return; }
   const grouped = {};
   locs.forEach(l => { if (!grouped[l.country_name]) grouped[l.country_name] = []; grouped[l.country_name].push(l); });
@@ -990,6 +1028,7 @@ async function saveEditLocation(id) {
 }
 
 async function removeLocationFromTravel(travelId, tlid) {
+  if (!confirm('Usunąć to miejsce z podróży?')) return;
   await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
   const row = document.getElementById('tl-' + tlid); if (row) row.remove();
   const list = document.getElementById('locations-list');
