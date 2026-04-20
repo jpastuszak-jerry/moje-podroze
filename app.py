@@ -282,7 +282,21 @@ def get_location(lid):
         ORDER BY t.start_date
     """, (lid,))]
     loc['visit_count'] = len(loc['visits'])
+    loc['child_visits'] = [dict(r) for r in query("""
+        SELECT t.id, t.name AS travel_name, t.start_date, t.end_date,
+               l.id AS child_location_id, l.name AS child_location_name,
+               tl.arrival_date, tl.departure_date
+        FROM travel_locations tl
+        JOIN travels t ON tl.travel_id = t.id
+        JOIN locations l ON tl.location_id = l.id
+        WHERE l.parent_location_id = %s
+        ORDER BY t.start_date, l.name
+    """, (lid,))]
     for v in loc['visits']:
+        for key in ('start_date', 'end_date', 'arrival_date', 'departure_date'):
+            if v.get(key):
+                v[key] = str(v[key])
+    for v in loc['child_visits']:
         for key in ('start_date', 'end_date', 'arrival_date', 'departure_date'):
             if v.get(key):
                 v[key] = str(v[key])

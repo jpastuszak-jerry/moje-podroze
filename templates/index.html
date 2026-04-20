@@ -875,13 +875,21 @@ async function openLocation(id) {
         </div>
         ${loc.notes ? `<div style="margin-top:10px"><div class="form-label">Notatki</div><div class="notes-text">${loc.notes}</div></div>` : ''}
       </div>
-      ${loc.visits && loc.visits.length ? `<div class="section"><div class="section-title">Wizyty (${loc.visits.length})</div>
+      ${loc.visits && loc.visits.length ? `<div class="section"><div class="section-title">Wizyty bezpośrednie (${loc.visits.length})</div>
         ${loc.visits.map(v => `<div class="loc-row" onclick="openTravel(${v.id})" style="cursor:pointer">
           <div class="loc-icon">✈️</div><div style="flex:1"><div class="loc-name">${v.travel_name || '(bez nazwy)'}</div>
           <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div>
           ${v.notes ? `<div class="loc-sub" style="font-style:italic">${v.notes}</div>` : ''}</div>
           <div style="color:var(--text3);font-size:18px">›</div></div>`).join('')}
       </div>` : `<div class="section"><div class="empty" style="padding:20px">Brak wizyt w bazie</div></div>`}
+      ${loc.child_visits && loc.child_visits.length ? `<div class="section"><div class="section-title">Wizyty przez lokalizacje podrzędne (${loc.child_visits.length})</div>
+        ${loc.child_visits.map(v => `<div class="loc-row" onclick="openTravel(${v.id})" style="cursor:pointer">
+          <div class="loc-icon">📍</div><div style="flex:1">
+          <div class="loc-name">${v.travel_name || '(bez nazwy)'}</div>
+          <div class="loc-sub">${escapeHtml(v.child_location_name)}</div>
+          <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div></div>
+          <div style="color:var(--text3);font-size:18px">›</div></div>`).join('')}
+      </div>` : ''}
     </div>
     <button class="fab" onclick="openEditLocationModal(${loc.id})">✎</button>`;
 }
