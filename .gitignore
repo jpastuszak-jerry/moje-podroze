@@ -1,0 +1,24 @@
+# Dane wrażliwe
+connection string.txt
+.env
+*.env
+
+# Baza lokalna i archiwa
+travel.sqlite
+*.zip
+
+# Claude Code (lokalna konfiguracja i pamięć)
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
