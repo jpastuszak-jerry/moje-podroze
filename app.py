@@ -2,6 +2,7 @@
 Moje Podróże — backend Flask
 ==============================
 Aplikacja PWA do zarządzania bazą podróży, miejsc i uczestników.
+Wersja: 1.0.0
 
 Struktura pliku:
   1. SETUP        — Flask, baza danych, helpery
