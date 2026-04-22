@@ -258,7 +258,7 @@ function wizardPickLocation(locId) {
   const s = wizardState.info;
 
   const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay'; overlay.id = 'wiz-loc-date-overlay';
+  overlay.className = 'modal-overlay wizard-sub'; overlay.id = 'wiz-loc-date-overlay';
   overlay.innerHTML = `
     <div class="modal"><div class="modal-handle"></div>
       <div class="modal-header">
@@ -345,7 +345,7 @@ async function wizardOpenNewLocation() {
   wizardState.allLocs   = allLocs;
 
   const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay'; overlay.id = 'wiz-new-loc-overlay';
+  overlay.className = 'modal-overlay wizard-sub'; overlay.id = 'wiz-new-loc-overlay';
   overlay.innerHTML = `
     <div class="modal"><div class="modal-handle"></div>
       <div class="modal-header">
