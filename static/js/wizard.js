@@ -23,13 +23,19 @@ function openWizard() {
       rating: '', has_photo_album: false, notes: '', reflections: '',
       is_description_complete: false,
     },
-    locations: [],   // { id, name, location_type, country_name, parent_name, arrival, departure, notes }
-    participants: [], // { id, name, relation_type }
+    locations: [],    // { id, name, location_type, country_name, parent_name, arrival, departure, notes }
+    participants: [],  // { id, name, relation_type }
+    allLocs: [],
+    countries: [],
+    locTypes: [],
+    relTypes: [],
   };
   renderWizard();
 }
 
 function closeWizard() {
+  document.getElementById('wiz-loc-date-overlay')?.remove();
+  document.getElementById('wiz-new-loc-overlay')?.remove();
   document.getElementById('wizard-overlay')?.remove();
   wizardState = null;
 }
@@ -168,12 +174,11 @@ async function wizardStep1Render(body) {
     api('/api/countries'),
     api('/api/location_types'),
   ]);
-  body._allLocs = locs;
-  body._countries = countries;
-  body._locTypes = locTypes;
+  wizardState.allLocs = locs;
+  wizardState.countries = countries;
+  wizardState.locTypes = locTypes;
 
   body.innerHTML = wizardLocationsHtml(locs, countries, locTypes);
-  body._allLocs = locs;
 }
 
 function wizardLocationsHtml(locs, countries, locTypes) {
@@ -226,8 +231,7 @@ function wizardLocationsHtml(locs, countries, locTypes) {
 }
 
 function wizardFilterPicker(q) {
-  const body = document.getElementById('wizard-body');
-  const all = body._allLocs || [];
+  const all = wizardState.allLocs || [];
   const filtered = q.trim()
     ? all.filter(l => l.name.toLowerCase().includes(q.toLowerCase()) || (l.country_name||'').toLowerCase().includes(q.toLowerCase()))
     : all;
@@ -247,8 +251,7 @@ function wizardFilterPicker(q) {
 }
 
 function wizardPickLocation(locId) {
-  const body = document.getElementById('wizard-body');
-  const loc = (body._allLocs || []).find(l => l.id === locId);
+  const loc = (wizardState.allLocs || []).find(l => l.id === locId);
   if (!loc) return;
 
   const alreadyIdx = wizardState.locations.findIndex(l => l.id === locId);
@@ -283,8 +286,7 @@ function wizardPickLocation(locId) {
 }
 
 function wizardConfirmLocation(locId, existingIdx) {
-  const body = document.getElementById('wizard-body');
-  const loc = (body._allLocs || []).find(l => l.id === locId);
+  const loc = (wizardState.allLocs || []).find(l => l.id === locId);
   if (!loc) return;
 
   const entry = {
@@ -335,10 +337,12 @@ function wizardRemoveLocation(idx) {
 }
 
 async function wizardOpenNewLocation() {
-  const body = document.getElementById('wizard-body');
-  const countries = body._countries || await api('/api/countries');
-  const locTypes  = body._locTypes  || await api('/api/location_types');
-  const allLocs   = body._allLocs   || await api('/api/locations');
+  const countries = wizardState.countries.length ? wizardState.countries : await api('/api/countries');
+  const locTypes  = wizardState.locTypes.length  ? wizardState.locTypes  : await api('/api/location_types');
+  const allLocs   = wizardState.allLocs.length   ? wizardState.allLocs   : await api('/api/locations');
+  wizardState.countries = countries;
+  wizardState.locTypes  = locTypes;
+  wizardState.allLocs   = allLocs;
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay'; overlay.id = 'wiz-new-loc-overlay';
@@ -381,17 +385,16 @@ async function wizardOpenNewLocation() {
         </button>
       </div>
     </div>`;
-  overlay._allLocs = allLocs;
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
 }
 
 function wizardUpdateParentList() {
-  const overlay = document.getElementById('wiz-new-loc-overlay'); if (!overlay) return;
+  if (!document.getElementById('wiz-new-loc-overlay')) return;
   const countryId = parseInt(document.getElementById('wnl-country').value) || null;
   const cSel = document.getElementById('wnl-country');
   const countryName = countryId ? (cSel.options[cSel.selectedIndex]?.text || null) : null;
-  const filtered = countryName ? (overlay._allLocs || []).filter(l => l.country_name === countryName) : [];
+  const filtered = countryName ? (wizardState.allLocs || []).filter(l => l.country_name === countryName) : [];
   document.getElementById('wnl-parent').innerHTML = '<option value="">– brak –</option>' +
     filtered.map(l => `<option value="${l.id}">${l.name} (${l.location_type})</option>`).join('');
 }
@@ -429,8 +432,7 @@ async function wizardSaveNewLocation() {
 
   document.getElementById('wiz-new-loc-overlay').remove();
 
-  const body = document.getElementById('wizard-body');
-  if (body._allLocs) body._allLocs.push({ id: res.id, name, location_type: typeName, country_name: countryName, parent_name: null });
+  wizardState.allLocs.push({ id: res.id, name, location_type: typeName, country_name: countryName, parent_name: null });
 
   const added = document.getElementById('wiz-loc-added');
   if (added) {
@@ -451,7 +453,7 @@ async function wizardSaveNewLocation() {
 async function wizardStep2Render(body) {
   body.innerHTML = `<div class="spinner"></div>`;
   const [persons, relTypes] = await Promise.all([api('/api/persons'), api('/api/relation_types')]);
-  body._relTypes = relTypes;
+  wizardState.relTypes = relTypes;
 
   const addedIds = new Set(wizardState.participants.map(p => p.id));
   const available = persons.filter(p => !addedIds.has(p.id));
@@ -538,15 +540,13 @@ async function wizardCreatePerson() {
   const name = document.getElementById('wiz-new-person-name').value.trim();
   if (!name) { alert('Podaj imię i nazwisko!'); return; }
   const relTypeId = document.getElementById('wiz-new-person-rel').value;
-  const body = document.getElementById('wizard-body');
-  const relTypes = body._relTypes || [];
-  const relType = relTypeId ? (relTypes.find(r => r.id === parseInt(relTypeId))?.name || '') : '';
+  const relType = relTypeId ? ((wizardState.relTypes || []).find(r => r.id === parseInt(relTypeId))?.name || '') : '';
 
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
   if (res.error) { alert('Błąd: ' + res.error); return; }
 
   wizardState.participants.push({ id: res.id, name, relation_type: relType });
-  wizardStep2Render(body);
+  wizardStep2Render(document.getElementById('wizard-body'));
 }
 
 /* ── Krok 3: Podsumowanie ─────────────────────────────────── */
