@@ -66,7 +66,7 @@ async function openLocation(id) {
         <div class="info-grid">
           <div class="info-item"><label>Typ miejsca</label><span>${loc.location_type}</span></div>
           <div class="info-item"><label>Kraj</label><span>${loc.country_name}</span></div>
-          ${loc.parent_name ? `<div class="info-item"><label>Region / miasto</label><span>${loc.parent_name}</span></div>` : ''}
+          ${loc.parent_name ? `<div class="info-item"><label>Region / miasto</label><span onclick="openLocation(${loc.parent_location_id})" style="color:var(--blue);cursor:pointer">${loc.parent_name}</span></div>` : ''}
           <div class="info-item"><label>Liczba wizyt</label><span>${loc.visit_count} ${loc.visit_count === 1 ? 'raz' : 'razy'}</span></div>
           ${loc.address ? `<div class="info-item" style="grid-column:span 2"><label>Adres</label><span>${loc.address}</span></div>` : ''}
           ${(loc.latitude != null && loc.longitude != null) ? `
