@@ -27,10 +27,10 @@ async function renderTravels(q = '') {
     const done = t.is_description_complete;
     return '<div class="card' + (done ? ' completed' : '') + '" onclick="openTravel(' + t.id + ')">' +
       '<div class="card-inner"><div class="card-icon" style="background:' + purposeIconBg(t.purpose) + '">' + purposeIcon(t.purpose) + '</div>' +
-      '<div class="card-body"><div class="card-title">' + (t.name || '(bez nazwy)') + (done ? ' ✓' : '') + '</div>' +
+      '<div class="card-body"><div class="card-title">' + escapeHtml(t.name || '(bez nazwy)') + (done ? ' ✓' : '') + '</div>' +
       '<div class="card-subtitle">' + fmtDate(t.start_date) + ' – ' + fmtDate(t.end_date) + ' · ' + daysCount(t.start_date, t.end_date) + ' dni</div>' +
       '<div class="card-meta">' +
-      (t.purpose ? '<span class="badge ' + purposeColor(t.purpose) + '">' + t.purpose + '</span>' : '') +
+      (t.purpose ? '<span class="badge ' + purposeColor(t.purpose) + '">' + escapeHtml(t.purpose) + '</span>' : '') +
       (t.rating ? '<span class="badge badge-orange">' + stars(t.rating) + '</span>' : '') +
       (t.has_photo_album ? '<span class="badge badge-green">📷 Album</span>' : '') +
       (t.amount > 0 ? '<span class="badge badge-purple">' + parseFloat(t.amount).toLocaleString('pl-PL') + ' ' + t.currency + '</span>' : '') +
@@ -59,23 +59,23 @@ async function openTravel(id) {
   view.innerHTML = `
     <div class="detail-header-gradient" style="background:${purposeGradient(t.purpose)}">
       <button class="back-btn" onclick="showTab('travels')">‹ Podróże</button>
-      <div class="detail-title">${t.name || '(bez nazwy)'}</div>
+      <div class="detail-title">${escapeHtml(t.name || '(bez nazwy)')}</div>
       <div class="detail-sub">${fmtDate(t.start_date)} – ${fmtDate(t.end_date)}</div>
-      <div class="travel-header-pill">${purposeIcon(t.purpose)} ${t.purpose || 'Podróż'} · ${daysCount(t.start_date, t.end_date)} dni${t.rating ? ' · ' + stars(t.rating) : ''}</div>
+      <div class="travel-header-pill">${purposeIcon(t.purpose)} ${escapeHtml(t.purpose || 'Podróż')} · ${daysCount(t.start_date, t.end_date)} dni${t.rating ? ' · ' + stars(t.rating) : ''}</div>
     </div>
     <div class="detail-body">
       <div class="section"><div class="section-title">Szczegóły</div>
         <div class="info-grid">
-          <div class="info-item"><label>Cel</label><span>${t.purpose || '–'}</span></div>
+          <div class="info-item"><label>Cel</label><span>${escapeHtml(t.purpose || '–')}</span></div>
           <div class="info-item"><label>Czas trwania</label><span>${daysCount(t.start_date, t.end_date)} dni</span></div>
-          <div class="info-item"><label>Koszt</label><span>${t.amount > 0 ? t.amount.toLocaleString('pl-PL')+' '+t.currency : '–'}</span></div>
+          <div class="info-item"><label>Koszt</label><span>${t.amount > 0 ? t.amount.toLocaleString('pl-PL')+' '+escapeHtml(t.currency) : '–'}</span></div>
           <div class="info-item"><label>Loty</label><span>${t.number_of_flights || 0}</span></div>
           <div class="info-item"><label>Ocena</label><span style="color:var(--orange)">${t.rating ? stars(t.rating) : '–'}</span></div>
           <div class="info-item"><label>Album</label><span>${t.has_photo_album ? '📷 Tak' : 'Nie'}</span></div>
         </div>
       </div>
-      ${t.notes ? `<div class="section"><div class="section-title">Notatki</div><div class="notes-text">${t.notes}</div></div>` : ''}
-      ${t.reflections ? `<div class="section"><div class="section-title">Wspomnienia</div><div class="reflections-text">${t.reflections}</div></div>` : ''}
+      ${t.notes ? `<div class="section"><div class="section-title">Notatki</div><div class="notes-text">${escapeHtml(t.notes)}</div></div>` : ''}
+      ${t.reflections ? `<div class="section"><div class="section-title">Wspomnienia</div><div class="reflections-text">${escapeHtml(t.reflections)}</div></div>` : ''}
       <div class="section" id="section-locations">
         <div class="section-header">
           <div class="section-title">Odwiedzone miejsca${t.locations && t.locations.length ? ' (' + t.locations.length + ')' : ''}</div>
@@ -93,8 +93,8 @@ async function openTravel(id) {
               data-location-id="${l.location_id}">
               <div class="loc-icon">${locationIcon(l.location_type)}</div>
               <div style="flex:1">
-                <div class="loc-name">${l.location_name}</div>
-                <div class="loc-sub">${l.location_type} · ${l.country_name}</div>
+                <div class="loc-name">${escapeHtml(l.location_name)}</div>
+                <div class="loc-sub">${escapeHtml(l.location_type)} · ${escapeHtml(l.country_name)}</div>
                 <div class="loc-sub" id="tl-dates-${l.id}">${fmtDate(l.arrival_date)} – ${fmtDate(l.departure_date)}</div>
                 <div class="loc-sub" id="tl-notes-${l.id}" style="font-style:italic">${l.notes ? escapeHtml(l.notes) : ''}</div>
               </div>
@@ -116,8 +116,8 @@ async function openTravel(id) {
           ${(t.participants && t.participants.length) ? t.participants.map(p => `
             <div class="person-chip" id="chip-${p.id}">
               <div class="avatar">${initials(p.name)}</div>
-              <div><div style="font-size:13px;font-weight:500">${p.name.split(' ')[0]}</div>
-              ${p.relation_type ? `<div style="font-size:11px;color:var(--text2)">${p.relation_type}</div>` : ''}</div>
+              <div><div style="font-size:13px;font-weight:500">${escapeHtml(p.name.split(' ')[0])}</div>
+              ${p.relation_type ? `<div style="font-size:11px;color:var(--text2)">${escapeHtml(p.relation_type)}</div>` : ''}</div>
               <button onclick="removeParticipantFromTravel(${t.id}, ${p.id})"
                 style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 0 0 4px;line-height:1">✕</button>
             </div>`).join('') : `<div class="empty-chips" style="color:var(--text3);font-size:13px">Brak uczestników</div>`}

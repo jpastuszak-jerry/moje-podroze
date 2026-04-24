@@ -58,15 +58,15 @@ async function openLocation(id) {
   view.innerHTML = `
     <div class="detail-header">
       <button class="back-btn" onclick="showTab('locations')">‹ Miejsca</button>
-      <div class="detail-title">${loc.name}</div>
-      <div class="detail-sub">${loc.location_type} · ${loc.country_name}</div>
+      <div class="detail-title">${escapeHtml(loc.name)}</div>
+      <div class="detail-sub">${escapeHtml(loc.location_type)} · ${escapeHtml(loc.country_name)}</div>
     </div>
     <div class="detail-body">
       <div class="section"><div class="section-title">Informacje</div>
         <div class="info-grid">
-          <div class="info-item"><label>Typ miejsca</label><span>${loc.location_type}</span></div>
-          <div class="info-item"><label>Kraj</label><span>${loc.country_name}</span></div>
-          ${loc.parent_name ? `<div class="info-item"><label>Region / miasto</label><span onclick="openLocation(${loc.parent_location_id})" style="color:var(--blue);cursor:pointer">${loc.parent_name}</span></div>` : ''}
+          <div class="info-item"><label>Typ miejsca</label><span>${escapeHtml(loc.location_type)}</span></div>
+          <div class="info-item"><label>Kraj</label><span>${escapeHtml(loc.country_name)}</span></div>
+          ${loc.parent_name ? `<div class="info-item"><label>Region / miasto</label><span onclick="openLocation(${loc.parent_location_id})" style="color:var(--blue);cursor:pointer">${escapeHtml(loc.parent_name)}</span></div>` : ''}
           <div class="info-item"><label>Liczba wizyt</label><span>${loc.visit_count} ${loc.visit_count === 1 ? 'raz' : 'razy'}</span></div>
           ${loc.address ? `<div class="info-item" style="grid-column:span 2"><label>Adres</label><span>${loc.address}</span></div>` : ''}
           ${(loc.latitude != null && loc.longitude != null) ? `
@@ -78,13 +78,13 @@ async function openLocation(id) {
             </span>
           </div>` : ''}
         </div>
-        ${loc.notes ? `<div style="margin-top:10px"><div class="form-label">Notatki</div><div class="notes-text">${loc.notes}</div></div>` : ''}
+        ${loc.notes ? `<div style="margin-top:10px"><div class="form-label">Notatki</div><div class="notes-text">${escapeHtml(loc.notes)}</div></div>` : ''}
       </div>
       ${loc.visits && loc.visits.length ? `<div class="section"><div class="section-title">Wizyty bezpośrednie (${loc.visits.length})</div>
         ${loc.visits.map(v => `<div class="loc-row" onclick="openTravel(${v.id})" style="cursor:pointer">
-          <div class="loc-icon">✈️</div><div style="flex:1"><div class="loc-name">${v.travel_name || '(bez nazwy)'}</div>
+          <div class="loc-icon">✈️</div><div style="flex:1"><div class="loc-name">${escapeHtml(v.travel_name || '(bez nazwy)')}</div>
           <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div>
-          ${v.notes ? `<div class="loc-sub" style="font-style:italic">${v.notes}</div>` : ''}</div>
+          ${v.notes ? `<div class="loc-sub" style="font-style:italic">${escapeHtml(v.notes)}</div>` : ''}</div>
           <div style="color:var(--text3);font-size:18px">›</div></div>`).join('')}
       </div>` : `<div class="section"><div class="empty" style="padding:20px">Brak wizyt w bazie</div></div>`}
       ${loc.child_visits && loc.child_visits.length ? `<div class="section"><div class="section-title">Wizyty przez lokalizacje podrzędne (${loc.child_visits.length})</div>
@@ -95,8 +95,16 @@ async function openLocation(id) {
           <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div></div>
           <div style="color:var(--text3);font-size:18px">›</div></div>`).join('')}
       </div>` : ''}
+      <button class="delete-btn" onclick="confirmDeleteLocation(${loc.id})">🗑 Usuń miejsce</button>
+      <div style="height:12px"></div>
     </div>
     <button class="fab" onclick="openEditLocationModal(${loc.id})">✎</button>`;
+}
+
+async function confirmDeleteLocation(id) {
+  if (!confirm('Usunąć to miejsce? Tej operacji nie można cofnąć.')) return;
+  await apiDelete('/api/locations/' + id);
+  showTab('locations');
 }
 
 async function openEditLocationModal(id) {
