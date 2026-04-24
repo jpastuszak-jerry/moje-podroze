@@ -46,7 +46,11 @@ async function apiPut(path, body) {
 }
 
 async function apiDelete(path) {
-  await fetch(API + path, { method: 'DELETE' });
+  const r = await fetch(API + path, { method: 'DELETE' });
+  if (!r.ok) {
+    try { return await r.json(); } catch { return { error: 'Błąd serwera: ' + r.status }; }
+  }
+  return {};
 }
 
 function parseDate(s) {

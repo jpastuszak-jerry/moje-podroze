@@ -103,7 +103,8 @@ async function openLocation(id) {
 
 async function confirmDeleteLocation(id) {
   if (!confirm('Usunąć to miejsce? Tej operacji nie można cofnąć.')) return;
-  await apiDelete('/api/locations/' + id);
+  const res = await apiDelete('/api/locations/' + id);
+  if (res.error) { alert(res.error); return; }
   showTab('locations');
 }
 
