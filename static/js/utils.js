@@ -141,6 +141,14 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function parseCoord(v) {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 function findDuplicateLocation(allLocs, name, countryName, parentId) {
   if (!allLocs || !name || !countryName) return null;
   const n = name.trim().toLowerCase();

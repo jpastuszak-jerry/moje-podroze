@@ -544,16 +544,15 @@ def create_location():
                 'existing': dict(existing),
             }), 409
     try:
-        # GEO: 0.0 traktujemy jako brak współrzędnych (zachowanie sprzed Pydantica)
-        lat = loc.latitude if loc.latitude not in (None, 0) else None
-        lng = loc.longitude if loc.longitude not in (None, 0) else None
+        # GEO: tylko None to "brak współrzędnych"; 0.0 to ważna lokalizacja (równik / południk zerowy)
         new_id = execute("""
             INSERT INTO locations
                 (name, country_id, location_type_id, parent_location_id, address, notes, latitude, longitude)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
         """, (
             loc.name, loc.country_id, loc.location_type_id,
-            loc.parent_location_id, loc.address, loc.notes, lat, lng,
+            loc.parent_location_id, loc.address, loc.notes,
+            loc.latitude, loc.longitude,
         ))
         return jsonify({'id': new_id, 'name': loc.name}), 201
     except Exception as e:
@@ -567,9 +566,7 @@ def update_location(lid):
     except ValidationError as e:
         return validation_error_response(e)
     try:
-        # GEO: 0.0 traktujemy jako brak współrzędnych (zachowanie sprzed Pydantica)
-        lat = loc.latitude  if loc.latitude  not in (None, 0) else None
-        lng = loc.longitude if loc.longitude not in (None, 0) else None
+        # GEO: tylko None to "brak współrzędnych"; 0.0 to ważna lokalizacja (równik / południk zerowy)
         execute("""
             UPDATE locations SET
                 name=%s, country_id=%s, location_type_id=%s,
@@ -578,7 +575,8 @@ def update_location(lid):
             WHERE id=%s
         """, (
             loc.name, loc.country_id, loc.location_type_id,
-            loc.parent_location_id, loc.address, loc.notes, lat, lng, lid,
+            loc.parent_location_id, loc.address, loc.notes,
+            loc.latitude, loc.longitude, lid,
         ))
         return jsonify({'ok': True})
     except Exception as e:
@@ -962,6 +960,19 @@ def get_stats():
         },
         'hall_of_fame': hall_of_fame,
     })
+
+
+# =============================================================================
+# 7. HEALTHCHECK — dla UptimeRobot / monitoringu
+# =============================================================================
+
+@app.route('/healthz')
+def healthz():
+    try:
+        query("SELECT 1 AS ok", one=True)
+        return jsonify({'status': 'ok', 'db': 'ok'}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'db': 'down', 'detail': str(e)[:200]}), 503
 
 
 # =============================================================================

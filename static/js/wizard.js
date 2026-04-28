@@ -427,8 +427,8 @@ async function wizardSaveNewLocation() {
   const typeId    = document.getElementById('wnl-type').value;
   const parentId  = document.getElementById('wnl-parent').value;
   const address   = document.getElementById('wnl-address').value.trim();
-  const latVal    = parseFloat(document.getElementById('wnl-lat').value) || null;
-  const lngVal    = parseFloat(document.getElementById('wnl-lng').value) || null;
+  const latVal    = parseCoord(document.getElementById('wnl-lat').value);
+  const lngVal    = parseCoord(document.getElementById('wnl-lng').value);
 
   if (!name)      { alert('Podaj nazwę miejsca!'); return; }
   if (!countryId) { alert('Wybierz kraj!'); return; }

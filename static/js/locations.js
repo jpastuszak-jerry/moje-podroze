@@ -236,8 +236,8 @@ async function saveEditLocation(id) {
     if (!countryId) { alert('Wybierz kraj!'); return; }
     if (!typeId) { alert('Wybierz typ miejsca!'); return; }
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
-    const latVal = parseFloat(document.getElementById('el-lat').value) || null;
-    const lngVal = parseFloat(document.getElementById('el-lng').value) || null;
+    const latVal = parseCoord(document.getElementById('el-lat').value);
+    const lngVal = parseCoord(document.getElementById('el-lng').value);
     const res = await apiPut('/api/locations/' + id, {
       name, country_id: parseInt(countryId), location_type_id: parseInt(typeId),
       parent_location_id: parentId ? parseInt(parentId) : null,
@@ -390,8 +390,8 @@ async function saveNewLocation() {
     const travelStart = overlay?._travelStart || null;
     const travelEnd = overlay?._travelEnd || null;
     const allLocs = overlay?._allLocs || allLocationsCache || [];
-    const latVal = parseFloat(document.getElementById('nl-lat').value) || null;
-    const lngVal = parseFloat(document.getElementById('nl-lng').value) || null;
+    const latVal = parseCoord(document.getElementById('nl-lat').value);
+    const lngVal = parseCoord(document.getElementById('nl-lng').value);
 
     const dup = findDuplicateLocation(allLocs, name, countryName, parentId);
     let force = false;
