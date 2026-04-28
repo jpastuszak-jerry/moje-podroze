@@ -16,7 +16,7 @@ Struktura pliku:
 import os
 import datetime
 from datetime import date
-from typing import Optional
+from typing import Optional, Literal
 from flask import Flask, jsonify, request, send_from_directory, g
 from flask.json.provider import DefaultJSONProvider
 from pydantic import BaseModel, ValidationError, field_validator
@@ -174,6 +174,91 @@ class LocationCreate(BaseModel):
         return _blank_to_none(v)
 
 
+class TravelUpdate(TravelCreate):
+    """Aktualizacja podróży = wszystkie pola TravelCreate + opcjonalna strategia konfliktu dat."""
+    on_conflict: Optional[Literal['clip', 'ignore']] = None
+
+
+class LocationUpdate(BaseModel):
+    name: str
+    country_id: int
+    location_type_id: int
+    parent_location_id: Optional[int] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def _name_required(cls, v):
+        s = (str(v).strip() if v is not None else '')
+        if not s:
+            raise ValueError('Podaj nazwę miejsca')
+        return s
+
+    @field_validator('address', 'notes', mode='before')
+    @classmethod
+    def _strip_or_none(cls, v):
+        return _blank_to_none(v)
+
+
+class _TravelLocationFields(BaseModel):
+    arrival_date: Optional[date] = None
+    departure_date: Optional[date] = None
+    notes: Optional[str] = None
+
+    @field_validator('notes', mode='before')
+    @classmethod
+    def _strip_or_none(cls, v):
+        return _blank_to_none(v)
+
+    @field_validator('departure_date')
+    @classmethod
+    def _depart_after_arrival(cls, v, info):
+        a = info.data.get('arrival_date')
+        if v and a and v < a:
+            raise ValueError('departure_date nie może być wcześniej niż arrival_date')
+        return v
+
+
+class TravelLocationCreate(_TravelLocationFields):
+    location_id: int
+
+
+class TravelLocationUpdate(_TravelLocationFields):
+    pass
+
+
+class ParticipantAdd(BaseModel):
+    person_id: int
+
+
+class PersonInput(BaseModel):
+    name: str
+    relation_type_id: Optional[int] = None
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def _name_required(cls, v):
+        s = (str(v).strip() if v is not None else '')
+        if not s:
+            raise ValueError('Podaj imię i nazwisko')
+        return s
+
+
+class DictItem(BaseModel):
+    name: str
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def _name_required(cls, v):
+        s = (str(v).strip() if v is not None else '')
+        if not s:
+            raise ValueError('Nazwa wymagana')
+        return s
+
+
 def register_dictionary_endpoints(table_name, url_path):
     @app.route(f'/api/{url_path}', endpoint=f'get_{url_path}')
     def list_items():
@@ -182,22 +267,24 @@ def register_dictionary_endpoints(table_name, url_path):
 
     @app.route(f'/api/{url_path}', methods=['POST'], endpoint=f'create_{url_path}')
     def create_item():
-        name = clean_str(request.json.get('name'))
-        if not name:
-            return jsonify({'error': 'Nazwa wymagana'}), 400
         try:
-            new_id = execute(f"INSERT INTO {table_name} (name) VALUES (%s) RETURNING id", (name,))
-            return jsonify({'id': new_id, 'name': name}), 201
+            d = DictItem.model_validate(request.json or {})
+        except ValidationError as e:
+            return validation_error_response(e)
+        try:
+            new_id = execute(f"INSERT INTO {table_name} (name) VALUES (%s) RETURNING id", (d.name,))
+            return jsonify({'id': new_id, 'name': d.name}), 201
         except Exception as e:
             return db_error_response(e)
 
     @app.route(f'/api/{url_path}/<int:item_id>', methods=['PUT'], endpoint=f'update_{url_path}')
     def update_item(item_id):
-        name = clean_str(request.json.get('name'))
-        if not name:
-            return jsonify({'error': 'Nazwa wymagana'}), 400
         try:
-            execute(f"UPDATE {table_name} SET name=%s WHERE id=%s", (name, item_id))
+            d = DictItem.model_validate(request.json or {})
+        except ValidationError as e:
+            return validation_error_response(e)
+        try:
+            execute(f"UPDATE {table_name} SET name=%s WHERE id=%s", (d.name, item_id))
             return jsonify({'ok': True})
         except Exception as e:
             return db_error_response(e)
@@ -288,13 +375,13 @@ def create_travel():
 
 @app.route('/api/travels/<int:tid>', methods=['PUT'])
 def update_travel(tid):
-    d = request.json or {}
-    new_start = d.get('start_date')
-    new_end = d.get('end_date')
-    on_conflict = d.get('on_conflict')  # None | 'clip' | 'ignore'
+    try:
+        t = TravelUpdate.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
 
     # Wykryj wizyty wykraczające poza nowy zakres dat podróży
-    if new_start and new_end and on_conflict not in ('clip', 'ignore'):
+    if t.on_conflict not in ('clip', 'ignore'):
         conflicts = query("""
             SELECT tl.id, l.name AS location_name,
                    tl.arrival_date, tl.departure_date
@@ -306,7 +393,7 @@ def update_travel(tid):
                 (tl.departure_date IS NOT NULL AND (tl.departure_date < %s OR tl.departure_date > %s))
               )
             ORDER BY tl.arrival_date NULLS LAST, l.name
-        """, (tid, new_start, new_end, new_start, new_end))
+        """, (tid, t.start_date, t.end_date, t.start_date, t.end_date))
         if conflicts:
             return jsonify({
                 'error': 'Niektóre wizyty są poza nowym zakresem dat podróży',
@@ -329,18 +416,12 @@ def update_travel(tid):
                    rating=%s, reflections=%s, notes=%s, number_of_flights=%s
             WHERE id=%s
         """, (
-            d.get('name', ''), new_start, new_end,
-            d.get('purpose', ''), bool(d.get('has_photo_album', False)),
-            float(d.get('amount', 0)), d.get('currency', 'PLN'),
-            bool(d.get('is_description_complete', False)),
-            d.get('rating') or None,
-            clean_str(d.get('reflections')),
-            clean_str(d.get('notes')),
-            int(d.get('number_of_flights', 0)),
-            tid,
+            t.name, t.start_date, t.end_date, t.purpose, t.has_photo_album,
+            t.amount, t.currency, t.is_description_complete,
+            t.rating, t.reflections, t.notes, t.number_of_flights, tid,
         ))
-        if on_conflict == 'clip' and new_start and new_end:
-            # Zacisnij niepuste arrival_date / departure_date do zakresu [new_start, new_end].
+        if t.on_conflict == 'clip':
+            # Zacisnij niepuste arrival_date / departure_date do zakresu [start_date, end_date].
             # CASE zachowuje NULL-e (PostgreSQL LEAST/GREATEST ignoruje NULL).
             cur.execute("""
                 UPDATE travel_locations SET
@@ -353,8 +434,8 @@ def update_travel(tid):
                     (arrival_date   IS NOT NULL AND (arrival_date   < %s OR arrival_date   > %s)) OR
                     (departure_date IS NOT NULL AND (departure_date < %s OR departure_date > %s))
                   )
-            """, (new_start, new_end, new_start, new_end, tid,
-                  new_start, new_end, new_start, new_end))
+            """, (t.start_date, t.end_date, t.start_date, t.end_date, tid,
+                  t.start_date, t.end_date, t.start_date, t.end_date))
         db.commit()
     return jsonify({'ok': True})
 
@@ -480,11 +561,14 @@ def create_location():
 
 @app.route('/api/locations/<int:lid>', methods=['PUT'])
 def update_location(lid):
-    d = request.json
     try:
-        # GEO: aktualizujemy latitude i longitude
-        lat = float(d['latitude'])  if d.get('latitude')  not in (None, '', 0) else None
-        lng = float(d['longitude']) if d.get('longitude') not in (None, '', 0) else None
+        loc = LocationUpdate.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
+    try:
+        # GEO: 0.0 traktujemy jako brak współrzędnych (zachowanie sprzed Pydantica)
+        lat = loc.latitude  if loc.latitude  not in (None, 0) else None
+        lng = loc.longitude if loc.longitude not in (None, 0) else None
         execute("""
             UPDATE locations SET
                 name=%s, country_id=%s, location_type_id=%s,
@@ -492,15 +576,8 @@ def update_location(lid):
                 latitude=%s, longitude=%s
             WHERE id=%s
         """, (
-            clean_str(d.get('name')),
-            int(d['country_id']) if d.get('country_id') else None,
-            int(d['location_type_id']) if d.get('location_type_id') else None,
-            int(d['parent_location_id']) if d.get('parent_location_id') else None,
-            clean_str(d.get('address')),
-            clean_str(d.get('notes')),
-            lat,
-            lng,
-            lid
+            loc.name, loc.country_id, loc.location_type_id,
+            loc.parent_location_id, loc.address, loc.notes, lat, lng, lid,
         ))
         return jsonify({'ok': True})
     except Exception as e:
@@ -547,19 +624,16 @@ def get_map_locations():
 
 @app.route('/api/travels/<int:tid>/locations', methods=['POST'])
 def add_location_to_travel(tid):
-    d = request.json
+    try:
+        v = TravelLocationCreate.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
     try:
         new_id = execute("""
             INSERT INTO travel_locations
                 (travel_id, location_id, arrival_date, departure_date, notes)
             VALUES (%s, %s, %s, %s, %s) RETURNING id
-        """, (
-            tid,
-            int(d['location_id']),
-            d.get('arrival_date') or None,
-            d.get('departure_date') or None,
-            clean_str(d.get('notes'))
-        ))
+        """, (tid, v.location_id, v.arrival_date, v.departure_date, v.notes))
         return jsonify({'id': new_id}), 201
     except Exception as e:
         return db_error_response(e)
@@ -573,17 +647,15 @@ def remove_location_from_travel(tid, tlid):
 
 @app.route('/api/travels/<int:tid>/locations/<int:tlid>', methods=['PUT'])
 def update_location_in_travel(tid, tlid):
-    d = request.json
+    try:
+        v = TravelLocationUpdate.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
     try:
         execute("""
             UPDATE travel_locations SET arrival_date=%s, departure_date=%s, notes=%s
             WHERE id=%s AND travel_id=%s
-        """, (
-            d.get('arrival_date') or None,
-            d.get('departure_date') or None,
-            clean_str(d.get('notes')),
-            tlid, tid
-        ))
+        """, (v.arrival_date, v.departure_date, v.notes, tlid, tid))
         return jsonify({'ok': True})
     except Exception as e:
         return db_error_response(e)
@@ -591,14 +663,15 @@ def update_location_in_travel(tid, tlid):
 
 @app.route('/api/travels/<int:tid>/participants', methods=['POST'])
 def add_participant_to_travel(tid):
-    person_id = request.json.get('person_id')
-    if not person_id:
-        return jsonify({'error': 'Brak person_id'}), 400
+    try:
+        p = ParticipantAdd.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
     try:
         execute("""
             INSERT INTO travel_participants (travel_id, person_id)
             VALUES (%s, %s) ON CONFLICT DO NOTHING
-        """, (tid, int(person_id)))
+        """, (tid, p.person_id))
         return jsonify({'ok': True}), 201
     except Exception as e:
         return db_error_response(e)
@@ -635,37 +708,30 @@ def get_persons():
 
 @app.route('/api/persons', methods=['POST'])
 def create_person():
-    d = request.json
-    name = clean_str(d.get('name'))
-    if not name:
-        return jsonify({'error': 'Podaj imię i nazwisko'}), 400
+    try:
+        p = PersonInput.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
     try:
         new_id = execute("""
             INSERT INTO persons (name, relation_type_id)
             VALUES (%s, %s) RETURNING id
-        """, (
-            name,
-            int(d['relation_type_id']) if d.get('relation_type_id') else None
-        ))
-        return jsonify({'id': new_id, 'name': name}), 201
+        """, (p.name, p.relation_type_id))
+        return jsonify({'id': new_id, 'name': p.name}), 201
     except Exception as e:
         return db_error_response(e)
 
 
 @app.route('/api/persons/<int:pid>', methods=['PUT'])
 def update_person(pid):
-    d = request.json
-    name = clean_str(d.get('name'))
-    if not name:
-        return jsonify({'error': 'Podaj imię i nazwisko'}), 400
+    try:
+        p = PersonInput.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
     try:
         execute("""
             UPDATE persons SET name=%s, relation_type_id=%s WHERE id=%s
-        """, (
-            name,
-            int(d['relation_type_id']) if d.get('relation_type_id') else None,
-            pid
-        ))
+        """, (p.name, p.relation_type_id, pid))
         return jsonify({'ok': True})
     except Exception as e:
         return db_error_response(e)
