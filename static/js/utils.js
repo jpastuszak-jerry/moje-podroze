@@ -141,6 +141,25 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function findDuplicateLocation(allLocs, name, countryName, parentId) {
+  if (!allLocs || !name || !countryName) return null;
+  const n = name.trim().toLowerCase();
+  const pid = parentId ? parseInt(parentId) : null;
+  return allLocs.find(l =>
+    (l.name || '').toLowerCase() === n
+    && l.country_name === countryName
+    && (l.parent_location_id || null) === pid
+  ) || null;
+}
+
+function confirmDuplicateLocation(existing, countryName) {
+  const where = [existing.location_type, countryName].filter(Boolean).join(', ');
+  return confirm(
+    `Miejsce "${existing.name}" (${where}) już istnieje w bazie.\n\n` +
+    `Na pewno utworzyć drugi rekord o tej samej nazwie?`
+  );
+}
+
 function showTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));

@@ -254,6 +254,8 @@ function wizardPickLocation(locId) {
   const loc = (wizardState.allLocs || []).find(l => l.id === locId);
   if (!loc) return;
 
+  document.getElementById('wiz-loc-date-overlay')?.remove();
+
   const alreadyIdx = wizardState.locations.findIndex(l => l.id === locId);
   const s = wizardState.info;
 
@@ -275,7 +277,7 @@ function wizardPickLocation(locId) {
         </div>
         <div class="form-label">Notatka (opcjonalnie)</div>
         <input class="form-input" id="wld-notes" placeholder="np. hotel nad morzem" value="${alreadyIdx >= 0 ? escapeHtml(wizardState.locations[alreadyIdx].notes || '') : ''}">
-        <button onclick="wizardConfirmLocation(${locId}, ${alreadyIdx})"
+        <button id="wld-save-btn" onclick="wizardConfirmLocation(${locId}, ${alreadyIdx})"
           style="background:var(--blue);color:white;border:none;border-radius:12px;padding:14px;width:100%;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">
           ${alreadyIdx >= 0 ? 'Zaktualizuj' : 'Dodaj miejsce'}
         </button>
@@ -286,6 +288,9 @@ function wizardPickLocation(locId) {
 }
 
 function wizardConfirmLocation(locId, existingIdx) {
+  const btn = document.getElementById('wld-save-btn');
+  if (btn?.disabled) return;
+  if (btn) btn.disabled = true;
   const loc = (wizardState.allLocs || []).find(l => l.id === locId);
   if (!loc) return;
 
@@ -337,6 +342,7 @@ function wizardRemoveLocation(idx) {
 }
 
 async function wizardOpenNewLocation() {
+  document.getElementById('wiz-new-loc-overlay')?.remove();
   const countries = wizardState.countries.length ? wizardState.countries : await api('/api/countries');
   const locTypes  = wizardState.locTypes.length  ? wizardState.locTypes  : await api('/api/location_types');
   const allLocs   = wizardState.allLocs.length   ? wizardState.allLocs   : await api('/api/locations');
@@ -379,7 +385,7 @@ async function wizardOpenNewLocation() {
             style="background:var(--blue);color:white;border:none;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">🔍</button>
         </div>
         <div id="wnl-geo-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;max-height:160px;overflow-y:auto"></div>
-        <button onclick="wizardSaveNewLocation()"
+        <button id="wnl-save-btn" onclick="wizardSaveNewLocation()"
           style="background:var(--blue);color:white;border:none;border-radius:12px;padding:14px;width:100%;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">
           Zapisz i dodaj do podróży
         </button>
@@ -400,6 +406,10 @@ function wizardUpdateParentList() {
 }
 
 async function wizardSaveNewLocation() {
+  const btn = document.getElementById('wnl-save-btn');
+  if (btn?.disabled) return;
+  const origLabel = btn?.textContent;
+
   const name      = document.getElementById('wnl-name').value.trim();
   const countryId = document.getElementById('wnl-country').value;
   const typeId    = document.getElementById('wnl-type').value;
@@ -417,34 +427,61 @@ async function wizardSaveNewLocation() {
   const cSel = document.getElementById('wnl-country');
   const countryName = cSel.options[cSel.selectedIndex]?.text || '';
 
-  const res = await apiPost('/api/locations', {
-    name, country_id: parseInt(countryId), location_type_id: parseInt(typeId),
-    parent_location_id: parentId ? parseInt(parentId) : null,
-    address: address || null, latitude: latVal, longitude: lngVal,
-  });
-  if (res.error) { alert('Błąd: ' + res.error); return; }
+  const dup = findDuplicateLocation(wizardState.allLocs, name, countryName, parentId);
+  let force = false;
+  if (dup) {
+    if (!confirmDuplicateLocation(dup, countryName)) return;
+    force = true;
+  }
 
-  const s = wizardState.info;
-  wizardState.locations.push({
-    id: res.id, name, location_type: typeName, country_name: countryName,
-    parent_name: null, arrival: s.start_date, departure: s.end_date, notes: null,
-  });
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
 
-  document.getElementById('wiz-new-loc-overlay').remove();
+  try {
+    const body = {
+      name, country_id: parseInt(countryId), location_type_id: parseInt(typeId),
+      parent_location_id: parentId ? parseInt(parentId) : null,
+      address: address || null, latitude: latVal, longitude: lngVal,
+    };
+    if (force) body.force_duplicate = true;
+    let res = await apiPost('/api/locations', body);
+    if (res.error && res.duplicate && res.existing) {
+      if (!confirmDuplicateLocation(res.existing, countryName)) {
+        if (btn) { btn.disabled = false; btn.textContent = origLabel; }
+        return;
+      }
+      res = await apiPost('/api/locations', { ...body, force_duplicate: true });
+    }
+    if (res.error) {
+      alert('Błąd: ' + res.error);
+      if (btn) { btn.disabled = false; btn.textContent = origLabel; }
+      return;
+    }
 
-  wizardState.allLocs.push({ id: res.id, name, location_type: typeName, country_name: countryName, parent_name: null });
+    const s = wizardState.info;
+    wizardState.locations.push({
+      id: res.id, name, location_type: typeName, country_name: countryName,
+      parent_name: null, arrival: s.start_date, departure: s.end_date, notes: null,
+    });
 
-  const added = document.getElementById('wiz-loc-added');
-  if (added) {
-    added.innerHTML = wizardState.locations.map((l, i) => `
-      <div class="wiz-loc-item">
-        <div class="wiz-loc-icon">${locationIcon(l.location_type)}</div>
-        <div class="wiz-loc-info">
-          <div class="wiz-loc-name">${escapeHtml(l.name)}</div>
-          <div class="wiz-loc-sub">${escapeHtml(l.location_type)} · ${escapeHtml(l.country_name)}</div>
-        </div>
-        <button class="wiz-loc-remove" onclick="wizardRemoveLocation(${i})">✕</button>
-      </div>`).join('');
+    document.getElementById('wiz-new-loc-overlay')?.remove();
+
+    wizardState.allLocs.push({ id: res.id, name, location_type: typeName, country_name: countryName, parent_name: null, parent_location_id: parentId ? parseInt(parentId) : null });
+
+    const added = document.getElementById('wiz-loc-added');
+    if (added) {
+      added.innerHTML = wizardState.locations.map((l, i) => `
+        <div class="wiz-loc-item">
+          <div class="wiz-loc-icon">${locationIcon(l.location_type)}</div>
+          <div class="wiz-loc-info">
+            <div class="wiz-loc-name">${escapeHtml(l.name)}</div>
+            <div class="wiz-loc-sub">${escapeHtml(l.location_type)} · ${escapeHtml(l.country_name)}</div>
+          </div>
+          <button class="wiz-loc-remove" onclick="wizardRemoveLocation(${i})">✕</button>
+        </div>`).join('');
+    }
+  } catch (err) {
+    alert('Nieoczekiwany błąd: ' + err.message);
+    if (btn && document.body.contains(btn)) { btn.disabled = false; btn.textContent = origLabel; }
   }
 }
 
@@ -501,7 +538,7 @@ async function wizardStep2Render(body) {
       <select class="form-input" id="wiz-new-person-rel">
         <option value="">– typ relacji –</option>${relOpts}
       </select>
-      <button onclick="wizardCreatePerson()"
+      <button id="wiz-new-person-btn" onclick="wizardCreatePerson()"
         style="background:var(--blue);color:white;border:none;border-radius:12px;padding:12px;width:100%;font-size:14px;font-weight:600;cursor:pointer">
         Dodaj osobę
       </button>
@@ -537,13 +574,20 @@ function wizardRemoveParticipant(idx) {
 }
 
 async function wizardCreatePerson() {
+  const btn = document.getElementById('wiz-new-person-btn');
+  if (btn?.disabled) return;
   const name = document.getElementById('wiz-new-person-name').value.trim();
   if (!name) { alert('Podaj imię i nazwisko!'); return; }
   const relTypeId = document.getElementById('wiz-new-person-rel').value;
   const relType = relTypeId ? ((wizardState.relTypes || []).find(r => r.id === parseInt(relTypeId))?.name || '') : '';
 
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
-  if (res.error) { alert('Błąd: ' + res.error); return; }
+  if (res.error) {
+    alert('Błąd: ' + res.error);
+    if (btn) { btn.disabled = false; btn.textContent = 'Dodaj osobę'; }
+    return;
+  }
 
   wizardState.participants.push({ id: res.id, name, relation_type: relType });
   wizardStep2Render(document.getElementById('wizard-body'));

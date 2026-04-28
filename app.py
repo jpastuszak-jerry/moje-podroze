@@ -315,6 +315,25 @@ def create_location():
         return jsonify({'error': 'Wybierz kraj'}), 400
     if not location_type_id:
         return jsonify({'error': 'Wybierz typ miejsca'}), 400
+    parent_id = int(d['parent_location_id']) if d.get('parent_location_id') else None
+    force = bool(d.get('force_duplicate'))
+    if not force:
+        existing = query("""
+            SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type
+            FROM locations l
+            JOIN countries c ON l.country_id = c.id
+            JOIN location_types lt ON l.location_type_id = lt.id
+            WHERE LOWER(l.name) = LOWER(%s)
+              AND l.country_id = %s
+              AND COALESCE(l.parent_location_id, 0) = COALESCE(%s, 0)
+            LIMIT 1
+        """, (name, int(country_id), parent_id), one=True)
+        if existing:
+            return jsonify({
+                'error': 'Takie miejsce już istnieje',
+                'duplicate': True,
+                'existing': dict(existing),
+            }), 409
     try:
         # GEO: zapisujemy latitude i longitude jeśli podane
         lat = float(d['latitude'])  if d.get('latitude')  not in (None, '', 0) else None
@@ -327,7 +346,7 @@ def create_location():
             name,
             int(country_id),
             int(location_type_id),
-            int(d['parent_location_id']) if d.get('parent_location_id') else None,
+            parent_id,
             clean_str(d.get('address')),
             clean_str(d.get('notes')),
             lat,

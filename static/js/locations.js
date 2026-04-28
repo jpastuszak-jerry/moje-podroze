@@ -109,6 +109,7 @@ async function confirmDeleteLocation(id) {
 }
 
 async function openEditLocationModal(id) {
+  document.getElementById('edit-loc-overlay')?.remove();
   const [loc, countries, locTypes, allLocs] = await Promise.all([
     api('/api/locations/' + id),
     api('/api/countries'),
@@ -150,7 +151,7 @@ async function openEditLocationModal(id) {
       <div id="el-geo-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;max-height:200px;overflow-y:auto"></div>
       <div class="form-label">Notatki (opcjonalnie)</div>
       <textarea class="form-input form-textarea" id="el-notes"></textarea>
-      <button onclick="saveEditLocation(${id})"
+      <button id="el-save-btn" onclick="saveEditLocation(${id})"
         style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
         Zapisz zmiany
       </button>
@@ -221,6 +222,9 @@ function updateParentLocListFor(overlayId, prefix) {
 }
 
 async function saveEditLocation(id) {
+  const btn = document.getElementById('el-save-btn');
+  if (btn?.disabled) return;
+  const origLabel = btn?.textContent;
   try {
     const name = document.getElementById('el-name').value.trim();
     const countryId = document.getElementById('el-country').value;
@@ -231,6 +235,7 @@ async function saveEditLocation(id) {
     if (!name) { alert('Podaj nazwę miejsca!'); return; }
     if (!countryId) { alert('Wybierz kraj!'); return; }
     if (!typeId) { alert('Wybierz typ miejsca!'); return; }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
     const latVal = parseFloat(document.getElementById('el-lat').value) || null;
     const lngVal = parseFloat(document.getElementById('el-lng').value) || null;
     const res = await apiPut('/api/locations/' + id, {
@@ -241,7 +246,11 @@ async function saveEditLocation(id) {
     if (res.error) { alert('Błąd: ' + res.error); return; }
     document.getElementById('edit-loc-overlay').remove();
     openLocation(id);
-  } catch(err) { alert('Nieoczekiwany błąd: ' + err.message); }
+  } catch(err) {
+    alert('Nieoczekiwany błąd: ' + err.message);
+  } finally {
+    if (btn && document.body.contains(btn)) { btn.disabled = false; btn.textContent = origLabel; }
+  }
 }
 
 async function removeLocationFromTravel(travelId, tlid) {
@@ -253,6 +262,7 @@ async function removeLocationFromTravel(travelId, tlid) {
 }
 
 function openEditTravelLocation(travelId, tlid) {
+  document.getElementById('edit-tl-overlay')?.remove();
   const row = document.getElementById('tl-' + tlid);
   const arrival = row.dataset.arrival || '';
   const departure = row.dataset.departure || '';
@@ -268,7 +278,7 @@ function openEditTravelLocation(travelId, tlid) {
       </div>
       <div class="form-label">Notatka</div>
       <input class="form-input" id="etl-notes" value="${notes.replace(/"/g,'&quot;')}">
-      <button onclick="saveEditTravelLocation(${travelId}, ${tlid})"
+      <button id="etl-save-btn" onclick="saveEditTravelLocation(${travelId}, ${tlid})"
         style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
         Zapisz zmiany
       </button>
@@ -278,11 +288,18 @@ function openEditTravelLocation(travelId, tlid) {
 }
 
 async function saveEditTravelLocation(travelId, tlid) {
+  const btn = document.getElementById('etl-save-btn');
+  if (btn?.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
   const arrival = document.getElementById('etl-arrival').value || null;
   const departure = document.getElementById('etl-departure').value || null;
   const notes = document.getElementById('etl-notes').value.trim() || null;
   const res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, { arrival_date: arrival, departure_date: departure, notes });
-  if (res.error) { alert('Błąd: ' + res.error); return; }
+  if (res.error) {
+    alert('Błąd: ' + res.error);
+    if (btn) { btn.disabled = false; btn.textContent = 'Zapisz zmiany'; }
+    return;
+  }
   document.getElementById('edit-tl-overlay').remove();
   const row = document.getElementById('tl-' + tlid);
   if (row) {
@@ -295,6 +312,7 @@ async function saveEditTravelLocation(travelId, tlid) {
 }
 
 async function openNewLocationModal(travelId, travelStart, travelEnd) {
+  document.getElementById('new-loc-overlay')?.remove();
   document.getElementById('loc-picker-overlay')?.remove();
   const [countries, locTypes, allLocs] = await Promise.all([api('/api/countries'), api('/api/location_types'), api('/api/locations')]);
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'new-loc-overlay';
@@ -329,7 +347,7 @@ async function openNewLocationModal(travelId, travelStart, travelEnd) {
       <div id="nl-geo-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;max-height:200px;overflow-y:auto"></div>
       <div class="form-label">Notatki (opcjonalnie)</div>
       <textarea class="form-input form-textarea" id="nl-notes" placeholder="Dodatkowe informacje..."></textarea>
-      <button onclick="saveNewLocation()"
+      <button id="nl-save-btn" onclick="saveNewLocation()"
         style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
         ${travelId ? 'Zapisz i dodaj do podróży' : 'Zapisz miejsce'}
       </button>
@@ -341,6 +359,9 @@ async function openNewLocationModal(travelId, travelStart, travelEnd) {
 }
 
 async function saveNewLocation() {
+  const btn = document.getElementById('nl-save-btn');
+  if (btn?.disabled) return;
+  const origLabel = btn?.textContent;
   try {
     const name = document.getElementById('nl-name').value.trim();
     const countryId = document.getElementById('nl-country').value;
@@ -350,6 +371,8 @@ async function saveNewLocation() {
     const notes = document.getElementById('nl-notes').value.trim();
     const typeSelect = document.getElementById('nl-type');
     const typeName = typeSelect.options[typeSelect.selectedIndex]?.text || '';
+    const cSel = document.getElementById('nl-country');
+    const countryName = cSel.options[cSel.selectedIndex]?.text || '';
     if (!name) { alert('Podaj nazwę miejsca!'); return; }
     if (!countryId) { alert('Wybierz kraj!'); return; }
     if (!typeId) { alert('Wybierz typ miejsca!'); return; }
@@ -357,20 +380,41 @@ async function saveNewLocation() {
     const travelId = overlay?._travelId || null;
     const travelStart = overlay?._travelStart || null;
     const travelEnd = overlay?._travelEnd || null;
+    const allLocs = overlay?._allLocs || allLocationsCache || [];
     const latVal = parseFloat(document.getElementById('nl-lat').value) || null;
     const lngVal = parseFloat(document.getElementById('nl-lng').value) || null;
-    const res = await apiPost('/api/locations', {
+
+    const dup = findDuplicateLocation(allLocs, name, countryName, parentId);
+    let force = false;
+    if (dup) {
+      if (!confirmDuplicateLocation(dup, countryName)) return;
+      force = true;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
+
+    const body = {
       name, country_id: parseInt(countryId), location_type_id: parseInt(typeId),
       parent_location_id: parentId ? parseInt(parentId) : null,
       address: address || null, notes: notes || null, latitude: latVal, longitude: lngVal
-    });
+    };
+    if (force) body.force_duplicate = true;
+    let res = await apiPost('/api/locations', body);
+    if (res.error && res.duplicate && res.existing) {
+      if (!confirmDuplicateLocation(res.existing, countryName)) return;
+      res = await apiPost('/api/locations', { ...body, force_duplicate: true });
+    }
     if (res.error) { alert('Błąd: ' + res.error); return; }
     const parentSel = document.getElementById('nl-parent');
     const parentName = parentId ? (parentSel.options[parentSel.selectedIndex]?.text || '').split(' (')[0] : null;
     overlay.remove();
     if (travelId) openConfirmAddLocation(travelId, res.id, name, typeName, travelStart, travelEnd, parentId ? parseInt(parentId) : null, parentName);
     else showTab('locations');
-  } catch(err) { alert('Nieoczekiwany błąd: ' + err.message); }
+  } catch(err) {
+    alert('Nieoczekiwany błąd: ' + err.message);
+  } finally {
+    if (btn && document.body.contains(btn)) { btn.disabled = false; btn.textContent = origLabel; }
+  }
 }
 
 async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
@@ -418,6 +462,7 @@ function filterLocPicker(q) {
 }
 
 function openConfirmAddLocation(travelId, locationId, locationName, locationType, travelStart, travelEnd, parentId, parentName) {
+  document.getElementById('loc-confirm-overlay')?.remove();
   const alreadyAdded = parentId && [...document.querySelectorAll('#locations-list .loc-row')].some(r => parseInt(r.dataset.locationId) === parentId);
   const parentHint = parentId && !alreadyAdded ? `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:var(--blue-light);border-radius:8px">
@@ -436,7 +481,7 @@ function openConfirmAddLocation(travelId, locationId, locationName, locationType
       </div>
       <div class="form-label">Notatka (opcjonalnie)</div>
       <input class="form-input" id="lc-notes" placeholder="np. hotel nad morzem">
-      <button onclick="saveLocationToTravel(${travelId}, ${locationId}, '${locationName.replace(/'/g,"\\'")}', '${locationType.replace(/'/g,"\\'")}', ${parentId || 'null'}, '${(parentName||'').replace(/'/g,"\\'")}' )"
+      <button id="lc-save-btn" onclick="saveLocationToTravel(${travelId}, ${locationId}, '${locationName.replace(/'/g,"\\'")}', '${locationType.replace(/'/g,"\\'")}', ${parentId || 'null'}, '${(parentName||'').replace(/'/g,"\\'")}' )"
         style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
         Dodaj miejsce
       </button>
@@ -446,6 +491,9 @@ function openConfirmAddLocation(travelId, locationId, locationName, locationType
 }
 
 async function saveLocationToTravel(travelId, locationId, locationName, locationType, parentId, parentName) {
+  const btn = document.getElementById('lc-save-btn');
+  if (btn?.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
   const arrival = document.getElementById('lc-arrival').value || null;
   const departure = document.getElementById('lc-departure').value || null;
   const notes = document.getElementById('lc-notes').value.trim() || null;
