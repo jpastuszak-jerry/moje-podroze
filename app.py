@@ -207,6 +207,7 @@ class _TravelLocationFields(BaseModel):
     arrival_date: Optional[date] = None
     departure_date: Optional[date] = None
     notes: Optional[str] = None
+    force_outside_range: bool = False
 
     @field_validator('notes', mode='before')
     @classmethod
@@ -622,12 +623,40 @@ def get_map_locations():
 # 4. POWIĄZANIA — uczestnicy i miejsca w podróży
 # =============================================================================
 
+def _visit_out_of_travel_range(tid, arrival, departure):
+    """Zwraca dict z zakresem podróży jeśli daty wizyty są poza zakresem; inaczej None."""
+    if not arrival and not departure:
+        return None
+    travel = query("SELECT start_date, end_date FROM travels WHERE id=%s", (tid,), one=True)
+    if not travel:
+        return None
+    s, e = travel['start_date'], travel['end_date']
+    bad = (arrival   is not None and (arrival   < s or arrival   > e)) or \
+          (departure is not None and (departure < s or departure > e))
+    if not bad:
+        return None
+    return {'travel_start': str(s), 'travel_end': str(e)}
+
+
+def _out_of_range_response(info):
+    return jsonify({
+        'error': f'Daty wizyty są poza zakresem podróży ({info["travel_start"]} – {info["travel_end"]})',
+        'out_of_range': True,
+        'travel_start': info['travel_start'],
+        'travel_end':   info['travel_end'],
+    }), 409
+
+
 @app.route('/api/travels/<int:tid>/locations', methods=['POST'])
 def add_location_to_travel(tid):
     try:
         v = TravelLocationCreate.model_validate(request.json or {})
     except ValidationError as e:
         return validation_error_response(e)
+    if not v.force_outside_range:
+        oor = _visit_out_of_travel_range(tid, v.arrival_date, v.departure_date)
+        if oor:
+            return _out_of_range_response(oor)
     try:
         new_id = execute("""
             INSERT INTO travel_locations
@@ -651,6 +680,10 @@ def update_location_in_travel(tid, tlid):
         v = TravelLocationUpdate.model_validate(request.json or {})
     except ValidationError as e:
         return validation_error_response(e)
+    if not v.force_outside_range:
+        oor = _visit_out_of_travel_range(tid, v.arrival_date, v.departure_date)
+        if oor:
+            return _out_of_range_response(oor)
     try:
         execute("""
             UPDATE travel_locations SET arrival_date=%s, departure_date=%s, notes=%s

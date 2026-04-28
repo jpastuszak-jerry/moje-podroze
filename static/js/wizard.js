@@ -290,16 +290,28 @@ function wizardPickLocation(locId) {
 function wizardConfirmLocation(locId, existingIdx) {
   const btn = document.getElementById('wld-save-btn');
   if (btn?.disabled) return;
-  if (btn) btn.disabled = true;
   const loc = (wizardState.allLocs || []).find(l => l.id === locId);
   if (!loc) return;
+
+  const arrival   = document.getElementById('wld-arrival').value || null;
+  const departure = document.getElementById('wld-departure').value || null;
+  const notes     = document.getElementById('wld-notes').value.trim() || null;
+
+  const s = wizardState.info;
+  const outOfRange =
+    (arrival   && (arrival   < s.start_date || arrival   > s.end_date)) ||
+    (departure && (departure < s.start_date || departure > s.end_date));
+  if (outOfRange) {
+    const ok = confirm(`Daty wizyty są poza zakresem podróży (${s.start_date} – ${s.end_date}).\n\nZapisać mimo to?`);
+    if (!ok) return;
+  }
+
+  if (btn) btn.disabled = true;
 
   const entry = {
     id: loc.id, name: loc.name, location_type: loc.location_type,
     country_name: loc.country_name, parent_name: loc.parent_name || null,
-    arrival:   document.getElementById('wld-arrival').value || null,
-    departure: document.getElementById('wld-departure').value || null,
-    notes:     document.getElementById('wld-notes').value.trim() || null,
+    arrival, departure, notes,
   };
 
   if (existingIdx >= 0) wizardState.locations[existingIdx] = entry;
@@ -700,6 +712,7 @@ async function wizardSave() {
         apiPost(`/api/travels/${travelId}/locations`, {
           location_id: l.id, arrival_date: l.arrival || null,
           departure_date: l.departure || null, notes: l.notes || null,
+          force_outside_range: true,  // user juz zaakceptowal w wizardConfirmLocation
         })
       ),
       ...wizardState.participants.map(p =>

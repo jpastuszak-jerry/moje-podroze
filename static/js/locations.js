@@ -294,7 +294,16 @@ async function saveEditTravelLocation(travelId, tlid) {
   const arrival = document.getElementById('etl-arrival').value || null;
   const departure = document.getElementById('etl-departure').value || null;
   const notes = document.getElementById('etl-notes').value.trim() || null;
-  const res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, { arrival_date: arrival, departure_date: departure, notes });
+  const basePayload = { arrival_date: arrival, departure_date: departure, notes };
+  let res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, basePayload);
+  if (res.error && res.out_of_range) {
+    const ok = confirm(`Daty wizyty są poza zakresem podróży (${res.travel_start} – ${res.travel_end}).\n\nZapisać mimo to?`);
+    if (!ok) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Zapisz zmiany'; }
+      return;
+    }
+    res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, { ...basePayload, force_outside_range: true });
+  }
   if (res.error) {
     alert('Błąd: ' + res.error);
     if (btn) { btn.disabled = false; btn.textContent = 'Zapisz zmiany'; }
@@ -498,9 +507,23 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
   const departure = document.getElementById('lc-departure').value || null;
   const notes = document.getElementById('lc-notes').value.trim() || null;
   const addParent = parentId && document.getElementById('lc-add-parent')?.checked;
-  const res = await apiPost(`/api/travels/${travelId}/locations`, { location_id: locationId, arrival_date: arrival, departure_date: departure, notes });
+  const basePayload = { location_id: locationId, arrival_date: arrival, departure_date: departure, notes };
+  let res = await apiPost(`/api/travels/${travelId}/locations`, basePayload);
+  if (res.error && res.out_of_range) {
+    const ok = confirm(`Daty wizyty są poza zakresem podróży (${res.travel_start} – ${res.travel_end}).\n\nZapisać mimo to?`);
+    if (!ok) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Dodaj miejsce'; }
+      return;
+    }
+    res = await apiPost(`/api/travels/${travelId}/locations`, { ...basePayload, force_outside_range: true });
+  }
+  if (res.error) {
+    alert('Błąd: ' + res.error);
+    if (btn) { btn.disabled = false; btn.textContent = 'Dodaj miejsce'; }
+    return;
+  }
   if (addParent) {
-    await apiPost(`/api/travels/${travelId}/locations`, { location_id: parentId, arrival_date: arrival, departure_date: departure, notes: null });
+    await apiPost(`/api/travels/${travelId}/locations`, { location_id: parentId, arrival_date: arrival, departure_date: departure, notes: null, force_outside_range: true });
   }
   document.getElementById('loc-confirm-overlay')?.remove();
   document.getElementById('loc-picker-overlay')?.remove();
