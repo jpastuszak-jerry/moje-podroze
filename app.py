@@ -288,23 +288,74 @@ def create_travel():
 
 @app.route('/api/travels/<int:tid>', methods=['PUT'])
 def update_travel(tid):
-    d = request.json
-    execute("""
-        UPDATE travels SET name=%s, start_date=%s, end_date=%s, purpose=%s,
-               has_photo_album=%s, amount=%s, currency=%s, is_description_complete=%s,
-               rating=%s, reflections=%s, notes=%s, number_of_flights=%s
-        WHERE id=%s
-    """, (
-        d.get('name', ''), d['start_date'], d['end_date'],
-        d.get('purpose', ''), bool(d.get('has_photo_album', False)),
-        float(d.get('amount', 0)), d.get('currency', 'PLN'),
-        bool(d.get('is_description_complete', False)),
-        d.get('rating') or None,
-        clean_str(d.get('reflections')),
-        clean_str(d.get('notes')),
-        int(d.get('number_of_flights', 0)),
-        tid
-    ))
+    d = request.json or {}
+    new_start = d.get('start_date')
+    new_end = d.get('end_date')
+    on_conflict = d.get('on_conflict')  # None | 'clip' | 'ignore'
+
+    # Wykryj wizyty wykraczające poza nowy zakres dat podróży
+    if new_start and new_end and on_conflict not in ('clip', 'ignore'):
+        conflicts = query("""
+            SELECT tl.id, l.name AS location_name,
+                   tl.arrival_date, tl.departure_date
+            FROM travel_locations tl
+            JOIN locations l ON tl.location_id = l.id
+            WHERE tl.travel_id = %s
+              AND (
+                (tl.arrival_date   IS NOT NULL AND (tl.arrival_date   < %s OR tl.arrival_date   > %s)) OR
+                (tl.departure_date IS NOT NULL AND (tl.departure_date < %s OR tl.departure_date > %s))
+              )
+            ORDER BY tl.arrival_date NULLS LAST, l.name
+        """, (tid, new_start, new_end, new_start, new_end))
+        if conflicts:
+            return jsonify({
+                'error': 'Niektóre wizyty są poza nowym zakresem dat podróży',
+                'conflict': True,
+                'conflicts': [
+                    {
+                        'id': c['id'],
+                        'location_name': c['location_name'],
+                        'arrival_date':   str(c['arrival_date'])   if c['arrival_date']   else None,
+                        'departure_date': str(c['departure_date']) if c['departure_date'] else None,
+                    } for c in conflicts
+                ],
+            }), 409
+
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute("""
+            UPDATE travels SET name=%s, start_date=%s, end_date=%s, purpose=%s,
+                   has_photo_album=%s, amount=%s, currency=%s, is_description_complete=%s,
+                   rating=%s, reflections=%s, notes=%s, number_of_flights=%s
+            WHERE id=%s
+        """, (
+            d.get('name', ''), new_start, new_end,
+            d.get('purpose', ''), bool(d.get('has_photo_album', False)),
+            float(d.get('amount', 0)), d.get('currency', 'PLN'),
+            bool(d.get('is_description_complete', False)),
+            d.get('rating') or None,
+            clean_str(d.get('reflections')),
+            clean_str(d.get('notes')),
+            int(d.get('number_of_flights', 0)),
+            tid,
+        ))
+        if on_conflict == 'clip' and new_start and new_end:
+            # Zacisnij niepuste arrival_date / departure_date do zakresu [new_start, new_end].
+            # CASE zachowuje NULL-e (PostgreSQL LEAST/GREATEST ignoruje NULL).
+            cur.execute("""
+                UPDATE travel_locations SET
+                    arrival_date   = CASE WHEN arrival_date   IS NULL THEN NULL
+                                          ELSE LEAST(GREATEST(arrival_date,   %s::date), %s::date) END,
+                    departure_date = CASE WHEN departure_date IS NULL THEN NULL
+                                          ELSE LEAST(GREATEST(departure_date, %s::date), %s::date) END
+                WHERE travel_id = %s
+                  AND (
+                    (arrival_date   IS NOT NULL AND (arrival_date   < %s OR arrival_date   > %s)) OR
+                    (departure_date IS NOT NULL AND (departure_date < %s OR departure_date > %s))
+                  )
+            """, (new_start, new_end, new_start, new_end, tid,
+                  new_start, new_end, new_start, new_end))
+        db.commit()
     return jsonify({'ok': True})
 
 

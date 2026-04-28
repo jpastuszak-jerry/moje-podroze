@@ -258,7 +258,67 @@ async function saveTravel(id, isNew) {
     is_description_complete: parseInt(document.getElementById('f-complete').value)
   };
   if (!body.start_date || !body.end_date) { alert('Podaj daty podróży!'); return; }
+  if (isNew) {
+    const res = await apiPost('/api/travels', body);
+    if (res.error) { alert('Błąd: ' + res.error); return; }
+    document.querySelector('.modal-overlay').remove();
+    showTab('travels');
+    return;
+  }
+  let res = await apiPut('/api/travels/' + id, body);
+  if (res.error && res.conflict && res.conflicts) {
+    const choice = await askTravelDateConflict(res.conflicts);
+    if (!choice) return;
+    res = await apiPut('/api/travels/' + id, { ...body, on_conflict: choice });
+  }
+  if (res.error) { alert('Błąd: ' + res.error); return; }
   document.querySelector('.modal-overlay').remove();
-  if (isNew) { await apiPost('/api/travels', body); showTab('travels'); }
-  else { await apiPut('/api/travels/' + id, body); openTravel(id); }
+  openTravel(id);
+}
+
+function askTravelDateConflict(conflicts) {
+  return new Promise(resolve => {
+    document.getElementById('travel-conflict-overlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay'; overlay.id = 'travel-conflict-overlay';
+    const list = conflicts.map(c => `
+      <div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <strong>${escapeHtml(c.location_name)}</strong>
+        <div style="color:var(--text2);font-size:12px">${fmtDate(c.arrival_date) || '?'} – ${fmtDate(c.departure_date) || '?'}</div>
+      </div>`).join('');
+    overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
+      <div class="modal-header"><span class="modal-title">⚠️ Konflikt dat</span></div>
+      <div class="form-section">
+        <div style="font-size:14px;line-height:1.5;margin-bottom:10px">
+          Po zmianie dat podróży <strong>${conflicts.length}</strong> ${conflicts.length === 1 ? 'wizyta wypada' : (conflicts.length < 5 ? 'wizyty wypadają' : 'wizyt wypada')} poza nowy zakres:
+        </div>
+        <div style="background:var(--bg);border-radius:10px;padding:6px 12px;margin-bottom:14px;max-height:30vh;overflow-y:auto">
+          ${list}
+        </div>
+        <button data-choice="clip"
+          style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px">
+          Przytnij daty wizyt do nowego zakresu
+        </button>
+        <button data-choice="ignore"
+          style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px;width:100%;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:8px">
+          Zapisz mimo to (zostaw daty wizyt)
+        </button>
+        <button data-choice="cancel"
+          style="background:none;color:var(--text2);border:none;border-radius:10px;padding:12px;width:100%;font-size:14px;cursor:pointer">
+          Anuluj
+        </button>
+      </div></div>`;
+    overlay.addEventListener('click', e => {
+      const btn = e.target.closest('[data-choice]');
+      if (btn) {
+        const choice = btn.dataset.choice;
+        overlay.remove();
+        resolve(choice === 'cancel' ? null : choice);
+      } else if (e.target === overlay) {
+        overlay.remove();
+        resolve(null);
+      }
+    });
+    document.body.appendChild(overlay);
+  });
 }
