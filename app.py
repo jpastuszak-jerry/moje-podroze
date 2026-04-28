@@ -16,8 +16,10 @@ Struktura pliku:
 import os
 import datetime
 from datetime import date
+from typing import Optional
 from flask import Flask, jsonify, request, send_from_directory, g
 from flask.json.provider import DefaultJSONProvider
+from pydantic import BaseModel, ValidationError, field_validator
 import psycopg2
 import psycopg2.extras
 
@@ -86,6 +88,90 @@ def db_error_response(e, default_msg='Błąd bazy danych'):
     if 'unique' in msg or 'duplicate' in msg:
         return jsonify({'error': 'Pozycja o tej nazwie już istnieje'}), 409
     return jsonify({'error': f'{default_msg}: {str(e)[:200]}'}), 500
+
+
+def validation_error_response(e: ValidationError):
+    """Spójny format błędów walidacji Pydantic dla całego API."""
+    first = e.errors()[0] if e.errors() else {}
+    field = '.'.join(str(p) for p in first.get('loc', [])) or 'pole'
+    return jsonify({
+        'error': f'Niepoprawne dane: {field} — {first.get("msg", "błąd walidacji")}',
+        'details': e.errors(),
+    }), 400
+
+
+# ── Schematy walidacji wejścia (Pydantic) ──
+
+def _blank_to_none(v):
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s if s else None
+
+
+class TravelCreate(BaseModel):
+    name: str = ''
+    start_date: date
+    end_date: date
+    purpose: str = ''
+    has_photo_album: bool = False
+    amount: float = 0
+    currency: str = 'PLN'
+    is_description_complete: bool = False
+    rating: Optional[int] = None
+    reflections: Optional[str] = None
+    notes: Optional[str] = None
+    number_of_flights: int = 0
+
+    @field_validator('rating', mode='before')
+    @classmethod
+    def _rating_falsy_to_none(cls, v):
+        return v if v else None
+
+    @field_validator('rating')
+    @classmethod
+    def _rating_range(cls, v):
+        if v is not None and not (1 <= v <= 5):
+            raise ValueError('rating musi być z zakresu 1–5')
+        return v
+
+    @field_validator('reflections', 'notes', mode='before')
+    @classmethod
+    def _strip_or_none(cls, v):
+        return _blank_to_none(v)
+
+    @field_validator('end_date')
+    @classmethod
+    def _end_after_start(cls, v, info):
+        start = info.data.get('start_date')
+        if start and v < start:
+            raise ValueError('end_date nie może być wcześniejsza niż start_date')
+        return v
+
+
+class LocationCreate(BaseModel):
+    name: str
+    country_id: int
+    location_type_id: int
+    parent_location_id: Optional[int] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    force_duplicate: bool = False
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def _name_required(cls, v):
+        s = (str(v).strip() if v is not None else '')
+        if not s:
+            raise ValueError('Podaj nazwę miejsca')
+        return s
+
+    @field_validator('address', 'notes', mode='before')
+    @classmethod
+    def _strip_or_none(cls, v):
+        return _blank_to_none(v)
 
 
 def register_dictionary_endpoints(table_name, url_path):
@@ -184,20 +270,18 @@ def get_travel(tid):
 
 @app.route('/api/travels', methods=['POST'])
 def create_travel():
-    d = request.json
+    try:
+        t = TravelCreate.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
     new_id = execute("""
         INSERT INTO travels (name, start_date, end_date, purpose, has_photo_album,
                amount, currency, is_description_complete, rating, reflections, notes, number_of_flights)
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
     """, (
-        d.get('name', ''), d['start_date'], d['end_date'],
-        d.get('purpose', ''), bool(d.get('has_photo_album', False)),
-        float(d.get('amount', 0)), d.get('currency', 'PLN'),
-        bool(d.get('is_description_complete', False)),
-        d.get('rating') or None,
-        clean_str(d.get('reflections')),
-        clean_str(d.get('notes')),
-        int(d.get('number_of_flights', 0))
+        t.name, t.start_date, t.end_date, t.purpose, t.has_photo_album,
+        t.amount, t.currency, t.is_description_complete,
+        t.rating, t.reflections, t.notes, t.number_of_flights,
     ))
     return jsonify({'id': new_id}), 201
 
@@ -305,19 +389,11 @@ def get_location(lid):
 
 @app.route('/api/locations', methods=['POST'])
 def create_location():
-    d = request.json
-    name = clean_str(d.get('name'))
-    country_id = d.get('country_id')
-    location_type_id = d.get('location_type_id')
-    if not name:
-        return jsonify({'error': 'Podaj nazwę miejsca'}), 400
-    if not country_id:
-        return jsonify({'error': 'Wybierz kraj'}), 400
-    if not location_type_id:
-        return jsonify({'error': 'Wybierz typ miejsca'}), 400
-    parent_id = int(d['parent_location_id']) if d.get('parent_location_id') else None
-    force = bool(d.get('force_duplicate'))
-    if not force:
+    try:
+        loc = LocationCreate.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
+    if not loc.force_duplicate:
         existing = query("""
             SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type
             FROM locations l
@@ -327,7 +403,7 @@ def create_location():
               AND l.country_id = %s
               AND COALESCE(l.parent_location_id, 0) = COALESCE(%s, 0)
             LIMIT 1
-        """, (name, int(country_id), parent_id), one=True)
+        """, (loc.name, loc.country_id, loc.parent_location_id), one=True)
         if existing:
             return jsonify({
                 'error': 'Takie miejsce już istnieje',
@@ -335,24 +411,18 @@ def create_location():
                 'existing': dict(existing),
             }), 409
     try:
-        # GEO: zapisujemy latitude i longitude jeśli podane
-        lat = float(d['latitude'])  if d.get('latitude')  not in (None, '', 0) else None
-        lng = float(d['longitude']) if d.get('longitude') not in (None, '', 0) else None
+        # GEO: 0.0 traktujemy jako brak współrzędnych (zachowanie sprzed Pydantica)
+        lat = loc.latitude if loc.latitude not in (None, 0) else None
+        lng = loc.longitude if loc.longitude not in (None, 0) else None
         new_id = execute("""
             INSERT INTO locations
                 (name, country_id, location_type_id, parent_location_id, address, notes, latitude, longitude)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
         """, (
-            name,
-            int(country_id),
-            int(location_type_id),
-            parent_id,
-            clean_str(d.get('address')),
-            clean_str(d.get('notes')),
-            lat,
-            lng
+            loc.name, loc.country_id, loc.location_type_id,
+            loc.parent_location_id, loc.address, loc.notes, lat, lng,
         ))
-        return jsonify({'id': new_id, 'name': name}), 201
+        return jsonify({'id': new_id, 'name': loc.name}), 201
     except Exception as e:
         return db_error_response(e)
 
