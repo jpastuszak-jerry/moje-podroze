@@ -1,3 +1,88 @@
+/* ── SVG chart helpers ───────────────────────────────────── */
+const CHART_PALETTE = ['#1a6fdb','#f97316','#059669','#7c3aed','#e11d48','#0891b2','#d97706','#9f1239'];
+
+function svgSparkline(data, { valueKey = 'count', labelKey = 'year' } = {}) {
+  if (!data || !data.length) return '';
+  const W = 320, H = 110, padX = 14, padTop = 14, padBot = 26;
+  const plotW = W - 2*padX, plotH = H - padTop - padBot;
+  const maxV = Math.max(...data.map(d => d[valueKey]), 1);
+  const xAt = i => padX + (data.length === 1 ? plotW/2 : (i * plotW / (data.length - 1)));
+  const yAt = v => padTop + plotH - (v / maxV) * plotH;
+  const pts = data.map((d,i) => `${xAt(i)},${yAt(d[valueKey])}`).join(' ');
+  const areaPts = `${padX},${padTop+plotH} ${pts} ${padX+plotW},${padTop+plotH}`;
+  const dots = data.map((d,i) => `<circle cx="${xAt(i)}" cy="${yAt(d[valueKey])}" r="3.5" fill="var(--blue)" stroke="var(--card)" stroke-width="2"/>`).join('');
+  const labelStep = Math.max(1, Math.ceil(data.length / 8));
+  const labels = data.map((d,i) => i % labelStep === 0 || i === data.length - 1
+    ? `<text x="${xAt(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--text2)">${d[labelKey]}</text>` : '').join('');
+  const valueLabels = data.map((d,i) =>
+    `<text x="${xAt(i)}" y="${yAt(d[valueKey])-9}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text)">${d[valueKey]}</text>`
+  ).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" class="chart-svg sparkline-svg">
+    <defs><linearGradient id="spark-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--blue)" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="var(--blue)" stop-opacity="0"/>
+    </linearGradient></defs>
+    <polygon points="${areaPts}" fill="url(#spark-grad)"/>
+    <polyline points="${pts}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${valueLabels}${labels}
+  </svg>`;
+}
+
+function svgDonut(data, { nameKey = 'name', valueKey = 'count' } = {}) {
+  if (!data || !data.length) return '';
+  const total = data.reduce((s,d) => s + (d[valueKey] || 0), 0);
+  if (!total) return '';
+  const cx = 80, cy = 80, rOut = 70, rIn = 46;
+  let angle = -Math.PI / 2;
+  const segments = data.map((d, i) => {
+    const v = d[valueKey] || 0;
+    const sweep = (v / total) * Math.PI * 2;
+    const a0 = angle, a1 = angle + sweep;
+    angle = a1;
+    const x0o = cx + rOut * Math.cos(a0), y0o = cy + rOut * Math.sin(a0);
+    const x1o = cx + rOut * Math.cos(a1), y1o = cy + rOut * Math.sin(a1);
+    const x0i = cx + rIn * Math.cos(a0), y0i = cy + rIn * Math.sin(a0);
+    const x1i = cx + rIn * Math.cos(a1), y1i = cy + rIn * Math.sin(a1);
+    const large = sweep > Math.PI ? 1 : 0;
+    const color = CHART_PALETTE[i % CHART_PALETTE.length];
+    if (data.length === 1) {
+      return `<circle cx="${cx}" cy="${cy}" r="${(rOut+rIn)/2}" fill="none" stroke="${color}" stroke-width="${rOut-rIn}"/>`;
+    }
+    return `<path d="M ${x0o} ${y0o} A ${rOut} ${rOut} 0 ${large} 1 ${x1o} ${y1o} L ${x1i} ${y1i} A ${rIn} ${rIn} 0 ${large} 0 ${x0i} ${y0i} Z" fill="${color}"/>`;
+  }).join('');
+  const legend = data.map((d, i) => {
+    const pct = Math.round((d[valueKey] || 0) / total * 100);
+    const color = CHART_PALETTE[i % CHART_PALETTE.length];
+    return `<div class="chart-legend-row">
+      <div class="chart-legend-dot" style="background:${color}"></div>
+      <div class="chart-legend-name">${escapeHtml(d[nameKey] || '–')}</div>
+      <div class="chart-legend-val">${d[valueKey]} <span style="color:var(--text3)">·&nbsp;${pct}%</span></div>
+    </div>`;
+  }).join('');
+  return `<div class="donut-wrap">
+    <svg viewBox="0 0 160 160" class="chart-svg donut-svg">
+      ${segments}
+      <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="22" font-weight="700" fill="var(--text)">${total}</text>
+      <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="var(--text2)" letter-spacing="1">RAZEM</text>
+    </svg>
+    <div class="chart-legend">${legend}</div>
+  </div>`;
+}
+
+function svgGradientBars(data, { nameKey, valueKey, sublabelFn = null, color = 'var(--blue)' }) {
+  if (!data || !data.length) return '';
+  const maxV = Math.max(...data.map(d => d[valueKey]), 1);
+  return data.map(d => {
+    const pct = Math.round((d[valueKey] / maxV) * 100);
+    const sub = sublabelFn ? sublabelFn(d) : '';
+    return `<div class="gbar-row">
+      <div class="gbar-name">${escapeHtml(d[nameKey])}${sub ? ` <span class="gbar-sub">${sub}</span>` : ''}</div>
+      <div class="gbar-track"><div class="gbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}cc)"></div></div>
+      <div class="gbar-val">${d[valueKey]}</div>
+    </div>`;
+  }).join('');
+}
+
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
@@ -45,14 +130,22 @@ async function renderStats() {
   html += '<div class="stat-card sc-blue"><div class="stat-icon">📆</div><div class="stat-value">'+(s.avg_trip_days||'–')+'</div><div class="stat-label">Śr. długość (dni)</div></div>';
   if (s.progress) html += '<div class="stat-card sc-purple"><div class="stat-icon">✍️</div><div class="stat-value">'+s.progress.described+'/'+s.progress.total+'</div><div class="stat-label">Opisanych</div></div>';
   html += '</div>';
-  if (s.purposes && s.purposes.length) html += purposeSection('Cel podróży', s.purposes, p=>p.name||'Inne', p=>p.count, s.total_trips, 'var(--blue)');
+  if (s.purposes && s.purposes.length) {
+    html += '<div class="chart-card"><div class="section-title">🎯 Cel podróży</div>'
+      + svgDonut(s.purposes.map(p => ({ name: p.name || 'Inne', count: p.count })))
+      + '</div>';
+  }
   if (s.participation) {
     html += '<div class="purpose-bar"><div class="section-title">Kto jeździł</div>';
     html += '<div class="purpose-row"><div class="purpose-name">👨 Jarek sam</div>'+bar(s.participation.sam,s.total_trips,'var(--blue)')+'<div class="purpose-count">'+s.participation.sam+'</div></div>';
     html += '<div class="purpose-row"><div class="purpose-name">👩 Hania sama</div>'+bar(s.participation.hanna_solo,s.total_trips,'var(--purple)')+'<div class="purpose-count">'+s.participation.hanna_solo+'</div></div>';
     html += '<div class="purpose-row"><div class="purpose-name">👫 Razem</div>'+bar(s.participation.razem,s.total_trips,'var(--green)')+'<div class="purpose-count">'+s.participation.razem+'</div></div></div>';
   }
-  if (s.top_countries && s.top_countries.length) html += purposeSection('🌍 Top krajów', s.top_countries, c=>c.country, c=>c.visits, s.top_countries[0].visits, 'var(--green)');
+  if (s.top_countries && s.top_countries.length) {
+    html += '<div class="chart-card"><div class="section-title">🌍 Top krajów</div>'
+      + svgGradientBars(s.top_countries, { nameKey: 'country', valueKey: 'visits', color: 'var(--green)' })
+      + '</div>';
+  }
   if (s.top_places && s.top_places.length) {
     const maxV = s.top_places[0].visit_count;
     html += '<div class="purpose-bar"><div class="section-title">📍 Top miast i wysp</div>';
@@ -60,10 +153,9 @@ async function renderStats() {
     html += '</div>';
   }
   if (s.by_year && s.by_year.length) {
-    const maxY = Math.max(...s.by_year.map(y=>y.count));
-    html += '<div class="purpose-bar"><div class="section-title">📅 Wyjazdy wg roku</div>';
-    s.by_year.forEach(y => { html += '<div class="purpose-row"><div class="purpose-name">'+y.year+'</div>'+bar(y.count,maxY,'var(--blue)')+'<div class="purpose-count">'+y.count+'</div></div>'; });
-    html += '</div>';
+    html += '<div class="chart-card"><div class="section-title">📅 Wyjazdy wg roku</div>'
+      + svgSparkline(s.by_year, { valueKey: 'count', labelKey: 'year' })
+      + '</div>';
   }
   if (s.by_month && s.by_month.length) {
     const maxM = Math.max(...s.by_month.map(m=>m.count));
