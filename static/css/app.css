@@ -512,8 +512,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   margin: 0 16px 12px; padding: 14px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.05);
   border: 1px solid var(--border);
+  max-width: 560px;
 }
+.chart-card .section-title { margin-bottom: 12px; }
 .chart-svg { display: block; }
+.sparkline-svg { max-width: 520px; margin: 0 auto; }
 
 .donut-wrap {
   display: flex; gap: 16px; align-items: center;
@@ -552,9 +555,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   height: 100%; border-radius: 5px;
   animation: gbar-grow .6s cubic-bezier(.32,.72,0,1);
   transform-origin: left;
+  position: relative; overflow: hidden;
 }
-.gbar-val { font-weight: 700; color: var(--text); min-width: 28px;
-  text-align: right; font-size: 13px; }
+.gbar-fill::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 100%);
+}
+.gbar-val { font-weight: 700; color: var(--text); min-width: 48px;
+  text-align: right; font-size: 12px; white-space: nowrap; }
 
 @keyframes gbar-grow {
   from { transform: scaleX(0); }

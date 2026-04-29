@@ -69,16 +69,16 @@ function svgDonut(data, { nameKey = 'name', valueKey = 'count' } = {}) {
   </div>`;
 }
 
-function svgGradientBars(data, { nameKey, valueKey, sublabelFn = null, color = 'var(--blue)' }) {
+function svgGradientBars(data, { nameKey, valueKey, valueLabel = null, color = 'var(--blue)' }) {
   if (!data || !data.length) return '';
   const maxV = Math.max(...data.map(d => d[valueKey]), 1);
   return data.map(d => {
-    const pct = Math.round((d[valueKey] / maxV) * 100);
-    const sub = sublabelFn ? sublabelFn(d) : '';
+    const pct = Math.max(8, Math.round((d[valueKey] / maxV) * 100));
+    const label = valueLabel ? valueLabel(d) : d[valueKey];
     return `<div class="gbar-row">
-      <div class="gbar-name">${escapeHtml(d[nameKey])}${sub ? ` <span class="gbar-sub">${sub}</span>` : ''}</div>
-      <div class="gbar-track"><div class="gbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}cc)"></div></div>
-      <div class="gbar-val">${d[valueKey]}</div>
+      <div class="gbar-name">${escapeHtml(d[nameKey])}</div>
+      <div class="gbar-track"><div class="gbar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="gbar-val">${label}</div>
     </div>`;
   }).join('');
 }
@@ -147,10 +147,14 @@ async function renderStats() {
       + '</div>';
   }
   if (s.top_places && s.top_places.length) {
-    const maxV = s.top_places[0].visit_count;
-    html += '<div class="purpose-bar"><div class="section-title">📍 Top miast i wysp</div>';
-    s.top_places.forEach(p => { html += '<div class="purpose-row"><div class="purpose-name" style="font-size:12px">'+p.location_name+' <span style="color:var(--text3)">('+p.country+')</span></div>'+bar(p.visit_count,maxV,'var(--purple)')+'<div class="purpose-count">'+p.visit_count+'x · '+(p.days_spent||0)+'d</div></div>'; });
-    html += '</div>';
+    html += '<div class="chart-card"><div class="section-title">📍 Top miast i wysp</div>'
+      + svgGradientBars(s.top_places, {
+          nameKey: 'location_name',
+          valueKey: 'visit_count',
+          color: 'var(--purple)',
+          valueLabel: p => `${p.visit_count}× · ${p.days_spent || 0}d`,
+        })
+      + '</div>';
   }
   if (s.by_year && s.by_year.length) {
     html += '<div class="chart-card"><div class="section-title">📅 Wyjazdy wg roku</div>'
