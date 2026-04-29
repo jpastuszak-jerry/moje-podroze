@@ -380,36 +380,14 @@ async function wizardOpenNewLocation() {
         <button class="modal-save" onclick="closeModal(document.getElementById('wiz-new-loc-overlay'))">Anuluj</button>
       </div>
       <div class="form-section">
-        <div class="form-label">Nazwa miejsca *</div>
-        <input class="form-input" id="wnl-name" placeholder="np. Catania">
-        <div class="form-row">
-          <div><div class="form-label">Kraj *</div>
-            <select class="form-input" id="wnl-country" onchange="wizardUpdateParentList()">
-              <option value="">– wybierz –</option>
-              ${countries.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-            </select></div>
-          <div><div class="form-label">Typ *</div>
-            <select class="form-input" id="wnl-type">
-              <option value="">– wybierz –</option>
-              ${locTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
-            </select></div>
-        </div>
-        <div class="form-label">Miejsce nadrzędne (opcjonalnie)</div>
-        <select class="form-input" id="wnl-parent"><option value="">– brak –</option></select>
-        <div class="form-label">Adres (opcjonalnie)</div>
-        <input class="form-input" id="wnl-address" placeholder="np. centrum">
-        <div class="form-label">GPS (opcjonalnie)</div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-          <input class="form-input" id="wnl-lat" placeholder="Szer." style="margin-bottom:0;flex:1;min-width:0">
-          <input class="form-input" id="wnl-lng" placeholder="Dług." style="margin-bottom:0;flex:1;min-width:0">
-          <button id="wnl-geocode-btn" onclick="geocodeForLocModal('wnl')"
-            style="background:var(--blue);color:white;border:none;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">🔍</button>
-        </div>
-        <div id="wnl-geo-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;max-height:160px;overflow-y:auto"></div>
-        <button id="wnl-save-btn" onclick="wizardSaveNewLocation()"
-          style="background:var(--blue);color:white;border:none;border-radius:12px;padding:14px;width:100%;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">
-          Zapisz i dodaj do podróży
-        </button>
+        ${locationFormHtml({
+          prefix: 'wnl', countries, locTypes,
+          parentChangeHandler: 'wizardUpdateParentList()',
+          includeNotes: false,
+          saveBtnId: 'wnl-save-btn',
+          saveBtnOnclick: 'wizardSaveNewLocation()',
+          saveBtnLabel: 'Zapisz i dodaj do podróży',
+        })}
       </div>
     </div>`;
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });

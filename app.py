@@ -792,7 +792,7 @@ def get_stats():
     locations_count = query("SELECT COUNT(*) AS cnt FROM locations", one=True)['cnt']
 
     total_days = 0
-    total_amount = 0.0
+    amount_by_currency = {}
     ratings = []
     flights = 0
     albums = 0
@@ -807,7 +807,10 @@ def get_stats():
             total_days += (e - s).days
         except Exception:
             pass
-        total_amount += float(t.get('amount') or 0)
+        amount = float(t.get('amount') or 0)
+        if amount > 0:
+            cur = (t.get('currency') or 'PLN').upper()
+            amount_by_currency[cur] = amount_by_currency.get(cur, 0) + amount
         if t.get('rating'):
             ratings.append(t['rating'])
         flights += int(t.get('number_of_flights') or 0)
@@ -936,7 +939,7 @@ def get_stats():
         'albums': albums,
         'avg_rating': round(sum(ratings) / len(ratings), 1) if ratings else 0,
         'avg_trip_days': avg_trip_days,
-        'total_amount': round(total_amount, 2),
+        'amount_by_currency': {cur: round(amt, 2) for cur, amt in sorted(amount_by_currency.items(), key=lambda x: -x[1])},
         'purposes': sorted(
             [{'name': k, 'count': v} for k, v in purposes.items()],
             key=lambda x: -x['count']

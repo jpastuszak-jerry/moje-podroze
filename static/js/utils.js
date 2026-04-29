@@ -241,6 +241,44 @@ function confirmDuplicateLocation(existing, countryName) {
   });
 }
 
+/* ── Location form (shared between locations.js + wizard.js) ─ */
+function locationFormHtml({ prefix, countries, locTypes, parentChangeHandler, includeNotes = true, saveBtnId, saveBtnOnclick, saveBtnLabel }) {
+  return `
+    <div class="form-label">Nazwa miejsca *</div>
+    <input class="form-input" id="${prefix}-name" placeholder="np. Catania">
+    <div class="form-row">
+      <div><div class="form-label">Kraj *</div>
+        <select class="form-input" id="${prefix}-country" onchange="${parentChangeHandler}">
+          <option value="">– wybierz –</option>
+          ${countries.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
+        </select></div>
+      <div><div class="form-label">Typ miejsca *</div>
+        <select class="form-input" id="${prefix}-type">
+          <option value="">– wybierz –</option>
+          ${locTypes.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+        </select></div>
+    </div>
+    <div class="form-label">Miejsce nadrzędne (opcjonalnie)</div>
+    <select class="form-input" id="${prefix}-parent"><option value="">– brak –</option></select>
+    <div class="form-label">Adres (opcjonalnie)</div>
+    <input class="form-input" id="${prefix}-address" placeholder="np. centrum">
+    <div class="form-label">GPS (opcjonalnie)</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input class="form-input" id="${prefix}-lat" placeholder="Szer. np. 37.50745" style="margin-bottom:0;flex:1;min-width:0">
+      <input class="form-input" id="${prefix}-lng" placeholder="Dług. np. 15.08720" style="margin-bottom:0;flex:1;min-width:0">
+      <button id="${prefix}-geocode-btn" onclick="geocodeForLocModal('${prefix}')"
+        style="background:var(--blue);color:white;border:none;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">🔍</button>
+    </div>
+    <div id="${prefix}-geo-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;max-height:200px;overflow-y:auto"></div>
+    ${includeNotes ? `<div class="form-label">Notatki (opcjonalnie)</div>
+      <textarea class="form-input form-textarea" id="${prefix}-notes" placeholder="Dodatkowe informacje..."></textarea>` : ''}
+    <button id="${saveBtnId}" onclick="${saveBtnOnclick}"
+      style="background:var(--blue);color:white;border:none;border-radius:12px;padding:14px;width:100%;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">
+      ${escapeHtml(saveBtnLabel)}
+    </button>
+  `;
+}
+
 /* ── Theme toggle ────────────────────────────────────────── */
 const THEME_ICONS = {
   sun:  '<path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1zm0 17a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM4.22 4.22a1 1 0 0 1 1.42 0l1.4 1.4a1 1 0 0 1-1.4 1.42l-1.42-1.4a1 1 0 0 1 0-1.42zm12.72 12.72a1 1 0 0 1 1.42 0l1.4 1.4a1 1 0 1 1-1.4 1.42l-1.42-1.4a1 1 0 0 1 0-1.42zM2 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H3a1 1 0 0 1-1-1zm17 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM4.22 19.78a1 1 0 0 1 0-1.42l1.4-1.4a1 1 0 0 1 1.42 1.4l-1.4 1.42a1 1 0 0 1-1.42 0zm12.72-12.72a1 1 0 0 1 0-1.42l1.4-1.4a1 1 0 1 1 1.42 1.4l-1.4 1.42a1 1 0 0 1-1.42 0z"/>',

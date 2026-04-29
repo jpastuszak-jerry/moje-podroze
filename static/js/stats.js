@@ -126,7 +126,16 @@ async function renderStats() {
   html += '<div class="stat-card sc-teal"><div class="stat-icon">🛫</div><div class="stat-value">'+s.flights+'</div><div class="stat-label">Lotów</div></div>';
   html += '<div class="stat-card sc-green"><div class="stat-icon">📷</div><div class="stat-value">'+s.albums+'</div><div class="stat-label">Albumów</div></div>';
   html += '<div class="stat-card sc-orange"><div class="stat-icon">⭐</div><div class="stat-value">'+(s.avg_rating||'–')+'</div><div class="stat-label">Śr. ocena</div></div>';
-  html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div class="stat-value" style="font-size:15px">'+(s.total_amount>0?Math.round(s.total_amount).toLocaleString('pl-PL'):'–')+'</div><div class="stat-label">PLN wydane</div></div>';
+  const currencies = Object.entries(s.amount_by_currency || {});
+  if (currencies.length === 0) {
+    html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div class="stat-value">–</div><div class="stat-label">Wydane</div></div>';
+  } else if (currencies.length === 1) {
+    const [cur, amt] = currencies[0];
+    html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div class="stat-value" style="font-size:15px">'+Math.round(amt).toLocaleString('pl-PL')+'</div><div class="stat-label">'+escapeHtml(cur)+' wydane</div></div>';
+  } else {
+    const lines = currencies.map(([cur, amt]) => `<div style="font-size:13px;font-weight:700;line-height:1.2">${Math.round(amt).toLocaleString('pl-PL')} <span style="font-size:10px;font-weight:600;opacity:0.8">${escapeHtml(cur)}</span></div>`).join('');
+    html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div style="display:flex;flex-direction:column;gap:3px;align-items:center">'+lines+'</div><div class="stat-label" style="margin-top:4px">Wydane</div></div>';
+  }
   html += '<div class="stat-card sc-blue"><div class="stat-icon">📆</div><div class="stat-value">'+(s.avg_trip_days||'–')+'</div><div class="stat-label">Śr. długość (dni)</div></div>';
   if (s.progress) html += '<div class="stat-card sc-purple"><div class="stat-icon">✍️</div><div class="stat-value">'+s.progress.described+'/'+s.progress.total+'</div><div class="stat-label">Opisanych</div></div>';
   html += '</div>';
@@ -169,12 +178,12 @@ async function renderStats() {
   }
   if (s.top_expensive && s.top_expensive.length) {
     html += '<div class="purpose-bar"><div class="section-title">💰 Top 10 najdroższych wyjazdów</div>';
-    s.top_expensive.forEach((t,i) => { html += '<div class="purpose-row"><div class="purpose-name" style="font-size:11px;line-height:1.4">'+(i+1)+'. '+t.name+'</div><div style="min-width:100px;text-align:right;font-size:11px;font-weight:500;color:var(--text)">'+parseFloat(t.amount).toLocaleString('pl-PL')+' PLN</div></div>'; });
+    s.top_expensive.forEach((t,i) => { html += '<div class="purpose-row"><div class="purpose-name" style="font-size:11px;line-height:1.4">'+(i+1)+'. '+escapeHtml(t.name)+'</div><div style="min-width:100px;text-align:right;font-size:11px;font-weight:500;color:var(--text)">'+parseFloat(t.amount).toLocaleString('pl-PL')+' '+escapeHtml(t.currency || 'PLN')+'</div></div>'; });
     html += '</div>';
   }
   if (s.cost_per_day && s.cost_per_day.length) {
     html += '<div class="purpose-bar"><div class="section-title">💸 Najdroższe wyjazdy per dzień</div>';
-    s.cost_per_day.forEach(t => { html += '<div class="purpose-row"><div class="purpose-name" style="font-size:11px">'+t.name+'</div><div style="min-width:110px;text-align:right;font-size:11px;font-weight:500;color:var(--text)">'+parseFloat(t.cost_per_day).toLocaleString('pl-PL')+' PLN/d</div></div>'; });
+    s.cost_per_day.forEach(t => { html += '<div class="purpose-row"><div class="purpose-name" style="font-size:11px">'+escapeHtml(t.name)+'</div><div style="min-width:110px;text-align:right;font-size:11px;font-weight:500;color:var(--text)">'+parseFloat(t.cost_per_day).toLocaleString('pl-PL')+' '+escapeHtml(t.currency || 'PLN')+'/d</div></div>'; });
     html += '</div>';
   }
   html += '<div style="height:16px"></div>';

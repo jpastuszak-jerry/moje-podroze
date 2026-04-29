@@ -351,37 +351,13 @@ async function openNewLocationModal(travelId, travelStart, travelEnd) {
     <div class="modal-header"><span class="modal-title">Nowe miejsce</span>
       <button class="modal-save" onclick="closeModal(document.getElementById('new-loc-overlay'))">Anuluj</button></div>
     <div class="form-section">
-      <div class="form-label">Nazwa miejsca *</div>
-      <input class="form-input" id="nl-name" placeholder="np. Catania">
-      <div class="form-row">
-        <div><div class="form-label">Kraj *</div>
-          <select class="form-input" id="nl-country" onchange="updateParentLocListFor('new-loc-overlay','nl')">
-            <option value="">– wybierz –</option>
-            ${countries.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-          </select></div>
-        <div><div class="form-label">Typ miejsca *</div>
-          <select class="form-input" id="nl-type">
-            <option value="">– wybierz –</option>
-            ${locTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
-          </select></div>
-      </div>
-      <div class="form-label">Miejsce nadrzędne (opcjonalnie)</div>
-      <select class="form-input" id="nl-parent"><option value="">– brak –</option></select>
-      <div class="form-label">Adres / opis (opcjonalnie)</div>
-      <input class="form-input" id="nl-address" placeholder="np. centrum Katanii">
-      <div class="form-label">Współrzędne GPS (opcjonalnie)</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-        <input class="form-input" id="nl-lat" placeholder="Szer. np. 37.50745" style="margin-bottom:0;flex:1;min-width:0">
-        <input class="form-input" id="nl-lng" placeholder="Dług. np. 15.08720" style="margin-bottom:0;flex:1;min-width:0">
-        <button id="nl-geocode-btn" onclick="geocodeForLocModal('nl')" style="background:var(--blue);color:white;border:none;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">🔍</button>
-      </div>
-      <div id="nl-geo-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;max-height:200px;overflow-y:auto"></div>
-      <div class="form-label">Notatki (opcjonalnie)</div>
-      <textarea class="form-input form-textarea" id="nl-notes" placeholder="Dodatkowe informacje..."></textarea>
-      <button id="nl-save-btn" onclick="saveNewLocation()"
-        style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
-        ${travelId ? 'Zapisz i dodaj do podróży' : 'Zapisz miejsce'}
-      </button>
+      ${locationFormHtml({
+        prefix: 'nl', countries, locTypes,
+        parentChangeHandler: "updateParentLocListFor('new-loc-overlay','nl')",
+        saveBtnId: 'nl-save-btn',
+        saveBtnOnclick: 'saveNewLocation()',
+        saveBtnLabel: travelId ? 'Zapisz i dodaj do podróży' : 'Zapisz miejsce',
+      })}
     </div></div>`;
   overlay._travelId = travelId || null; overlay._travelStart = travelStart || null;
   overlay._travelEnd = travelEnd || null; overlay._allLocs = allLocs;
