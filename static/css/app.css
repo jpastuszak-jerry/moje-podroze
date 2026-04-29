@@ -119,13 +119,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .fab:active { transform: scale(0.94); }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   z-index: 100; display: flex; align-items: flex-end;
-  animation: overlay-fade .18s ease-out; }
-.modal-overlay.leaving { animation: overlay-fade-out .2s ease-in forwards; }
+  animation: overlay-fade .35s ease-out; }
+.modal-overlay.leaving { animation: overlay-fade-out .25s ease-in forwards; }
 .modal-overlay.wizard-sub { z-index: 300; }
 .modal { background: var(--card); border-radius: 20px 20px 0 0; width: 100%;
   max-height: 90vh; overflow-y: auto; padding: 0 0 calc(20px + var(--safe-bottom));
-  animation: sheet-up .28s cubic-bezier(.2,.7,.3,1.05); }
-.modal-overlay.leaving .modal { animation: sheet-down .2s ease-in forwards; }
+  animation: sheet-up .38s cubic-bezier(.32,.72,0,1); }
+.modal-overlay.leaving .modal { animation: sheet-down .25s ease-in forwards; }
 .modal.dragging { animation: none; transition: none; }
 .modal.spring-back { transition: transform .25s cubic-bezier(.2,.7,.3,1.1); }
 .modal-handle { width: 36px; height: 4px; background: var(--text3);
@@ -284,17 +284,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .wizard-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
   z-index: 200; display: flex; align-items: flex-end;
-  animation: overlay-fade .18s ease-out;
+  animation: overlay-fade .35s ease-out;
 }
-.wizard-overlay.leaving { animation: overlay-fade-out .2s ease-in forwards; }
+.wizard-overlay.leaving { animation: overlay-fade-out .25s ease-in forwards; }
 .wizard-overlay.no-anim, .wizard-overlay.no-anim .wizard-sheet { animation: none; }
 .wizard-sheet {
   background: var(--card); border-radius: 24px 24px 0 0; width: 100%;
   max-height: 95vh; display: flex; flex-direction: column;
   padding-bottom: calc(16px + var(--safe-bottom));
-  animation: sheet-up .28s cubic-bezier(.2,.7,.3,1.05);
+  animation: sheet-up .4s cubic-bezier(.32,.72,0,1);
 }
-.wizard-overlay.leaving .wizard-sheet { animation: sheet-down .22s ease-in forwards; }
+.wizard-overlay.leaving .wizard-sheet { animation: sheet-down .28s ease-in forwards; }
 .wizard-sheet.dragging { animation: none; transition: none; }
 .wizard-sheet.spring-back { transition: transform .25s cubic-bezier(.2,.7,.3,1.1); }
 .wizard-handle { touch-action: none; cursor: grab; }
@@ -502,8 +502,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .confirm-btn.danger  { background: var(--red);  color: white; }
 .confirm-btn.cancel  { background: transparent; color: var(--text2); padding: 11px; }
 
-@keyframes overlay-fade     { from { opacity: 0; } to { opacity: 1; } }
-@keyframes overlay-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes overlay-fade     { from { background-color: rgba(0,0,0,0); } }
+@keyframes overlay-fade-out { to   { background-color: rgba(0,0,0,0); } }
 @keyframes sheet-up   { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes sheet-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
 .wiz-picker-plus { color: var(--blue); font-size: 22px; font-weight: 300; }
