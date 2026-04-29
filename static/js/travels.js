@@ -21,7 +21,12 @@ async function renderTravels(q = '') {
   const list = document.getElementById('travel-list');
   list.innerHTML = skeletonCards(4);
   let travels = await api('/api/travels' + (currentSearch ? '?q='+encodeURIComponent(currentSearch) : ''));
-  if (!travels.length) { list.innerHTML = '<div class="empty">Brak wyników</div>'; return; }
+  if (!travels.length) {
+    list.innerHTML = currentSearch
+      ? emptyState({ icon: '🔍', title: 'Brak wyników', message: `Żadna podróż nie pasuje do "${currentSearch}".` })
+      : emptyState({ icon: '✈️', title: 'Brak podróży', message: 'Dodaj pierwszą podróż, żeby zacząć kolekcjonować wspomnienia.', ctaLabel: '＋ Nowa podróż', ctaOnclick: 'openWizard()' });
+    return;
+  }
   travels = sortTravels(travels, currentSort);
   list.innerHTML = '<div class="card-list">' + travels.map(t => {
     const done = t.is_description_complete;

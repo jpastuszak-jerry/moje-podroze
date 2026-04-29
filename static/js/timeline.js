@@ -3,7 +3,11 @@ async function renderTimeline() {
   view.innerHTML = `<div class="page-header"><div class="page-title">Oś czasu</div></div>` + skeletonCards(3);
   const travels = await api('/api/travels');
   const sorted = [...travels].sort((a, b) => a.start_date.localeCompare(b.start_date));
-  if (!sorted.length) { view.innerHTML = `<div class="page-header"><div class="page-title">Oś czasu</div></div><div class="empty">Brak podróży</div>`; return; }
+  if (!sorted.length) {
+    view.innerHTML = `<div class="page-header"><div class="page-title">Oś czasu</div></div>`
+      + emptyState({ icon: '🗓️', title: 'Brak podróży', message: 'Po dodaniu pierwszej podróży zobaczysz ją tutaj na osi czasu.', ctaLabel: '＋ Dodaj podróż', ctaOnclick: 'showTab(\'travels\'); openWizard()' });
+    return;
+  }
   let html = '<div class="page-header"><div class="page-title">Oś czasu</div></div><div class="timeline">';
   let lastYear = null, lastEndDate = null;
   sorted.forEach((t, idx) => {

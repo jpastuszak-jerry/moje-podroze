@@ -35,7 +35,14 @@ function applyLocTypeFilter() {
 
 function renderLocList(locs) {
   const list = document.getElementById('loc-list');
-  if (!locs.length) { list.innerHTML = `<div class="empty">Brak wyników</div>`; return; }
+  if (!locs.length) {
+    const search = document.getElementById('loc-search')?.value || '';
+    const filter = document.getElementById('loc-type-filter')?.value || '';
+    list.innerHTML = (search || filter)
+      ? emptyState({ icon: '🔍', title: 'Brak wyników', message: 'Spróbuj innego zapytania lub wyczyść filtr.' })
+      : emptyState({ icon: '📍', title: 'Brak miejsc', message: 'Dodaj pierwsze miejsce do swojej kolekcji podróży.', ctaLabel: '＋ Nowe miejsce', ctaOnclick: 'openNewLocationModal()' });
+    return;
+  }
   const grouped = {};
   locs.forEach(l => { if (!grouped[l.country_name]) grouped[l.country_name] = []; grouped[l.country_name].push(l); });
   list.innerHTML = Object.entries(grouped).map(([country, items]) => `

@@ -241,6 +241,16 @@ function confirmDuplicateLocation(existing, countryName) {
   });
 }
 
+/* ── Empty state ─────────────────────────────────────────── */
+function emptyState({ icon = '✨', title = 'Brak danych', message = '', ctaLabel = '', ctaOnclick = '' } = {}) {
+  return `<div class="empty-state">
+    <div class="empty-state-icon">${icon}</div>
+    <div class="empty-state-title">${escapeHtml(title)}</div>
+    ${message ? `<div class="empty-state-msg">${escapeHtml(message)}</div>` : ''}
+    ${ctaLabel ? `<button class="empty-state-cta" onclick="${ctaOnclick}">${escapeHtml(ctaLabel)}</button>` : ''}
+  </div>`;
+}
+
 /* ── Modal motion helpers ─────────────────────────────────── */
 function closeModal(overlay) {
   if (!overlay || overlay.classList.contains('leaving')) return;
