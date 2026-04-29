@@ -1,6 +1,6 @@
 async function renderTimeline() {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="page-header"><div class="page-title">Oś czasu</div></div><div class="spinner"></div>`;
+  view.innerHTML = `<div class="page-header"><div class="page-title">Oś czasu</div></div>` + skeletonCards(3);
   const travels = await api('/api/travels');
   const sorted = [...travels].sort((a, b) => a.start_date.localeCompare(b.start_date));
   if (!sorted.length) { view.innerHTML = `<div class="page-header"><div class="page-title">Oś czasu</div></div><div class="empty">Brak podróży</div>`; return; }

@@ -1,6 +1,6 @@
 async function renderStats() {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div><div class="spinner"></div>`;
+  view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
   const s = await api('/api/stats');
   const months = ['','Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paz','Lis','Gru'];
   function bar(val, max, color) { return '<div class="purpose-track"><div class="purpose-fill" style="width:'+Math.round(val/max*100)+'%;background:'+color+'"></div></div>'; }

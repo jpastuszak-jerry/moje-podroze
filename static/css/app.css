@@ -384,4 +384,101 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .wiz-picker-info { flex: 1; }
 .wiz-picker-name { font-size: 14px; font-weight: 500; }
 .wiz-picker-sub { font-size: 12px; color: var(--text2); }
+
+/* ── Toast / snackbar ───────────────────────────────────── */
+.toast-container {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 1000; pointer-events: none;
+  width: calc(100% - 32px); max-width: 420px;
+}
+.toast {
+  background: var(--card); color: var(--text);
+  border-radius: 12px; padding: 12px 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.08);
+  font-size: 14px; line-height: 1.4; font-weight: 500;
+  display: flex; align-items: center; gap: 10px;
+  pointer-events: auto;
+  animation: toast-in .25s cubic-bezier(.2,.7,.3,1.1);
+  border-left: 4px solid var(--text3);
+}
+.toast.toast-success { border-left-color: var(--green); }
+.toast.toast-error   { border-left-color: var(--red); }
+.toast.toast-info    { border-left-color: var(--blue); }
+.toast.leaving { animation: toast-out .2s ease-in forwards; }
+.toast-icon { font-size: 18px; flex-shrink: 0; line-height: 1; }
+.toast-msg  { flex: 1; min-width: 0; word-wrap: break-word; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-20px) scale(.95); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-12px); }
+}
+
+/* ── Skeleton loaders ───────────────────────────────────── */
+.skeleton-card {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 14px;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.skeleton-card + .skeleton-card { margin-top: 10px; }
+.skeleton-block {
+  background: linear-gradient(90deg,
+    var(--bg) 0%, rgba(127,127,127,0.10) 50%, var(--bg) 100%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-icon  { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; }
+.skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.skeleton-line  { height: 12px; }
+.skeleton-line.w-60 { width: 60%; }
+.skeleton-line.w-40 { width: 40%; }
+.skeleton-line.w-80 { width: 80%; }
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Custom confirm dialog ──────────────────────────────── */
+.confirm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 500;
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: overlay-fade .15s ease-out;
+}
+.confirm-overlay.leaving { animation: overlay-fade-out .15s ease-in forwards; }
+.confirm-sheet {
+  background: var(--card); border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 480px;
+  padding: 18px 18px calc(18px + var(--safe-bottom));
+  animation: sheet-up .25s cubic-bezier(.2,.7,.3,1.1);
+}
+.confirm-overlay.leaving .confirm-sheet { animation: sheet-down .2s ease-in forwards; }
+.confirm-handle {
+  width: 36px; height: 4px; background: var(--text3);
+  border-radius: 2px; margin: 0 auto 14px; opacity: .4;
+}
+.confirm-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+.confirm-message { font-size: 14px; line-height: 1.5; color: var(--text2); margin-bottom: 18px; white-space: pre-line; }
+.confirm-actions { display: flex; flex-direction: column; gap: 8px; }
+.confirm-btn {
+  width: 100%; padding: 13px; border-radius: 12px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  border: none; transition: opacity .15s, transform .1s;
+}
+.confirm-btn:active { transform: scale(0.985); }
+.confirm-btn.primary { background: var(--blue); color: white; }
+.confirm-btn.danger  { background: var(--red);  color: white; }
+.confirm-btn.cancel  { background: transparent; color: var(--text2); padding: 11px; }
+
+@keyframes overlay-fade     { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sheet-up   { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheet-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
 .wiz-picker-plus { color: var(--blue); font-size: 22px; font-weight: 300; }

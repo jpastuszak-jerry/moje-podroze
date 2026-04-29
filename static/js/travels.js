@@ -6,7 +6,7 @@ async function renderTravels(q = '') {
       '<div class="page-header"><div class="page-title">Moje Podróże</div>' +
       '<div class="search-box"><input type="search" placeholder="Szukaj podróży..." id="travel-search" oninput="onTravelSearch(this.value)"></div></div>' +
       '<div class="sort-bar" id="sort-bar"></div>' +
-      '<div id="travel-list"><div class="spinner"></div></div>' +
+      '<div id="travel-list">' + skeletonCards(4) + '</div>' +
       '<button class="fab" onclick="openWizard()">＋</button>';
   }
   const sortBar = document.getElementById('sort-bar');
@@ -19,7 +19,7 @@ async function renderTravels(q = '') {
     sortBar.innerHTML = sorts.map(s => '<button class="sort-btn' + (currentSort === s.key ? ' active' : '') + '" onclick="setSort(\'' + s.key + '\')">' + s.label + '</button>').join('');
   }
   const list = document.getElementById('travel-list');
-  list.innerHTML = '<div class="spinner"></div>';
+  list.innerHTML = skeletonCards(4);
   let travels = await api('/api/travels' + (currentSearch ? '?q='+encodeURIComponent(currentSearch) : ''));
   if (!travels.length) { list.innerHTML = '<div class="empty">Brak wyników</div>'; return; }
   travels = sortTravels(travels, currentSort);
@@ -54,7 +54,7 @@ function onTravelSearch(val) { clearTimeout(searchTimeout); searchTimeout = setT
 
 async function openTravel(id) {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="spinner"></div>`;
+  view.innerHTML = skeletonCards(3);
   const t = await api('/api/travels/' + id);
   view.innerHTML = `
     <div class="detail-header-gradient" style="background:${purposeGradient(t.purpose)}">
@@ -130,10 +130,15 @@ async function openTravel(id) {
 }
 
 async function confirmDelete(id) {
-  if (confirm('Usunąć tę podróż? Tej operacji nie można cofnąć.')) {
-    await apiDelete('/api/travels/' + id);
-    showTab('travels');
-  }
+  const ok = await askConfirm({
+    title: 'Usunąć podróż?',
+    message: 'Tej operacji nie można cofnąć.',
+    confirmText: 'Usuń', danger: true,
+  });
+  if (!ok) return;
+  await apiDelete('/api/travels/' + id);
+  toast('Podróż usunięta', 'success');
+  showTab('travels');
 }
 
 async function removeParticipantFromTravel(travelId, personId) {
@@ -190,7 +195,7 @@ async function addParticipantToTravel(travelId, personId, name, relType, rowEl) 
 
 async function createAndAddPerson(travelId) {
   const name = document.getElementById('new-person-name').value.trim();
-  if (!name) { alert('Podaj imię i nazwisko!'); return; }
+  if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('new-person-reltype').value;
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
   document.getElementById('participant-overlay')?.remove();
@@ -257,11 +262,12 @@ async function saveTravel(id, isNew) {
     reflections: document.getElementById('f-reflections').value,
     is_description_complete: parseInt(document.getElementById('f-complete').value)
   };
-  if (!body.start_date || !body.end_date) { alert('Podaj daty podróży!'); return; }
+  if (!body.start_date || !body.end_date) { toast('Podaj daty podróży', 'error'); return; }
   if (isNew) {
     const res = await apiPost('/api/travels', body);
-    if (res.error) { alert('Błąd: ' + res.error); return; }
+    if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
     document.querySelector('.modal-overlay').remove();
+    toast('Podróż utworzona', 'success');
     showTab('travels');
     return;
   }
@@ -271,7 +277,8 @@ async function saveTravel(id, isNew) {
     if (!choice) return;
     res = await apiPut('/api/travels/' + id, { ...body, on_conflict: choice });
   }
-  if (res.error) { alert('Błąd: ' + res.error); return; }
+  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  toast('Zapisano', 'success');
   document.querySelector('.modal-overlay').remove();
   openTravel(id);
 }

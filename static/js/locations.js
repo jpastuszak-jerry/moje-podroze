@@ -12,11 +12,11 @@ async function renderLocations(q = '') {
           <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy miejsc</button>
           <button onclick="openPersonsModal()" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">👤 Osoby</button>
         </div></div>
-      <div id="loc-list"><div class="spinner"></div></div>
+      <div id="loc-list">${skeletonCards(4)}</div>
       <button class="fab" onclick="openNewLocationModal()">＋</button>`;
   }
   const list = document.getElementById('loc-list');
-  list.innerHTML = '<div class="spinner"></div>';
+  list.innerHTML = skeletonCards(4);
   const locs = await api('/api/locations' + (q ? '?q='+encodeURIComponent(q) : ''));
   allLocationsCache = locs;
   const filterEl = document.getElementById('loc-type-filter');
@@ -53,7 +53,7 @@ function onLocSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTime
 
 async function openLocation(id) {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="spinner"></div>`;
+  view.innerHTML = skeletonCards(3);
   const loc = await api('/api/locations/' + id);
   view.innerHTML = `
     <div class="detail-header">
@@ -102,9 +102,15 @@ async function openLocation(id) {
 }
 
 async function confirmDeleteLocation(id) {
-  if (!confirm('Usunąć to miejsce? Tej operacji nie można cofnąć.')) return;
+  const ok = await askConfirm({
+    title: 'Usunąć miejsce?',
+    message: 'Tej operacji nie można cofnąć.',
+    confirmText: 'Usuń', danger: true,
+  });
+  if (!ok) return;
   const res = await apiDelete('/api/locations/' + id);
-  if (res.error) { alert(res.error); return; }
+  if (res.error) { toast(res.error, 'error'); return; }
+  toast('Miejsce usunięte', 'success');
   showTab('locations');
 }
 
@@ -168,7 +174,7 @@ async function geocodeForLocModal(prefix) {
   const name = document.getElementById(prefix+'-name').value.trim();
   const cSel = document.getElementById(prefix+'-country');
   const country = cSel.options[cSel.selectedIndex]?.text || '';
-  if (!name) { alert('Najpierw podaj nazwę miejsca'); return; }
+  if (!name) { toast('Najpierw podaj nazwę miejsca', 'error'); return; }
   const btn = document.getElementById(prefix+'-geocode-btn');
   const resultsDiv = document.getElementById(prefix+'-geo-results');
   btn.textContent = '⏳'; btn.disabled = true; btn.style.background = '';
@@ -232,9 +238,9 @@ async function saveEditLocation(id) {
     const parentId = document.getElementById('el-parent').value;
     const address = document.getElementById('el-address').value.trim();
     const notes = document.getElementById('el-notes').value.trim();
-    if (!name) { alert('Podaj nazwę miejsca!'); return; }
-    if (!countryId) { alert('Wybierz kraj!'); return; }
-    if (!typeId) { alert('Wybierz typ miejsca!'); return; }
+    if (!name) { toast('Podaj nazwę miejsca', 'error'); return; }
+    if (!countryId) { toast('Wybierz kraj', 'error'); return; }
+    if (!typeId) { toast('Wybierz typ miejsca', 'error'); return; }
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
     const latVal = parseCoord(document.getElementById('el-lat').value);
     const lngVal = parseCoord(document.getElementById('el-lng').value);
@@ -243,18 +249,20 @@ async function saveEditLocation(id) {
       parent_location_id: parentId ? parseInt(parentId) : null,
       address: address || null, notes: notes || null, latitude: latVal, longitude: lngVal
     });
-    if (res.error) { alert('Błąd: ' + res.error); return; }
+    if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
     document.getElementById('edit-loc-overlay').remove();
+    toast('Zapisano', 'success');
     openLocation(id);
   } catch(err) {
-    alert('Nieoczekiwany błąd: ' + err.message);
+    toast('Nieoczekiwany błąd: ' + err.message, 'error');
   } finally {
     if (btn && document.body.contains(btn)) { btn.disabled = false; btn.textContent = origLabel; }
   }
 }
 
 async function removeLocationFromTravel(travelId, tlid) {
-  if (!confirm('Usunąć to miejsce z podróży?')) return;
+  const ok = await askConfirm({ title: 'Usunąć miejsce z podróży?', confirmText: 'Usuń', danger: true });
+  if (!ok) return;
   await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
   const row = document.getElementById('tl-' + tlid); if (row) row.remove();
   const list = document.getElementById('locations-list');
@@ -297,7 +305,11 @@ async function saveEditTravelLocation(travelId, tlid) {
   const basePayload = { arrival_date: arrival, departure_date: departure, notes };
   let res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, basePayload);
   if (res.error && res.out_of_range) {
-    const ok = confirm(`Daty wizyty są poza zakresem podróży (${res.travel_start} – ${res.travel_end}).\n\nZapisać mimo to?`);
+    const ok = await askConfirm({
+      title: 'Daty poza zakresem',
+      message: `Daty wizyty są poza zakresem podróży (${res.travel_start} – ${res.travel_end}).\nZapisać mimo to?`,
+      confirmText: 'Zapisz mimo to',
+    });
     if (!ok) {
       if (btn) { btn.disabled = false; btn.textContent = 'Zapisz zmiany'; }
       return;
@@ -305,11 +317,12 @@ async function saveEditTravelLocation(travelId, tlid) {
     res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, { ...basePayload, force_outside_range: true });
   }
   if (res.error) {
-    alert('Błąd: ' + res.error);
+    toast('Błąd: ' + res.error, 'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Zapisz zmiany'; }
     return;
   }
   document.getElementById('edit-tl-overlay').remove();
+  toast('Zapisano', 'success');
   const row = document.getElementById('tl-' + tlid);
   if (row) {
     row.dataset.arrival = arrival || '';
@@ -382,9 +395,9 @@ async function saveNewLocation() {
     const typeName = typeSelect.options[typeSelect.selectedIndex]?.text || '';
     const cSel = document.getElementById('nl-country');
     const countryName = cSel.options[cSel.selectedIndex]?.text || '';
-    if (!name) { alert('Podaj nazwę miejsca!'); return; }
-    if (!countryId) { alert('Wybierz kraj!'); return; }
-    if (!typeId) { alert('Wybierz typ miejsca!'); return; }
+    if (!name) { toast('Podaj nazwę miejsca', 'error'); return; }
+    if (!countryId) { toast('Wybierz kraj', 'error'); return; }
+    if (!typeId) { toast('Wybierz typ miejsca', 'error'); return; }
     const overlay = document.getElementById('new-loc-overlay');
     const travelId = overlay?._travelId || null;
     const travelStart = overlay?._travelStart || null;
@@ -396,7 +409,7 @@ async function saveNewLocation() {
     const dup = findDuplicateLocation(allLocs, name, countryName, parentId);
     let force = false;
     if (dup) {
-      if (!confirmDuplicateLocation(dup, countryName)) return;
+      if (!await confirmDuplicateLocation(dup, countryName)) return;
       force = true;
     }
 
@@ -410,17 +423,18 @@ async function saveNewLocation() {
     if (force) body.force_duplicate = true;
     let res = await apiPost('/api/locations', body);
     if (res.error && res.duplicate && res.existing) {
-      if (!confirmDuplicateLocation(res.existing, countryName)) return;
+      if (!await confirmDuplicateLocation(res.existing, countryName)) return;
       res = await apiPost('/api/locations', { ...body, force_duplicate: true });
     }
-    if (res.error) { alert('Błąd: ' + res.error); return; }
+    if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
     const parentSel = document.getElementById('nl-parent');
     const parentName = parentId ? (parentSel.options[parentSel.selectedIndex]?.text || '').split(' (')[0] : null;
     overlay.remove();
+    toast('Miejsce dodane', 'success');
     if (travelId) openConfirmAddLocation(travelId, res.id, name, typeName, travelStart, travelEnd, parentId ? parseInt(parentId) : null, parentName);
     else showTab('locations');
   } catch(err) {
-    alert('Nieoczekiwany błąd: ' + err.message);
+    toast('Nieoczekiwany błąd: ' + err.message, 'error');
   } finally {
     if (btn && document.body.contains(btn)) { btn.disabled = false; btn.textContent = origLabel; }
   }
@@ -510,7 +524,11 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
   const basePayload = { location_id: locationId, arrival_date: arrival, departure_date: departure, notes };
   let res = await apiPost(`/api/travels/${travelId}/locations`, basePayload);
   if (res.error && res.out_of_range) {
-    const ok = confirm(`Daty wizyty są poza zakresem podróży (${res.travel_start} – ${res.travel_end}).\n\nZapisać mimo to?`);
+    const ok = await askConfirm({
+      title: 'Daty poza zakresem',
+      message: `Daty wizyty są poza zakresem podróży (${res.travel_start} – ${res.travel_end}).\nZapisać mimo to?`,
+      confirmText: 'Zapisz mimo to',
+    });
     if (!ok) {
       if (btn) { btn.disabled = false; btn.textContent = 'Dodaj miejsce'; }
       return;
@@ -518,10 +536,11 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
     res = await apiPost(`/api/travels/${travelId}/locations`, { ...basePayload, force_outside_range: true });
   }
   if (res.error) {
-    alert('Błąd: ' + res.error);
+    toast('Błąd: ' + res.error, 'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Dodaj miejsce'; }
     return;
   }
+  toast('Miejsce dodane', 'success');
   if (addParent) {
     await apiPost(`/api/travels/${travelId}/locations`, { location_id: parentId, arrival_date: arrival, departure_date: departure, notes: null, force_outside_range: true });
   }

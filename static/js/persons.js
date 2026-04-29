@@ -23,10 +23,11 @@ async function openPersonsModal() {
 
 async function addPersonFromModal() {
   const name = document.getElementById('new-person-modal-name').value.trim();
-  if (!name) { alert('Podaj imię i nazwisko!'); return; }
+  if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('new-person-modal-rel').value;
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
-  if (res.error) { alert('Błąd: ' + res.error); return; }
+  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  toast('Dodano: ' + name, 'success');
   document.getElementById('new-person-modal-name').value = '';
   document.getElementById('new-person-modal-rel').value = '';
   const overlay = document.getElementById('persons-overlay');
@@ -74,10 +75,11 @@ function cancelEditPerson(id) {
 
 async function saveEditPerson(id) {
   const name = document.getElementById('person-name-'+id).value.trim();
-  if (!name) { alert('Podaj imię i nazwisko!'); return; }
+  if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('person-rel-'+id).value;
   const res = await apiPut('/api/persons/'+id, { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
-  if (res.error) { alert('Błąd: ' + res.error); return; }
+  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  toast('Zapisano', 'success');
   const overlay = document.getElementById('persons-overlay');
   const relTypes = overlay._relTypes || [];
   const persons = await api('/api/persons');
@@ -85,9 +87,15 @@ async function saveEditPerson(id) {
 }
 
 async function deletePersonFromModal(id) {
-  if (!confirm('Usunąć tę osobę? Zostanie też usunięta ze wszystkich podróży.')) return;
+  const ok = await askConfirm({
+    title: 'Usunąć osobę?',
+    message: 'Zostanie też usunięta ze wszystkich podróży. Tej operacji nie można cofnąć.',
+    confirmText: 'Usuń', danger: true,
+  });
+  if (!ok) return;
   const res = await fetch(API + '/api/persons/' + id, { method: 'DELETE' });
   const data = await res.json();
-  if (data.error) { alert(data.error); return; }
+  if (data.error) { toast(data.error, 'error'); return; }
   document.getElementById('person-row-'+id)?.remove();
+  toast('Usunięto', 'success');
 }

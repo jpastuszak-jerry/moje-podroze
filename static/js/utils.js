@@ -141,6 +141,77 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+/* ── Toasts / snackbars ──────────────────────────────────── */
+const TOAST_ICONS = { success: '✓', error: '!', info: 'i' };
+
+function toast(message, type = 'info', duration = 3200) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.innerHTML =
+    `<div class="toast-icon">${TOAST_ICONS[type] || ''}</div>` +
+    `<div class="toast-msg">${escapeHtml(message)}</div>`;
+  container.appendChild(el);
+  const dismiss = () => {
+    if (el.classList.contains('leaving')) return;
+    el.classList.add('leaving');
+    setTimeout(() => el.remove(), 220);
+  };
+  el.addEventListener('click', dismiss);
+  setTimeout(dismiss, duration);
+}
+
+/* ── Custom confirm dialog (Promise-based) ───────────────── */
+function askConfirm({ title = '', message = '', confirmText = 'OK', cancelText = 'Anuluj', danger = false } = {}) {
+  return new Promise(resolve => {
+    document.getElementById('confirm-overlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.id = 'confirm-overlay';
+    overlay.innerHTML = `<div class="confirm-sheet">
+      <div class="confirm-handle"></div>
+      ${title ? `<div class="confirm-title">${escapeHtml(title)}</div>` : ''}
+      ${message ? `<div class="confirm-message">${escapeHtml(message)}</div>` : ''}
+      <div class="confirm-actions">
+        <button class="confirm-btn ${danger ? 'danger' : 'primary'}" data-act="ok">${escapeHtml(confirmText)}</button>
+        <button class="confirm-btn cancel" data-act="cancel">${escapeHtml(cancelText)}</button>
+      </div>
+    </div>`;
+    let settled = false;
+    const close = (result) => {
+      if (settled) return;
+      settled = true;
+      overlay.classList.add('leaving');
+      setTimeout(() => { overlay.remove(); resolve(result); }, 200);
+    };
+    overlay.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act]');
+      if (btn) close(btn.dataset.act === 'ok');
+      else if (e.target === overlay) close(false);
+    });
+    document.body.appendChild(overlay);
+  });
+}
+
+/* ── Skeleton placeholders ───────────────────────────────── */
+function skeletonCards(count = 4) {
+  const card = `
+    <div class="skeleton-card">
+      <div class="skeleton-block skeleton-icon"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-block skeleton-line w-60"></div>
+        <div class="skeleton-block skeleton-line w-40"></div>
+      </div>
+    </div>`;
+  return `<div style="padding:12px 16px">${card.repeat(count)}</div>`;
+}
+
 function parseCoord(v) {
   if (v === null || v === undefined) return null;
   const s = String(v).trim();
@@ -162,10 +233,12 @@ function findDuplicateLocation(allLocs, name, countryName, parentId) {
 
 function confirmDuplicateLocation(existing, countryName) {
   const where = [existing.location_type, countryName].filter(Boolean).join(', ');
-  return confirm(
-    `Miejsce "${existing.name}" (${where}) już istnieje w bazie.\n\n` +
-    `Na pewno utworzyć drugi rekord o tej samej nazwie?`
-  );
+  return askConfirm({
+    title: 'Miejsce już istnieje',
+    message: `"${existing.name}" (${where}) jest już w bazie.\nUtworzyć drugi rekord o tej samej nazwie?`,
+    confirmText: 'Utwórz duplikat',
+    danger: true,
+  });
 }
 
 function showTab(tab) {

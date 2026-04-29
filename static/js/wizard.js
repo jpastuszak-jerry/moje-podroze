@@ -144,11 +144,11 @@ function wizardStep0Html() {
 
 function wizardStep0Save() {
   const name = document.getElementById('wi-name').value.trim();
-  if (!name) { alert('Podaj nazwę podróży!'); return false; }
+  if (!name) { toast('Podaj nazwę podróży', 'error'); return false; }
   const start = document.getElementById('wi-start').value;
   const end   = document.getElementById('wi-end').value;
-  if (!start || !end) { alert('Podaj daty podróży!'); return false; }
-  if (end < start) { alert('Data powrotu nie może być wcześniejsza niż data wyjazdu!'); return false; }
+  if (!start || !end) { toast('Podaj daty podróży', 'error'); return false; }
+  if (end < start) { toast('Data powrotu nie może być wcześniejsza niż data wyjazdu', 'error'); return false; }
   wizardState.info = {
     name,
     purpose:  document.getElementById('wi-purpose').value.trim(),
@@ -168,7 +168,7 @@ function wizardStep0Save() {
 /* ── Krok 1: Lokacje ──────────────────────────────────────── */
 
 async function wizardStep1Render(body) {
-  body.innerHTML = `<div class="spinner"></div>`;
+  body.innerHTML = skeletonCards(3);
   const [locs, countries, locTypes] = await Promise.all([
     api('/api/locations'),
     api('/api/countries'),
@@ -287,7 +287,7 @@ function wizardPickLocation(locId) {
   document.body.appendChild(overlay);
 }
 
-function wizardConfirmLocation(locId, existingIdx) {
+async function wizardConfirmLocation(locId, existingIdx) {
   const btn = document.getElementById('wld-save-btn');
   if (btn?.disabled) return;
   const loc = (wizardState.allLocs || []).find(l => l.id === locId);
@@ -302,7 +302,11 @@ function wizardConfirmLocation(locId, existingIdx) {
     (arrival   && (arrival   < s.start_date || arrival   > s.end_date)) ||
     (departure && (departure < s.start_date || departure > s.end_date));
   if (outOfRange) {
-    const ok = confirm(`Daty wizyty są poza zakresem podróży (${s.start_date} – ${s.end_date}).\n\nZapisać mimo to?`);
+    const ok = await askConfirm({
+      title: 'Daty poza zakresem',
+      message: `Daty wizyty są poza zakresem podróży (${s.start_date} – ${s.end_date}).\nZapisać mimo to?`,
+      confirmText: 'Zapisz mimo to',
+    });
     if (!ok) return;
   }
 
@@ -430,9 +434,9 @@ async function wizardSaveNewLocation() {
   const latVal    = parseCoord(document.getElementById('wnl-lat').value);
   const lngVal    = parseCoord(document.getElementById('wnl-lng').value);
 
-  if (!name)      { alert('Podaj nazwę miejsca!'); return; }
-  if (!countryId) { alert('Wybierz kraj!'); return; }
-  if (!typeId)    { alert('Wybierz typ miejsca!'); return; }
+  if (!name)      { toast('Podaj nazwę miejsca', 'error'); return; }
+  if (!countryId) { toast('Wybierz kraj', 'error'); return; }
+  if (!typeId)    { toast('Wybierz typ miejsca', 'error'); return; }
 
   const typeSelect = document.getElementById('wnl-type');
   const typeName = typeSelect.options[typeSelect.selectedIndex]?.text || '';
@@ -442,7 +446,7 @@ async function wizardSaveNewLocation() {
   const dup = findDuplicateLocation(wizardState.allLocs, name, countryName, parentId);
   let force = false;
   if (dup) {
-    if (!confirmDuplicateLocation(dup, countryName)) return;
+    if (!await confirmDuplicateLocation(dup, countryName)) return;
     force = true;
   }
 
@@ -457,14 +461,14 @@ async function wizardSaveNewLocation() {
     if (force) body.force_duplicate = true;
     let res = await apiPost('/api/locations', body);
     if (res.error && res.duplicate && res.existing) {
-      if (!confirmDuplicateLocation(res.existing, countryName)) {
+      if (!await confirmDuplicateLocation(res.existing, countryName)) {
         if (btn) { btn.disabled = false; btn.textContent = origLabel; }
         return;
       }
       res = await apiPost('/api/locations', { ...body, force_duplicate: true });
     }
     if (res.error) {
-      alert('Błąd: ' + res.error);
+      toast('Błąd: ' + res.error, 'error');
       if (btn) { btn.disabled = false; btn.textContent = origLabel; }
       return;
     }
@@ -492,7 +496,7 @@ async function wizardSaveNewLocation() {
         </div>`).join('');
     }
   } catch (err) {
-    alert('Nieoczekiwany błąd: ' + err.message);
+    toast('Nieoczekiwany błąd: ' + err.message, 'error');
     if (btn && document.body.contains(btn)) { btn.disabled = false; btn.textContent = origLabel; }
   }
 }
@@ -500,7 +504,7 @@ async function wizardSaveNewLocation() {
 /* ── Krok 2: Uczestnicy ──────────────────────────────────── */
 
 async function wizardStep2Render(body) {
-  body.innerHTML = `<div class="spinner"></div>`;
+  body.innerHTML = skeletonCards(3);
   const [persons, relTypes] = await Promise.all([api('/api/persons'), api('/api/relation_types')]);
   wizardState.relTypes = relTypes;
 
@@ -589,14 +593,14 @@ async function wizardCreatePerson() {
   const btn = document.getElementById('wiz-new-person-btn');
   if (btn?.disabled) return;
   const name = document.getElementById('wiz-new-person-name').value.trim();
-  if (!name) { alert('Podaj imię i nazwisko!'); return; }
+  if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('wiz-new-person-rel').value;
   const relType = relTypeId ? ((wizardState.relTypes || []).find(r => r.id === parseInt(relTypeId))?.name || '') : '';
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
   if (res.error) {
-    alert('Błąd: ' + res.error);
+    toast('Błąd: ' + res.error, 'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Dodaj osobę'; }
     return;
   }
@@ -704,7 +708,7 @@ async function wizardSave() {
       notes: s.notes || null, reflections: s.reflections || null,
     });
 
-    if (travelRes.error) { alert('Błąd zapisu podróży: ' + travelRes.error); btn.disabled = false; btn.textContent = '✓ Zapisz podróż'; return; }
+    if (travelRes.error) { toast('Błąd zapisu podróży: ' + travelRes.error, 'error'); btn.disabled = false; btn.textContent = '✓ Zapisz podróż'; return; }
     const travelId = travelRes.id;
 
     await Promise.all([
@@ -721,9 +725,10 @@ async function wizardSave() {
     ]);
 
     closeWizard();
+    toast('Podróż utworzona', 'success');
     openTravel(travelId);
   } catch (err) {
-    alert('Nieoczekiwany błąd: ' + err.message);
+    toast('Nieoczekiwany błąd: ' + err.message, 'error');
     btn.disabled = false;
     btn.textContent = '✓ Zapisz podróż';
   }

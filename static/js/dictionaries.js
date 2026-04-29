@@ -40,9 +40,9 @@ function startEditDict(id) {
 async function saveEditDict(id) {
   const overlay = document.getElementById('dict-overlay'); const apiPath = overlay._apiPath;
   const newName = document.getElementById('dict-edit-'+id).value.trim();
-  if (!newName) { alert('Podaj nazwę!'); return; }
+  if (!newName) { toast('Podaj nazwę', 'error'); return; }
   const res = await apiPut(`${apiPath}/${id}`, { name: newName });
-  if (res.error) { alert('Błąd: ' + res.error); return; }
+  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
   document.getElementById('dict-label-'+id).textContent = newName;
   document.getElementById('dict-label-'+id).classList.remove('hidden');
   document.getElementById('dict-edit-btn-'+id).classList.remove('hidden');
@@ -54,15 +54,16 @@ async function deleteDictItem(id) {
   const overlay = document.getElementById('dict-overlay'); const apiPath = overlay._apiPath;
   const r = await fetch(`${API}${apiPath}/${id}`, { method: 'DELETE' });
   const data = await r.json();
-  if (data.error) { alert(data.error); return; }
+  if (data.error) { toast(data.error, 'error'); return; }
   document.getElementById('dict-row-'+id)?.remove();
 }
 
 async function addDictItem(apiPath) {
   const name = document.getElementById('dict-new-name').value.trim();
-  if (!name) { alert('Podaj nazwę!'); return; }
+  if (!name) { toast('Podaj nazwę', 'error'); return; }
   const res = await apiPost(apiPath, { name });
-  if (res.error) { alert('Błąd: ' + res.error); return; }
+  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  toast('Dodano: ' + name, 'success');
   document.getElementById('dict-new-name').value = '';
   const list = document.getElementById('dict-list');
   if (list.querySelector('div[style*="text-align:center"]')) list.innerHTML = '';
