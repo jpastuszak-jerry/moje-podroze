@@ -241,6 +241,28 @@ function confirmDuplicateLocation(existing, countryName) {
   });
 }
 
+/* ── Theme toggle ────────────────────────────────────────── */
+const THEME_ICONS = {
+  sun:  '<path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1zm0 17a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM4.22 4.22a1 1 0 0 1 1.42 0l1.4 1.4a1 1 0 0 1-1.4 1.42l-1.42-1.4a1 1 0 0 1 0-1.42zm12.72 12.72a1 1 0 0 1 1.42 0l1.4 1.4a1 1 0 1 1-1.4 1.42l-1.42-1.4a1 1 0 0 1 0-1.42zM2 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H3a1 1 0 0 1-1-1zm17 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM4.22 19.78a1 1 0 0 1 0-1.42l1.4-1.4a1 1 0 0 1 1.42 1.4l-1.4 1.42a1 1 0 0 1-1.42 0zm12.72-12.72a1 1 0 0 1 0-1.42l1.4-1.4a1 1 0 1 1 1.42 1.4l-1.4 1.42a1 1 0 0 1-1.42 0z"/>',
+  moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>',
+};
+function getActiveTheme() {
+  const stored = localStorage.getItem('theme');
+  if (stored === 'dark' || stored === 'light') return stored;
+  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function setThemeIcon() {
+  const icon = document.getElementById('theme-icon');
+  if (!icon) return;
+  icon.innerHTML = getActiveTheme() === 'dark' ? THEME_ICONS.sun : THEME_ICONS.moon;
+}
+function toggleTheme() {
+  const next = getActiveTheme() === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', next);
+  document.documentElement.setAttribute('data-theme', next);
+  setThemeIcon();
+}
+
 /* ── Empty state ─────────────────────────────────────────── */
 function emptyState({ icon = '✨', title = 'Brak danych', message = '', ctaLabel = '', ctaOnclick = '' } = {}) {
   return `<div class="empty-state">

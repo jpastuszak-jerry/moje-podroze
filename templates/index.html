@@ -11,8 +11,17 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <link rel="stylesheet" href="/static/css/app.css">
+<script>
+  (function() {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
 </head>
 <body>
+<button id="theme-toggle" onclick="toggleTheme()" aria-label="Przełącz motyw" title="Przełącz motyw">
+  <svg id="theme-icon" viewBox="0 0 24 24" width="18" height="18"></svg>
+</button>
 <div id="app">
   <div id="view"></div>
   <nav id="tabs">
@@ -51,6 +60,7 @@
 <script src="/static/js/timeline.js"></script>
 <script src="/static/js/wizard.js"></script>
 <script>
+setThemeIcon();
 renderTravels();
 </script>
 </body>
