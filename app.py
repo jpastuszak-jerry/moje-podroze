@@ -781,15 +781,28 @@ def delete_person(pid):
 # 6. STATYSTYKI — agregaty i raporty
 # =============================================================================
 
-@app.route('/api/stats')
-def get_stats():
-    travels = [dict(r) for r in query("SELECT * FROM travels")]
-    countries_count = query("""
+def _period_stats(year=None):
+    """Statystyki za wybrany rok (year=None oznacza all-time)."""
+    if year:
+        where_main = "WHERE EXTRACT(YEAR FROM start_date) = %s"
+        and_main   = "AND EXTRACT(YEAR FROM start_date) = %s"
+        join_t_year = "AND EXTRACT(YEAR FROM t.start_date) = %s"
+        params = (year,)
+    else:
+        where_main = ""
+        and_main   = ""
+        join_t_year = ""
+        params = ()
+
+    travels = [dict(r) for r in query(f"SELECT * FROM travels {where_main}", params)]
+
+    countries_count = query(f"""
         SELECT COUNT(DISTINCT c.id) AS cnt FROM locations l
         JOIN countries c ON l.country_id = c.id
         JOIN travel_locations tl ON tl.location_id = l.id
-    """, one=True)['cnt']
-    locations_count = query("SELECT COUNT(*) AS cnt FROM locations", one=True)['cnt']
+        JOIN travels t ON t.id = tl.travel_id
+        {('WHERE ' + where_main[6:]) if where_main else ''}
+    """, params, one=True)['cnt']
 
     total_days = 0
     amount_by_currency = {}
@@ -819,7 +832,7 @@ def get_stats():
         purpose = t.get('purpose') or 'Inne'
         purposes[purpose] = purposes.get(purpose, 0) + 1
 
-    participation = query("""
+    participation = query(f"""
         SELECT
           SUM(CASE WHEN jarek=1 AND hanna=0 THEN 1 ELSE 0 END) AS sam,
           SUM(CASE WHEN jarek=0 AND hanna=1 THEN 1 ELSE 0 END) AS hanna_solo,
@@ -831,29 +844,33 @@ def get_stats():
             MAX(CASE WHEN tp.person_id=2 THEN 1 ELSE 0 END) AS hanna
           FROM travels t
           LEFT JOIN travel_participants tp ON t.id = tp.travel_id
+          {('WHERE ' + where_main[6:]) if where_main else ''}
           GROUP BY t.id
         ) sub
-    """, one=True)
+    """, params, one=True)
 
-    top_expensive = [dict(r) for r in query("""
+    top_expensive = [dict(r) for r in query(f"""
         SELECT name, amount, currency, start_date, end_date,
                (end_date - start_date) AS days
-        FROM travels WHERE amount > 0 ORDER BY amount DESC LIMIT 10
-    """)]
+        FROM travels WHERE amount > 0 {and_main}
+        ORDER BY amount DESC LIMIT 10
+    """, params)]
     for t in top_expensive:
         for k in ('start_date', 'end_date'):
             if t.get(k):
                 t[k] = str(t[k])
 
-    top_countries = [dict(r) for r in query("""
+    top_countries = [dict(r) for r in query(f"""
         SELECT c.name AS country, COUNT(DISTINCT tl.travel_id) AS visits
         FROM travel_locations tl
         JOIN locations l ON l.id = tl.location_id
         JOIN countries c ON c.id = l.country_id
+        JOIN travels t ON t.id = tl.travel_id
+        {('WHERE ' + join_t_year[4:]) if join_t_year else ''}
         GROUP BY c.name ORDER BY visits DESC LIMIT 5
-    """)]
+    """, params)]
 
-    top_places = [dict(r) for r in query("""
+    top_places = [dict(r) for r in query(f"""
         SELECT l.id, l.name AS location_name, c.name AS country,
                lt.name AS location_type,
                COUNT(DISTINCT tl.travel_id) AS visit_count,
@@ -863,38 +880,99 @@ def get_stats():
         JOIN location_types lt ON l.location_type_id = lt.id
         JOIN locations child ON (child.id = l.id OR child.parent_location_id = l.id)
         JOIN travel_locations tl ON tl.location_id = child.id
-        WHERE LOWER(lt.name) IN ('miasto', 'wyspa')
+        JOIN travels t ON t.id = tl.travel_id
+        WHERE LOWER(lt.name) IN ('miasto', 'wyspa') {join_t_year}
         GROUP BY l.id, l.name, c.name, lt.name
         ORDER BY visit_count DESC, days_spent DESC LIMIT 5
-    """)]
+    """, params)]
+
+    by_month = [dict(r) for r in query(f"""
+        SELECT EXTRACT(MONTH FROM start_date)::int AS month, COUNT(*) AS count
+        FROM travels {where_main}
+        GROUP BY month ORDER BY count DESC
+    """, params)]
+
+    avg_row = query(f"SELECT ROUND(AVG(end_date - start_date), 1) AS avg_days FROM travels {where_main}", params, one=True)
+    avg_trip_days = float(avg_row['avg_days'] or 0)
+
+    cost_per_day = [dict(r) for r in query(f"""
+        SELECT name, amount, currency,
+               (end_date - start_date) AS days,
+               ROUND(amount / NULLIF((end_date - start_date), 0), 0) AS cost_per_day
+        FROM travels WHERE amount > 0 AND (end_date - start_date) > 0 {and_main}
+        ORDER BY cost_per_day DESC LIMIT 5
+    """, params)]
+
+    progress = query(f"""
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN is_description_complete THEN 1 ELSE 0 END) AS described,
+               SUM(CASE WHEN has_photo_album THEN 1 ELSE 0 END) AS with_album
+        FROM travels {where_main}
+    """, params, one=True)
+
+    return {
+        'total_trips': len(travels),
+        'total_days': total_days,
+        'countries': countries_count,
+        'flights': flights,
+        'albums': albums,
+        'avg_rating': round(sum(ratings) / len(ratings), 1) if ratings else 0,
+        'avg_trip_days': avg_trip_days,
+        'amount_by_currency': {cur: round(amt, 2) for cur, amt in sorted(amount_by_currency.items(), key=lambda x: -x[1])},
+        'purposes': sorted(
+            [{'name': k, 'count': v} for k, v in purposes.items()],
+            key=lambda x: -x['count']
+        ),
+        'participation': {
+            'sam':        int(participation['sam'] or 0),
+            'hanna_solo': int(participation['hanna_solo'] or 0),
+            'razem':      int(participation['razem'] or 0),
+            'inni':       int(participation['inni'] or 0),
+        },
+        'top_expensive': top_expensive,
+        'top_countries': top_countries,
+        'top_places':    top_places,
+        'by_month':      by_month,
+        'cost_per_day':  cost_per_day,
+        'progress': {
+            'total':      int(progress['total'] or 0),
+            'described':  int(progress['described'] or 0),
+            'with_album': int(progress['with_album'] or 0),
+        },
+    }
+
+
+@app.route('/api/stats')
+def get_stats():
+    raw_year = request.args.get('year')
+    year = int(raw_year) if raw_year and raw_year.isdigit() else None
+
+    period = _period_stats(year)
+
+    # YoY: tylko gdy konkretny rok wybrany
+    prev_period = None
+    if year:
+        prev = _period_stats(year - 1)
+        prev_period = {
+            'year':         year - 1,
+            'total_trips':  prev['total_trips'],
+            'total_days':   prev['total_days'],
+            'countries':    prev['countries'],
+            'flights':      prev['flights'],
+            'albums':       prev['albums'],
+            'avg_rating':   prev['avg_rating'],
+            'avg_trip_days': prev['avg_trip_days'],
+            'amount_by_currency': prev['amount_by_currency'],
+            'progress_described': prev['progress']['described'],
+        }
+
+    # All-time / niefiltrowalne
+    locations_count = query("SELECT COUNT(*) AS cnt FROM locations", one=True)['cnt']
 
     by_year = [dict(r) for r in query("""
         SELECT EXTRACT(YEAR FROM start_date)::int AS year, COUNT(*) AS count
         FROM travels GROUP BY year ORDER BY year
     """)]
-
-    by_month = [dict(r) for r in query("""
-        SELECT EXTRACT(MONTH FROM start_date)::int AS month, COUNT(*) AS count
-        FROM travels GROUP BY month ORDER BY count DESC
-    """)]
-
-    avg_row = query("SELECT ROUND(AVG(end_date - start_date), 1) AS avg_days FROM travels", one=True)
-    avg_trip_days = float(avg_row['avg_days'] or 0)
-
-    cost_per_day = [dict(r) for r in query("""
-        SELECT name, amount, currency,
-               (end_date - start_date) AS days,
-               ROUND(amount / NULLIF((end_date - start_date), 0), 0) AS cost_per_day
-        FROM travels WHERE amount > 0 AND (end_date - start_date) > 0
-        ORDER BY cost_per_day DESC LIMIT 5
-    """)]
-
-    progress = query("""
-        SELECT COUNT(*) AS total,
-               SUM(CASE WHEN is_description_complete THEN 1 ELSE 0 END) AS described,
-               SUM(CASE WHEN has_photo_album THEN 1 ELSE 0 END) AS with_album
-        FROM travels
-    """, one=True)
 
     def hof_row(sql):
         r = query(sql, one=True)
@@ -931,37 +1009,12 @@ def get_stats():
     }
 
     return jsonify({
-        'total_trips': len(travels),
-        'total_days': total_days,
-        'countries': countries_count,
-        'locations': locations_count,
-        'flights': flights,
-        'albums': albums,
-        'avg_rating': round(sum(ratings) / len(ratings), 1) if ratings else 0,
-        'avg_trip_days': avg_trip_days,
-        'amount_by_currency': {cur: round(amt, 2) for cur, amt in sorted(amount_by_currency.items(), key=lambda x: -x[1])},
-        'purposes': sorted(
-            [{'name': k, 'count': v} for k, v in purposes.items()],
-            key=lambda x: -x['count']
-        ),
-        'participation': {
-            'sam':        int(participation['sam'] or 0),
-            'hanna_solo': int(participation['hanna_solo'] or 0),
-            'razem':      int(participation['razem'] or 0),
-            'inni':       int(participation['inni'] or 0),
-        },
-        'top_expensive': top_expensive,
-        'top_countries': top_countries,
-        'top_places':    top_places,
+        **period,
+        'locations':     locations_count,
         'by_year':       by_year,
-        'by_month':      by_month,
-        'cost_per_day':  cost_per_day,
-        'progress': {
-            'total':      int(progress['total'] or 0),
-            'described':  int(progress['described'] or 0),
-            'with_album': int(progress['with_album'] or 0),
-        },
-        'hall_of_fame': hall_of_fame,
+        'hall_of_fame':  hall_of_fame,
+        'year':          year,
+        'prev_period':   prev_period,
     })
 
 

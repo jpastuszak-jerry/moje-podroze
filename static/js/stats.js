@@ -83,17 +83,56 @@ function svgGradientBars(data, { nameKey, valueKey, valueLabel = null, color = '
   }).join('');
 }
 
+let currentStatsYear = null;
+
+function setStatsYear(y) {
+  currentStatsYear = y;
+  renderStats();
+}
+
+function yoyDelta(current, prev, lowerBetter = false) {
+  if (prev == null) return '';
+  const delta = current - prev;
+  if (delta === 0) return `<div class="yoy yoy-flat">= ${prev}</div>`;
+  const arrow = delta > 0 ? '↑' : '↓';
+  const isGood = lowerBetter ? delta < 0 : delta > 0;
+  const cls = isGood ? 'yoy-up' : 'yoy-down';
+  const sign = delta > 0 ? '+' : '';
+  return `<div class="yoy ${cls}">${arrow} ${sign}${delta}</div>`;
+}
+
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
-  const s = await api('/api/stats');
+  const url = '/api/stats' + (currentStatsYear ? '?year=' + currentStatsYear : '');
+  const s = await api(url);
   const months = ['','Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paz','Lis','Gru'];
   function bar(val, max, color) { return '<div class="purpose-track"><div class="purpose-fill" style="width:'+Math.round(val/max*100)+'%;background:'+color+'"></div></div>'; }
-  function purposeSection(title, items, nameFn, valFn, maxVal, color) {
-    if (!items || !items.length) return '';
-    return '<div class="purpose-bar"><div class="section-title">'+title+'</div>'+items.map(i=>'<div class="purpose-row"><div class="purpose-name" style="font-size:12px">'+nameFn(i)+'</div>'+bar(valFn(i),maxVal,color)+'<div class="purpose-count">'+valFn(i)+'</div></div>').join('')+'</div>';
-  }
-  let html = '<div class="page-header"><div class="page-title">Statystyki</div></div>';
+
+  const yearsDesc = (s.by_year || []).map(y => y.year).sort((a,b) => b-a);
+  const filterBar = `<div class="sort-bar" style="margin-top:10px">
+    <button class="sort-btn${!currentStatsYear ? ' active' : ''}" onclick="setStatsYear(null)">Wszystkie</button>
+    ${yearsDesc.map(y => `<button class="sort-btn${currentStatsYear === y ? ' active' : ''}" onclick="setStatsYear(${y})">${y}</button>`).join('')}
+  </div>`;
+  let html = `<div class="page-header"><div class="page-title">Statystyki</div>${filterBar}</div>`;
+
+  // Hero card
+  const heroLabel = currentStatsYear ? `Rok ${currentStatsYear}` : 'Wszystkie podróże';
+  const heroCurrencies = Object.entries(s.amount_by_currency || {});
+  const heroAmount = heroCurrencies.length
+    ? heroCurrencies.map(([cur, amt]) => `${Math.round(amt).toLocaleString('pl-PL')} <span class="hero-cur">${escapeHtml(cur)}</span>`).join(' &nbsp;·&nbsp; ')
+    : '';
+  const prev = s.prev_period;
+  html += `<div class="hero-card">
+    <div class="hero-label">${escapeHtml(heroLabel)}${prev ? ` &nbsp;·&nbsp; <span style="opacity:0.6">vs ${prev.year}</span>` : ''}</div>
+    <div class="hero-numbers">
+      <div class="hero-number"><div class="hero-val">${s.total_trips}</div><div class="hero-key">podróży</div>${prev ? yoyDelta(s.total_trips, prev.total_trips) : ''}</div>
+      <div class="hero-number"><div class="hero-val">${s.total_days}</div><div class="hero-key">dni w trasie</div>${prev ? yoyDelta(s.total_days, prev.total_days) : ''}</div>
+      <div class="hero-number"><div class="hero-val">${s.countries}</div><div class="hero-key">krajów</div>${prev ? yoyDelta(s.countries, prev.countries) : ''}</div>
+      <div class="hero-number"><div class="hero-val">${s.flights}</div><div class="hero-key">lotów</div>${prev ? yoyDelta(s.flights, prev.flights) : ''}</div>
+    </div>
+    ${heroAmount ? `<div class="hero-amount">${heroAmount}</div>` : ''}
+  </div>`;
   if (s.hall_of_fame) {
     const hof = s.hall_of_fame;
     const records = [
@@ -119,13 +158,13 @@ async function renderStats() {
     }
   }
   html += '<div class="stats-grid">';
-  html += '<div class="stat-card sc-blue"><div class="stat-icon">✈️</div><div class="stat-value">'+s.total_trips+'</div><div class="stat-label">Podróży</div></div>';
-  html += '<div class="stat-card sc-orange"><div class="stat-icon">📅</div><div class="stat-value">'+s.total_days+'</div><div class="stat-label">Dni w trasie</div></div>';
-  html += '<div class="stat-card sc-green"><div class="stat-icon">🌍</div><div class="stat-value">'+s.countries+'</div><div class="stat-label">Krajów</div></div>';
-  html += '<div class="stat-card sc-purple"><div class="stat-icon">📍</div><div class="stat-value">'+s.locations+'</div><div class="stat-label">Miejsc</div></div>';
-  html += '<div class="stat-card sc-teal"><div class="stat-icon">🛫</div><div class="stat-value">'+s.flights+'</div><div class="stat-label">Lotów</div></div>';
-  html += '<div class="stat-card sc-green"><div class="stat-icon">📷</div><div class="stat-value">'+s.albums+'</div><div class="stat-label">Albumów</div></div>';
-  html += '<div class="stat-card sc-orange"><div class="stat-icon">⭐</div><div class="stat-value">'+(s.avg_rating||'–')+'</div><div class="stat-label">Śr. ocena</div></div>';
+  html += '<div class="stat-card sc-blue"><div class="stat-icon">✈️</div><div class="stat-value">'+s.total_trips+'</div><div class="stat-label">Podróży</div>'+(prev?yoyDelta(s.total_trips, prev.total_trips):'')+'</div>';
+  html += '<div class="stat-card sc-orange"><div class="stat-icon">📅</div><div class="stat-value">'+s.total_days+'</div><div class="stat-label">Dni w trasie</div>'+(prev?yoyDelta(s.total_days, prev.total_days):'')+'</div>';
+  html += '<div class="stat-card sc-green"><div class="stat-icon">🌍</div><div class="stat-value">'+s.countries+'</div><div class="stat-label">Krajów</div>'+(prev?yoyDelta(s.countries, prev.countries):'')+'</div>';
+  html += '<div class="stat-card sc-purple"><div class="stat-icon">📍</div><div class="stat-value">'+s.locations+'</div><div class="stat-label">Miejsc (all)</div></div>';
+  html += '<div class="stat-card sc-teal"><div class="stat-icon">🛫</div><div class="stat-value">'+s.flights+'</div><div class="stat-label">Lotów</div>'+(prev?yoyDelta(s.flights, prev.flights):'')+'</div>';
+  html += '<div class="stat-card sc-green"><div class="stat-icon">📷</div><div class="stat-value">'+s.albums+'</div><div class="stat-label">Albumów</div>'+(prev?yoyDelta(s.albums, prev.albums):'')+'</div>';
+  html += '<div class="stat-card sc-orange"><div class="stat-icon">⭐</div><div class="stat-value">'+(s.avg_rating||'–')+'</div><div class="stat-label">Śr. ocena</div>'+(prev?yoyDelta(s.avg_rating, prev.avg_rating):'')+'</div>';
   const currencies = Object.entries(s.amount_by_currency || {});
   if (currencies.length === 0) {
     html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div class="stat-value">–</div><div class="stat-label">Wydane</div></div>';
