@@ -3,7 +3,7 @@ async function openDictionaryModal(apiPath, title) {
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'dict-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">${title}</span>
-      <button class="modal-save" onclick="document.getElementById('dict-overlay').remove()">Gotowe</button></div>
+      <button class="modal-save" onclick="closeModal(document.getElementById('dict-overlay'))">Gotowe</button></div>
     <div class="form-section">
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <input class="form-input" id="dict-new-name" placeholder="Nowa pozycja..." style="margin-bottom:0;flex:1">
@@ -12,8 +12,9 @@ async function openDictionaryModal(apiPath, title) {
       <div id="dict-list">${buildDictList(items)}</div>
     </div></div>`;
   overlay._apiPath = apiPath;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
   document.getElementById('dict-add-btn').addEventListener('click', () => addDictItem(apiPath));
 }
 

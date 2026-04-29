@@ -125,7 +125,7 @@ async function openEditLocationModal(id) {
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'edit-loc-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Edytuj miejsce</span>
-      <button class="modal-save" onclick="document.getElementById('edit-loc-overlay').remove()">Anuluj</button></div>
+      <button class="modal-save" onclick="closeModal(document.getElementById('edit-loc-overlay'))">Anuluj</button></div>
     <div class="form-section">
       <div class="form-label">Nazwa miejsca *</div>
       <input class="form-input" id="el-name" value="${(loc.name||'').replace(/"/g,'&quot;')}">
@@ -164,8 +164,9 @@ async function openEditLocationModal(id) {
     </div></div>`;
   overlay._allLocs = allLocs.filter(l => l.id !== id);
   overlay._currentParentId = loc.parent_location_id || null;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
   document.getElementById('el-notes').value = loc.notes || '';
   updateParentLocListFor('edit-loc-overlay', 'el');
 }
@@ -250,7 +251,7 @@ async function saveEditLocation(id) {
       address: address || null, notes: notes || null, latitude: latVal, longitude: lngVal
     });
     if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
-    document.getElementById('edit-loc-overlay').remove();
+    closeModal(document.getElementById('edit-loc-overlay'));
     toast('Zapisano', 'success');
     openLocation(id);
   } catch(err) {
@@ -278,7 +279,7 @@ function openEditTravelLocation(travelId, tlid) {
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'edit-tl-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Edytuj pobyt</span>
-      <button class="modal-save" onclick="document.getElementById('edit-tl-overlay').remove()">Anuluj</button></div>
+      <button class="modal-save" onclick="closeModal(document.getElementById('edit-tl-overlay'))">Anuluj</button></div>
     <div class="form-section">
       <div class="form-row">
         <div><div class="form-label">Przyjazd</div><input class="form-input" type="date" id="etl-arrival" value="${arrival}"></div>
@@ -291,8 +292,9 @@ function openEditTravelLocation(travelId, tlid) {
         Zapisz zmiany
       </button>
     </div></div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
 }
 
 async function saveEditTravelLocation(travelId, tlid) {
@@ -321,7 +323,7 @@ async function saveEditTravelLocation(travelId, tlid) {
     if (btn) { btn.disabled = false; btn.textContent = 'Zapisz zmiany'; }
     return;
   }
-  document.getElementById('edit-tl-overlay').remove();
+  closeModal(document.getElementById('edit-tl-overlay'));
   toast('Zapisano', 'success');
   const row = document.getElementById('tl-' + tlid);
   if (row) {
@@ -340,7 +342,7 @@ async function openNewLocationModal(travelId, travelStart, travelEnd) {
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'new-loc-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Nowe miejsce</span>
-      <button class="modal-save" onclick="document.getElementById('new-loc-overlay').remove()">Anuluj</button></div>
+      <button class="modal-save" onclick="closeModal(document.getElementById('new-loc-overlay'))">Anuluj</button></div>
     <div class="form-section">
       <div class="form-label">Nazwa miejsca *</div>
       <input class="form-input" id="nl-name" placeholder="np. Catania">
@@ -376,8 +378,9 @@ async function openNewLocationModal(travelId, travelStart, travelEnd) {
     </div></div>`;
   overlay._travelId = travelId || null; overlay._travelStart = travelStart || null;
   overlay._travelEnd = travelEnd || null; overlay._allLocs = allLocs;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
 }
 
 async function saveNewLocation() {
@@ -429,7 +432,7 @@ async function saveNewLocation() {
     if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
     const parentSel = document.getElementById('nl-parent');
     const parentName = parentId ? (parentSel.options[parentSel.selectedIndex]?.text || '').split(' (')[0] : null;
-    overlay.remove();
+    closeModal(overlay);
     toast('Miejsce dodane', 'success');
     if (travelId) openConfirmAddLocation(travelId, res.id, name, typeName, travelStart, travelEnd, parentId ? parseInt(parentId) : null, parentName);
     else showTab('locations');
@@ -445,7 +448,7 @@ async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'loc-picker-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Dodaj miejsce do podróży</span>
-      <button class="modal-save" onclick="document.getElementById('loc-picker-overlay').remove()">Anuluj</button></div>
+      <button class="modal-save" onclick="closeModal(document.getElementById('loc-picker-overlay'))">Anuluj</button></div>
     <div class="form-section">
       <div class="search-box" style="margin-bottom:10px">
         <input type="search" placeholder="Szukaj miejsca lub kraju..." oninput="filterLocPicker(this.value)"
@@ -460,8 +463,9 @@ async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
       </button>
     </div></div>`;
   overlay._allLocs = locs; overlay._travelId = travelId; overlay._travelStart = travelStart; overlay._travelEnd = travelEnd;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
 }
 
 function buildLocPickerList(locs, travelId, travelStart, travelEnd) {
@@ -495,7 +499,7 @@ function openConfirmAddLocation(travelId, locationId, locationName, locationType
   const overlay2 = document.createElement('div'); overlay2.className = 'modal-overlay'; overlay2.id = 'loc-confirm-overlay';
   overlay2.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">${locationIcon(locationType)} ${escapeHtml(locationName)}</span>
-      <button class="modal-save" onclick="document.getElementById('loc-confirm-overlay').remove()">Anuluj</button></div>
+      <button class="modal-save" onclick="closeModal(document.getElementById('loc-confirm-overlay'))">Anuluj</button></div>
     <div class="form-section">
       ${parentHint}
       <div class="form-row">
@@ -509,8 +513,9 @@ function openConfirmAddLocation(travelId, locationId, locationName, locationType
         Dodaj miejsce
       </button>
     </div></div>`;
-  overlay2.addEventListener('click', e => { if (e.target === overlay2) overlay2.remove(); });
+  overlay2.addEventListener('click', e => { if (e.target === overlay2) closeModal(overlay2); });
   document.body.appendChild(overlay2);
+  attachDragToDismiss(overlay2, '.modal', () => closeModal(overlay2));
 }
 
 async function saveLocationToTravel(travelId, locationId, locationName, locationType, parentId, parentName) {

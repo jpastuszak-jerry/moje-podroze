@@ -4,7 +4,7 @@ async function openPersonsModal() {
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'persons-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Osoby</span>
-      <button class="modal-save" onclick="document.getElementById('persons-overlay').remove()">Gotowe</button></div>
+      <button class="modal-save" onclick="closeModal(document.getElementById('persons-overlay'))">Gotowe</button></div>
     <div class="form-section">
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <input class="form-input" id="new-person-modal-name" placeholder="Imię i nazwisko" style="margin-bottom:0;flex:1">
@@ -17,8 +17,9 @@ async function openPersonsModal() {
       <div id="persons-list">${buildPersonsList(persons, relTypes)}</div>
     </div></div>`;
   overlay._relTypes = relTypes;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
 }
 
 async function addPersonFromModal() {

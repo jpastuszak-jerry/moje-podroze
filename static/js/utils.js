@@ -241,6 +241,51 @@ function confirmDuplicateLocation(existing, countryName) {
   });
 }
 
+/* ── Modal motion helpers ─────────────────────────────────── */
+function closeModal(overlay) {
+  if (!overlay || overlay.classList.contains('leaving')) return;
+  overlay.classList.add('leaving');
+  setTimeout(() => overlay.remove(), 220);
+}
+
+function attachDragToDismiss(overlay, sheetSelector, onDismiss) {
+  const handle = overlay.querySelector('.modal-handle, .wizard-handle');
+  const sheet = overlay.querySelector(sheetSelector);
+  if (!handle || !sheet) return;
+  let startY = 0, currentY = 0, dragging = false;
+  const threshold = 100;
+
+  handle.addEventListener('pointerdown', e => {
+    dragging = true;
+    startY = e.clientY;
+    currentY = 0;
+    sheet.classList.add('dragging');
+    sheet.classList.remove('spring-back');
+    handle.setPointerCapture(e.pointerId);
+  });
+  handle.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    currentY = Math.max(0, e.clientY - startY);
+    sheet.style.transform = `translateY(${currentY}px)`;
+    overlay.style.background = `rgba(0,0,0,${Math.max(0.15, 0.5 - currentY / 800)})`;
+  });
+  const finish = () => {
+    if (!dragging) return;
+    dragging = false;
+    sheet.classList.remove('dragging');
+    if (currentY > threshold) {
+      onDismiss();
+    } else {
+      sheet.classList.add('spring-back');
+      sheet.style.transform = '';
+      overlay.style.background = '';
+      setTimeout(() => sheet.classList.remove('spring-back'), 260);
+    }
+  };
+  handle.addEventListener('pointerup', finish);
+  handle.addEventListener('pointercancel', finish);
+}
+
 function showTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -250,4 +295,10 @@ function showTab(tab) {
   else if (tab === 'map') renderMap();
   else if (tab === 'stats') renderStats();
   else if (tab === 'timeline') renderTimeline();
+  const view = document.getElementById('view');
+  if (view) {
+    view.classList.remove('view-fade');
+    void view.offsetWidth;
+    view.classList.add('view-fade');
+  }
 }

@@ -36,15 +36,18 @@ function openWizard() {
 function closeWizard() {
   document.getElementById('wiz-loc-date-overlay')?.remove();
   document.getElementById('wiz-new-loc-overlay')?.remove();
-  document.getElementById('wizard-overlay')?.remove();
+  const ov = document.getElementById('wizard-overlay');
+  if (ov) closeModal(ov);
   wizardState = null;
 }
 
 function renderWizard() {
-  document.getElementById('wizard-overlay')?.remove();
+  const prev = document.getElementById('wizard-overlay');
+  const wasOpen = !!prev;
+  prev?.remove();
 
   const overlay = document.createElement('div');
-  overlay.className = 'wizard-overlay';
+  overlay.className = 'wizard-overlay' + (wasOpen ? ' no-anim' : '');
   overlay.id = 'wizard-overlay';
 
   const step = wizardState.step;
@@ -76,6 +79,7 @@ function renderWizard() {
     </div>`;
 
   document.body.appendChild(overlay);
+  if (!wasOpen) attachDragToDismiss(overlay, '.wizard-sheet', () => closeWizard());
   renderWizardStep();
 }
 
@@ -265,7 +269,7 @@ function wizardPickLocation(locId) {
     <div class="modal"><div class="modal-handle"></div>
       <div class="modal-header">
         <span class="modal-title">${locationIcon(loc.location_type)} ${escapeHtml(loc.name)}</span>
-        <button class="modal-save" onclick="document.getElementById('wiz-loc-date-overlay').remove()">Anuluj</button>
+        <button class="modal-save" onclick="closeModal(document.getElementById('wiz-loc-date-overlay'))">Anuluj</button>
       </div>
       <div class="form-section">
         ${alreadyIdx >= 0 ? `<div style="background:var(--orange-light);color:var(--orange);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px">To miejsce już jest na liście. Możesz je zaktualizować.</div>` : ''}
@@ -283,8 +287,9 @@ function wizardPickLocation(locId) {
         </button>
       </div>
     </div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
 }
 
 async function wizardConfirmLocation(locId, existingIdx) {
@@ -321,7 +326,7 @@ async function wizardConfirmLocation(locId, existingIdx) {
   if (existingIdx >= 0) wizardState.locations[existingIdx] = entry;
   else wizardState.locations.push(entry);
 
-  document.getElementById('wiz-loc-date-overlay').remove();
+  closeModal(document.getElementById('wiz-loc-date-overlay'));
 
   const added = document.getElementById('wiz-loc-added');
   if (added) {
@@ -372,7 +377,7 @@ async function wizardOpenNewLocation() {
     <div class="modal"><div class="modal-handle"></div>
       <div class="modal-header">
         <span class="modal-title">Nowe miejsce</span>
-        <button class="modal-save" onclick="document.getElementById('wiz-new-loc-overlay').remove()">Anuluj</button>
+        <button class="modal-save" onclick="closeModal(document.getElementById('wiz-new-loc-overlay'))">Anuluj</button>
       </div>
       <div class="form-section">
         <div class="form-label">Nazwa miejsca *</div>
@@ -407,8 +412,9 @@ async function wizardOpenNewLocation() {
         </button>
       </div>
     </div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
 }
 
 function wizardUpdateParentList() {

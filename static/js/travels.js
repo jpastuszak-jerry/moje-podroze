@@ -158,7 +158,7 @@ async function openAddParticipant(travelId) {
   overlay.className = 'modal-overlay'; overlay.id = 'participant-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Dodaj uczestnika</span>
-      <button class="modal-save" onclick="document.getElementById('participant-overlay').remove()">Gotowe</button></div>
+      <button class="modal-save" onclick="closeModal(document.getElementById('participant-overlay'))">Gotowe</button></div>
     <div class="form-section"><div class="form-label">Wybierz z listy</div>
       ${available.length ? available.map(p => `
         <div class="person-row" onclick="addParticipantToTravel(${travelId}, ${p.id}, '${p.name.replace(/'/g,"\\'")}', '${(p.relation_type||'').replace(/'/g,"\\'")}', this)">
@@ -176,8 +176,9 @@ async function openAddParticipant(travelId) {
       <button onclick="createAndAddPerson(${travelId})"
         style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">Dodaj nową osobę</button>
     </div></div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
 }
 
 async function addParticipantToTravel(travelId, personId, name, relType, rowEl) {
@@ -198,7 +199,7 @@ async function createAndAddPerson(travelId) {
   if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('new-person-reltype').value;
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
-  document.getElementById('participant-overlay')?.remove();
+  closeModal(document.getElementById('participant-overlay'));
   const chips = document.getElementById('participants-chips');
   if (chips) {
     chips.querySelectorAll('.empty-chips').forEach(el => el.remove());
@@ -248,8 +249,9 @@ function openTravelModal(t, isNew) {
       <div class="form-label">Notatki</div><textarea class="form-input form-textarea" id="f-notes">${t.notes || ''}</textarea>
       <div class="form-label">Wspomnienia</div><textarea class="form-input form-textarea" id="f-reflections">${t.reflections || ''}</textarea>
     </div></div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
 }
 
 async function saveTravel(id, isNew) {
@@ -266,7 +268,7 @@ async function saveTravel(id, isNew) {
   if (isNew) {
     const res = await apiPost('/api/travels', body);
     if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
-    document.querySelector('.modal-overlay').remove();
+    closeModal(document.querySelector('.modal-overlay'));
     toast('Podróż utworzona', 'success');
     showTab('travels');
     return;
@@ -279,7 +281,7 @@ async function saveTravel(id, isNew) {
   }
   if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
   toast('Zapisano', 'success');
-  document.querySelector('.modal-overlay').remove();
+  closeModal(document.querySelector('.modal-overlay'));
   openTravel(id);
 }
 
@@ -319,13 +321,14 @@ function askTravelDateConflict(conflicts) {
       const btn = e.target.closest('[data-choice]');
       if (btn) {
         const choice = btn.dataset.choice;
-        overlay.remove();
+        closeModal(overlay);
         resolve(choice === 'cancel' ? null : choice);
       } else if (e.target === overlay) {
-        overlay.remove();
+        closeModal(overlay);
         resolve(null);
       }
     });
     document.body.appendChild(overlay);
+    attachDragToDismiss(overlay, '.modal', () => { closeModal(overlay); resolve(null); });
   });
 }
