@@ -219,26 +219,32 @@ async function renderStats() {
 
   if (s.hall_of_fame) {
     const hof = s.hall_of_fame;
+    const HOF_GRADS = [
+      'linear-gradient(135deg,#1a6fdb,#0d47a1)',
+      'linear-gradient(135deg,#e11d48,#9f1239)',
+      'linear-gradient(135deg,#f97316,#c2410c)',
+      'linear-gradient(135deg,#7c3aed,#4c1d95)',
+      'linear-gradient(135deg,#0891b2,#164e63)',
+    ];
     const records = [
-      hof.longest     && { icon:'📅', title:'Najdłuższa',        sub: hof.longest.value+' dni',                                               id: hof.longest.id,      name: hof.longest.name },
-      hof.priciest    && { icon:'💰', title:'Najdroższa',         sub: Math.round(hof.priciest.value).toLocaleString('pl-PL')+' '+hof.priciest.currency, id: hof.priciest.id,     name: hof.priciest.name },
-      hof.best_rated  && { icon:'⭐', title:'Najwyżej oceniana',  sub: stars(hof.best_rated.value),                                            id: hof.best_rated.id,   name: hof.best_rated.name },
-      hof.most_places && { icon:'📍', title:'Najwięcej miejsc',   sub: hof.most_places.value+' miejsc',                                        id: hof.most_places.id,  name: hof.most_places.name },
-      hof.most_flights&& { icon:'🛫', title:'Najwięcej lotów',    sub: hof.most_flights.value+' lotów',                                        id: hof.most_flights.id, name: hof.most_flights.name },
+      hof.longest     && { icon:'📅', title:'Najdłuższa',        value: hof.longest.value+' dni',                                                     id: hof.longest.id,      name: hof.longest.name },
+      hof.priciest    && { icon:'💰', title:'Najdroższa',        value: Math.round(hof.priciest.value).toLocaleString('pl-PL')+' '+hof.priciest.currency, id: hof.priciest.id,     name: hof.priciest.name },
+      hof.best_rated  && { icon:'⭐', title:'Najwyżej oceniana', value: stars(hof.best_rated.value),                                                   id: hof.best_rated.id,   name: hof.best_rated.name },
+      hof.most_places && { icon:'📍', title:'Najwięcej miejsc',  value: hof.most_places.value+' miejsc',                                               id: hof.most_places.id,  name: hof.most_places.name },
+      hof.most_flights&& { icon:'🛫', title:'Najwięcej lotów',   value: hof.most_flights.value+' lotów',                                               id: hof.most_flights.id, name: hof.most_flights.name },
     ].filter(Boolean);
     if (records.length) {
-      html += '<div class="purpose-bar"><div class="section-title">🏆 Hall of Fame</div>';
-      records.forEach(r => {
-        html += `<div class="purpose-row" onclick="openTravel(${r.id})" style="cursor:pointer;align-items:center;gap:0">
-          <div style="font-size:20px;width:32px;text-align:center;flex-shrink:0">${r.icon}</div>
-          <div style="flex:1;min-width:0;padding:0 10px">
-            <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">${r.title}</div>
-            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div>
-          </div>
-          <div style="font-size:13px;font-weight:700;color:var(--blue);white-space:nowrap;flex-shrink:0">${r.sub}</div>
+      html += '<div class="hof-section"><div class="section-title hof-title-row">🏆 Hall of Fame</div>';
+      html += '<div class="hof-scroll">';
+      records.forEach((r, i) => {
+        html += `<div class="hof-card" onclick="openTravel(${r.id})" style="background:${HOF_GRADS[i % HOF_GRADS.length]}">
+          <div class="hof-icon">${r.icon}</div>
+          <div class="hof-cat">${escapeHtml(r.title)}</div>
+          <div class="hof-name">${escapeHtml(r.name)}</div>
+          <div class="hof-value">${r.value}</div>
         </div>`;
       });
-      html += '</div>';
+      html += '</div></div>';
     }
   }
   html += '<div class="stats-grid">';
