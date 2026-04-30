@@ -817,7 +817,7 @@ def _period_stats(year=None):
                 else date.fromisoformat(str(t['start_date']))
             e = t['end_date'] if isinstance(t['end_date'], date) \
                 else date.fromisoformat(str(t['end_date']))
-            total_days += (e - s).days
+            total_days += (e - s).days + 1
         except Exception:
             pass
         amount = float(t.get('amount') or 0)
@@ -851,7 +851,7 @@ def _period_stats(year=None):
 
     top_expensive = [dict(r) for r in query(f"""
         SELECT name, amount, currency, start_date, end_date,
-               (end_date - start_date) AS days
+               (end_date - start_date + 1) AS days
         FROM travels WHERE amount > 0 {and_main}
         ORDER BY amount DESC LIMIT 10
     """, params)]
@@ -874,7 +874,7 @@ def _period_stats(year=None):
         SELECT l.id, l.name AS location_name, c.name AS country,
                lt.name AS location_type,
                COUNT(DISTINCT tl.travel_id) AS visit_count,
-               SUM(tl.departure_date - tl.arrival_date) AS days_spent
+               SUM(tl.departure_date - tl.arrival_date + 1) AS days_spent
         FROM locations l
         JOIN countries c ON l.country_id = c.id
         JOIN location_types lt ON l.location_type_id = lt.id
@@ -892,14 +892,14 @@ def _period_stats(year=None):
         GROUP BY month ORDER BY count DESC
     """, params)]
 
-    avg_row = query(f"SELECT ROUND(AVG(end_date - start_date), 1) AS avg_days FROM travels {where_main}", params, one=True)
+    avg_row = query(f"SELECT ROUND(AVG(end_date - start_date + 1), 1) AS avg_days FROM travels {where_main}", params, one=True)
     avg_trip_days = float(avg_row['avg_days'] or 0)
 
     cost_per_day = [dict(r) for r in query(f"""
         SELECT name, amount, currency,
-               (end_date - start_date) AS days,
-               ROUND(amount / NULLIF((end_date - start_date), 0), 0) AS cost_per_day
-        FROM travels WHERE amount > 0 AND (end_date - start_date) > 0 {and_main}
+               (end_date - start_date + 1) AS days,
+               ROUND(amount / (end_date - start_date + 1), 0) AS cost_per_day
+        FROM travels WHERE amount > 0 {and_main}
         ORDER BY cost_per_day DESC LIMIT 5
     """, params)]
 
@@ -945,8 +945,8 @@ def _period_stats(year=None):
 def _current_trip():
     r = query("""
         SELECT id, name, start_date, end_date,
-               (CURRENT_DATE - start_date)::int AS days_in,
-               (end_date - start_date)::int AS days_total
+               (CURRENT_DATE - start_date + 1)::int AS days_in,
+               (end_date - start_date + 1)::int    AS days_total
         FROM travels
         WHERE start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE
         ORDER BY start_date DESC LIMIT 1
@@ -957,8 +957,8 @@ def _current_trip():
         'id': r['id'], 'name': r['name'],
         'start_date': str(r['start_date']),
         'end_date': str(r['end_date']),
-        'days_in':    int(r['days_in']) + 1,
-        'days_total': int(r['days_total']) + 1,
+        'days_in':    int(r['days_in']),
+        'days_total': int(r['days_total']),
     }
 
 
@@ -1032,7 +1032,7 @@ def get_stats():
         return dict(r) if r else None
 
     hof_longest = hof_row("""
-        SELECT id, name, (end_date - start_date) AS days
+        SELECT id, name, (end_date - start_date + 1) AS days
         FROM travels ORDER BY days DESC LIMIT 1
     """)
     hof_priciest = hof_row("""
