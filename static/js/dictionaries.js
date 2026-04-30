@@ -59,6 +59,16 @@ async function deleteDictItem(id) {
   document.getElementById('dict-row-'+id)?.remove();
 }
 
+function exportDatabase() {
+  const a = document.createElement('a');
+  a.href = API + '/api/export';
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('Pobieram backup bazy...', 'success');
+}
+
 async function addDictItem(apiPath) {
   const name = document.getElementById('dict-new-name').value.trim();
   if (!name) { toast('Podaj nazwę', 'error'); return; }

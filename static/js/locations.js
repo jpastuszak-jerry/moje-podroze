@@ -9,8 +9,9 @@ async function renderLocations(q = '') {
         </select>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button onclick="openDictionaryModal('/api/countries','Kraje')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🌍 Kraje</button>
-          <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy miejsc</button>
+          <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy</button>
           <button onclick="openPersonsModal()" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">👤 Osoby</button>
+          <button onclick="exportDatabase()" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">💾 Backup</button>
         </div></div>
       <div id="loc-list">${skeletonCards(4)}</div>
       <button class="fab" onclick="openNewLocationModal()">＋</button>`;

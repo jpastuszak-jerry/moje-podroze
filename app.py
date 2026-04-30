@@ -1074,6 +1074,27 @@ def get_stats():
     })
 
 
+@app.route('/api/export')
+def export_database():
+    """Pełny dump bazy do JSON — backup awaryjny niezależny od Neon snapshotów."""
+    tables = [
+        'countries', 'location_types', 'relation_types',
+        'persons', 'locations', 'travels',
+        'travel_locations', 'travel_participants',
+    ]
+    data = {t: [dict(r) for r in query(f'SELECT * FROM {t} ORDER BY id')] for t in tables}
+
+    response = jsonify({
+        'exported_at': datetime.datetime.utcnow().isoformat() + 'Z',
+        'version':     '1.0',
+        'tables':      data,
+    })
+    response.headers['Content-Disposition'] = (
+        f'attachment; filename=podroze-backup-{date.today().isoformat()}.json'
+    )
+    return response
+
+
 # =============================================================================
 # 7. HEALTHCHECK — dla UptimeRobot / monitoringu
 # =============================================================================
