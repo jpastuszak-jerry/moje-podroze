@@ -69,6 +69,63 @@ function svgDonut(data, { nameKey = 'name', valueKey = 'count' } = {}) {
   </div>`;
 }
 
+function svgHeatmap(data) {
+  if (!data || !data.length) return '';
+  const map = {};
+  data.forEach(d => { map[`${d.year}-${d.month}`] = d.days; });
+  const years = [...new Set(data.map(d => d.year))].sort();
+  const yMin = years[0], yMax = years[years.length - 1];
+  const allYears = [];
+  for (let y = yMax; y >= yMin; y--) allYears.push(y);
+  const maxDays = Math.max(...data.map(d => d.days), 1);
+
+  const cellW = 24, cellH = 22, gap = 4, padL = 36, padT = 18;
+  const W = padL + 12 * (cellW + gap) - gap + 4;
+  const H = padT + allYears.length * (cellH + gap) - gap + 4;
+
+  const monthInitials = ['S','L','M','K','M','C','L','S','W','P','L','G'];
+  const COLORS = [
+    'rgba(127,127,127,0.12)',
+    'rgba(26,111,219,0.28)',
+    'rgba(26,111,219,0.5)',
+    'rgba(26,111,219,0.74)',
+    '#1a6fdb',
+  ];
+
+  const headerLabels = monthInitials.map((mi, i) =>
+    `<text x="${padL + i * (cellW + gap) + cellW/2}" y="13" text-anchor="middle" font-size="10" fill="var(--text3)" font-weight="700">${mi}</text>`
+  ).join('');
+
+  const yearLabels = allYears.map((y, i) =>
+    `<text x="${padL - 8}" y="${padT + i * (cellH + gap) + cellH/2 + 4}" text-anchor="end" font-size="10" fill="var(--text2)" font-weight="600">${y}</text>`
+  ).join('');
+
+  const cells = allYears.map((y, ri) =>
+    Array.from({length: 12}, (_, i) => {
+      const mo = i + 1;
+      const days = map[`${y}-${mo}`] || 0;
+      let level = 0;
+      if (days > 0) {
+        const r = days / maxDays;
+        level = r < 0.25 ? 1 : r < 0.5 ? 2 : r < 0.75 ? 3 : 4;
+      }
+      const x = padL + i * (cellW + gap);
+      const yPos = padT + ri * (cellH + gap);
+      return `<rect x="${x}" y="${yPos}" width="${cellW}" height="${cellH}" rx="3" fill="${COLORS[level]}"><title>${y}-${String(mo).padStart(2,'0')}: ${days} dni</title></rect>`;
+    }).join('')
+  ).join('');
+
+  const legendY = H - 6;
+  const legendX = padL;
+  const legend = `<text x="${legendX}" y="${legendY}" font-size="9" fill="var(--text3)">mniej</text>` +
+    COLORS.map((c, i) => `<rect x="${legendX + 32 + i * 12}" y="${legendY - 8}" width="10" height="10" rx="2" fill="${c}"/>`).join('') +
+    `<text x="${legendX + 32 + COLORS.length * 12 + 4}" y="${legendY}" font-size="9" fill="var(--text3)">więcej</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H + 14}" class="chart-svg heatmap-svg" style="width:100%;height:auto">
+    ${headerLabels}${yearLabels}${cells}${legend}
+  </svg>`;
+}
+
 function svgGradientBars(data, { nameKey, valueKey, valueLabel = null, color = 'var(--blue)' }) {
   if (!data || !data.length) return '';
   const maxV = Math.max(...data.map(d => d[valueKey]), 1);
@@ -231,14 +288,13 @@ async function renderStats() {
         })
       + '</div>';
   }
-  if (s.by_year && s.by_year.length) {
-    html += '<div class="chart-card"><div class="section-title">📅 Wyjazdy wg roku</div>'
-      + svgSparkline(s.by_year, { valueKey: 'count', labelKey: 'year' })
+  if (!currentStatsYear && s.heatmap && s.heatmap.length) {
+    html += '<div class="chart-card heatmap-card"><div class="section-title">🗓 Kalendarz podróży</div>'
+      + svgHeatmap(s.heatmap)
       + '</div>';
-  }
-  if (s.by_month && s.by_month.length) {
+  } else if (currentStatsYear && s.by_month && s.by_month.length) {
     const maxM = Math.max(...s.by_month.map(m=>m.count));
-    html += '<div class="purpose-bar"><div class="section-title">🗓 Ulubiony miesiąc</div>';
+    html += '<div class="purpose-bar"><div class="section-title">🗓 Rozkład w roku</div>';
     s.by_month.forEach(m => { html += '<div class="purpose-row"><div class="purpose-name">'+months[m.month]+'</div>'+bar(m.count,maxM,'var(--orange)')+'<div class="purpose-count">'+m.count+'</div></div>'; });
     html += '</div>';
   }
