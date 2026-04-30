@@ -539,6 +539,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   .hero-val { font-size: 22px; }
 }
 
+/* ── Streak strip (DASH6) ───────────────────────────────── */
+.streak-strip {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin: 0 16px 12px;
+}
+.streak-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius);
+  color: #fff; cursor: default;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  transition: transform .1s;
+  min-width: 0;
+}
+.streak-active { background: linear-gradient(135deg, #059669, #065f46); cursor: pointer; }
+.streak-fire   { background: linear-gradient(135deg, #f97316, #c2410c); }
+.streak-card:active { transform: scale(0.98); }
+.streak-icon { font-size: 28px; flex-shrink: 0; }
+.streak-body { flex: 1; min-width: 0; }
+.streak-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; opacity: 0.85;
+}
+.streak-value {
+  font-size: 15px; font-weight: 700; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.streak-sub { font-size: 11px; opacity: 0.78; margin-top: 2px; }
+@media (max-width: 480px) {
+  .streak-strip { grid-template-columns: 1fr; }
+}
+
 /* ── YoY delta badges ─────────────────────────────────── */
 .yoy {
   display: inline-block; margin-top: 4px;

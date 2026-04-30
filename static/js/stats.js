@@ -133,6 +133,33 @@ async function renderStats() {
     </div>
     ${heroAmount ? `<div class="hero-amount">${heroAmount}</div>` : ''}
   </div>`;
+
+  if (!currentStatsYear && (s.current_trip || s.streak_months > 0)) {
+    html += '<div class="streak-strip">';
+    if (s.current_trip) {
+      const ct = s.current_trip;
+      html += `<div class="streak-card streak-active" onclick="openTravel(${ct.id})">
+        <div class="streak-icon">🧳</div>
+        <div class="streak-body">
+          <div class="streak-label">Aktualnie w trasie</div>
+          <div class="streak-value">${escapeHtml(ct.name)}</div>
+          <div class="streak-sub">dzień ${ct.days_in} z ${ct.days_total}</div>
+        </div>
+      </div>`;
+    }
+    if (s.streak_months > 0) {
+      html += `<div class="streak-card streak-fire">
+        <div class="streak-icon">🔥</div>
+        <div class="streak-body">
+          <div class="streak-label">Streak</div>
+          <div class="streak-value">${s.streak_months} ${s.streak_months === 1 ? 'miesiąc' : (s.streak_months < 5 ? 'miesiące' : 'miesięcy')} z rzędu</div>
+          <div class="streak-sub">co najmniej jedna podróż</div>
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
   if (s.hall_of_fame) {
     const hof = s.hall_of_fame;
     const records = [

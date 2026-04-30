@@ -942,6 +942,59 @@ def _period_stats(year=None):
     }
 
 
+def _current_trip():
+    r = query("""
+        SELECT id, name, start_date, end_date,
+               (CURRENT_DATE - start_date)::int AS days_in,
+               (end_date - start_date)::int AS days_total
+        FROM travels
+        WHERE start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE
+        ORDER BY start_date DESC LIMIT 1
+    """, one=True)
+    if not r:
+        return None
+    return {
+        'id': r['id'], 'name': r['name'],
+        'start_date': str(r['start_date']),
+        'end_date': str(r['end_date']),
+        'days_in':    int(r['days_in']) + 1,
+        'days_total': int(r['days_total']) + 1,
+    }
+
+
+def _streak_months():
+    rows = query("""
+        SELECT DISTINCT
+          EXTRACT(YEAR  FROM d)::int AS y,
+          EXTRACT(MONTH FROM d)::int AS m
+        FROM travels,
+             generate_series(start_date::timestamp, end_date::timestamp, interval '1 day') d
+    """)
+    months = {(r['y'], r['m']) for r in rows}
+    today = date.today()
+    y, m, streak = today.year, today.month, 0
+    while (y, m) in months:
+        streak += 1
+        m -= 1
+        if m == 0:
+            m = 12
+            y -= 1
+    return streak
+
+
+def _heatmap_data():
+    rows = query("""
+        SELECT EXTRACT(YEAR  FROM d)::int AS year,
+               EXTRACT(MONTH FROM d)::int AS month,
+               COUNT(*) AS days
+        FROM travels,
+             generate_series(start_date::timestamp, end_date::timestamp, interval '1 day') d
+        GROUP BY year, month
+        ORDER BY year, month
+    """)
+    return [{'year': r['year'], 'month': r['month'], 'days': int(r['days'])} for r in rows]
+
+
 @app.route('/api/stats')
 def get_stats():
     raw_year = request.args.get('year')
@@ -1015,6 +1068,9 @@ def get_stats():
         'hall_of_fame':  hall_of_fame,
         'year':          year,
         'prev_period':   prev_period,
+        'current_trip':  _current_trip(),
+        'streak_months': _streak_months(),
+        'heatmap':       _heatmap_data(),
     })
 
 
