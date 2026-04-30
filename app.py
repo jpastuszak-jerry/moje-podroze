@@ -1077,12 +1077,19 @@ def get_stats():
 @app.route('/api/export')
 def export_database():
     """Pełny dump bazy do JSON — backup awaryjny niezależny od Neon snapshotów."""
-    tables = [
-        'countries', 'location_types', 'relation_types',
-        'persons', 'locations', 'travels',
-        'travel_locations', 'travel_participants',
-    ]
-    data = {t: [dict(r) for r in query(f'SELECT * FROM {t} ORDER BY id')] for t in tables}
+    # travel_participants ma composite PK (travel_id, person_id), bez kolumny id
+    table_orders = {
+        'countries':           'id',
+        'location_types':      'id',
+        'relation_types':      'id',
+        'persons':             'id',
+        'locations':           'id',
+        'travels':             'id',
+        'travel_locations':    'id',
+        'travel_participants': 'travel_id, person_id',
+    }
+    data = {t: [dict(r) for r in query(f'SELECT * FROM {t} ORDER BY {ord_col}')]
+            for t, ord_col in table_orders.items()}
 
     response = jsonify({
         'exported_at': datetime.datetime.utcnow().isoformat() + 'Z',
