@@ -59,14 +59,32 @@ async function deleteDictItem(id) {
   document.getElementById('dict-row-'+id)?.remove();
 }
 
-function exportDatabase() {
-  const a = document.createElement('a');
-  a.href = API + '/api/export';
-  a.download = '';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+async function exportDatabase() {
   toast('Pobieram backup bazy...', 'success');
+  try {
+    const res = await fetch(API + '/api/export');
+    if (!res.ok) {
+      toast(`Błąd serwera: ${res.status}`, 'error');
+      return;
+    }
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      toast('Nieoczekiwana odpowiedź serwera (nie JSON)', 'error');
+      return;
+    }
+    const blob = await res.blob();
+    const today = new Date().toISOString().slice(0, 10);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `podroze-backup-${today}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast('Błąd sieci: ' + e.message, 'error');
+  }
 }
 
 async function addDictItem(apiPath) {
