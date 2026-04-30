@@ -79,11 +79,11 @@ function svgHeatmap(data) {
   for (let y = yMax; y >= yMin; y--) allYears.push(y);
   const maxDays = Math.max(...data.map(d => d.days), 1);
 
-  const cellW = 24, cellH = 22, gap = 4, padL = 36, padT = 18;
+  const cellW = 30, cellH = 22, gap = 4, padL = 38, padT = 22;
   const W = padL + 12 * (cellW + gap) - gap + 4;
   const H = padT + allYears.length * (cellH + gap) - gap + 4;
 
-  const monthInitials = ['S','L','M','K','M','C','L','S','W','P','L','G'];
+  const monthLabels = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'];
   const COLORS = [
     'rgba(127,127,127,0.12)',
     'rgba(26,111,219,0.28)',
@@ -92,8 +92,8 @@ function svgHeatmap(data) {
     '#1a6fdb',
   ];
 
-  const headerLabels = monthInitials.map((mi, i) =>
-    `<text x="${padL + i * (cellW + gap) + cellW/2}" y="13" text-anchor="middle" font-size="10" fill="var(--text3)" font-weight="700">${mi}</text>`
+  const headerLabels = monthLabels.map((mi, i) =>
+    `<text x="${padL + i * (cellW + gap) + cellW/2}" y="15" text-anchor="middle" font-size="10" fill="var(--text3)" font-weight="700">${mi}</text>`
   ).join('');
 
   const yearLabels = allYears.map((y, i) =>
@@ -115,13 +115,13 @@ function svgHeatmap(data) {
     }).join('')
   ).join('');
 
-  const legendY = H - 6;
+  const legendY = H + 18;
   const legendX = padL;
   const legend = `<text x="${legendX}" y="${legendY}" font-size="9" fill="var(--text3)">mniej</text>` +
     COLORS.map((c, i) => `<rect x="${legendX + 32 + i * 12}" y="${legendY - 8}" width="10" height="10" rx="2" fill="${c}"/>`).join('') +
     `<text x="${legendX + 32 + COLORS.length * 12 + 4}" y="${legendY}" font-size="9" fill="var(--text3)">więcej</text>`;
 
-  return `<svg viewBox="0 0 ${W} ${H + 14}" class="chart-svg heatmap-svg" style="width:100%;height:auto">
+  return `<svg viewBox="0 0 ${W} ${H + 28}" class="chart-svg heatmap-svg" style="width:100%;height:auto">
     ${headerLabels}${yearLabels}${cells}${legend}
   </svg>`;
 }
@@ -234,8 +234,9 @@ async function renderStats() {
       hof.most_flights&& { icon:'🛫', title:'Najwięcej lotów',   value: hof.most_flights.value+' lotów',                                               id: hof.most_flights.id, name: hof.most_flights.name },
     ].filter(Boolean);
     if (records.length) {
-      html += '<div class="hof-section"><div class="section-title hof-title-row">🏆 Hall of Fame</div>';
-      html += '<div class="hof-scroll">';
+      html += '<div class="hof-section">';
+      html += `<div class="section-title hof-title-row">🏆 Hall of Fame <span class="hof-hint">${records.length} kategorie · przesuń →</span></div>`;
+      html += '<div class="hof-scroll-wrap"><div class="hof-scroll">';
       records.forEach((r, i) => {
         html += `<div class="hof-card" onclick="openTravel(${r.id})" style="background:${HOF_GRADS[i % HOF_GRADS.length]}">
           <div class="hof-icon">${r.icon}</div>
@@ -244,7 +245,11 @@ async function renderStats() {
           <div class="hof-value">${r.value}</div>
         </div>`;
       });
-      html += '</div></div>';
+      html += '</div><div class="hof-fade"></div></div>';
+      html += '<div class="hof-dots">' +
+        records.map((_, i) => `<div class="hof-dot${i === 0 ? ' active' : ''}"></div>`).join('') +
+        '</div>';
+      html += '</div>';
     }
   }
   html += '<div class="stats-grid">';
@@ -316,4 +321,15 @@ async function renderStats() {
   }
   html += '<div style="height:16px"></div>';
   view.innerHTML = html;
+
+  const hofScroll = view.querySelector('.hof-scroll');
+  const hofDots = view.querySelectorAll('.hof-dot');
+  if (hofScroll && hofDots.length) {
+    const firstCard = hofScroll.querySelector('.hof-card');
+    const cardStep = firstCard ? firstCard.offsetWidth + 10 : 180;
+    hofScroll.addEventListener('scroll', () => {
+      const idx = Math.min(hofDots.length - 1, Math.round(hofScroll.scrollLeft / cardStep));
+      hofDots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    }, { passive: true });
+  }
 }
