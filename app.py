@@ -870,17 +870,23 @@ def _period_stats(year=None):
         GROUP BY c.name ORDER BY visits DESC LIMIT 5
     """, params)]
 
+    # days_spent: COUNT(DISTINCT day) zamiast SUM długości pobytów —
+    # gdy parent (np. Lizbona) i jej dzieci (Alfama, Belém) mają nakładające
+    # się daty, każdy dzień kalendarzowy liczy się tylko raz.
     top_places = [dict(r) for r in query(f"""
         SELECT l.id, l.name AS location_name, c.name AS country,
                lt.name AS location_type,
                COUNT(DISTINCT tl.travel_id) AS visit_count,
-               SUM(tl.departure_date - tl.arrival_date + 1) AS days_spent
+               COUNT(DISTINCT d::date) AS days_spent
         FROM locations l
         JOIN countries c ON l.country_id = c.id
         JOIN location_types lt ON l.location_type_id = lt.id
         JOIN locations child ON (child.id = l.id OR child.parent_location_id = l.id)
         JOIN travel_locations tl ON tl.location_id = child.id
         JOIN travels t ON t.id = tl.travel_id
+        CROSS JOIN LATERAL generate_series(tl.arrival_date::timestamp,
+                                            tl.departure_date::timestamp,
+                                            interval '1 day') d
         WHERE LOWER(lt.name) IN ('miasto', 'wyspa') {join_t_year}
         GROUP BY l.id, l.name, c.name, lt.name
         ORDER BY visit_count DESC, days_spent DESC LIMIT 5
