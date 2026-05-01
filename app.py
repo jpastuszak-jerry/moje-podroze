@@ -14,6 +14,7 @@ Struktura pliku:
 """
 
 import os
+import re
 import datetime
 from datetime import date
 from typing import Optional, Literal
@@ -148,8 +149,25 @@ class TravelCreate(BaseModel):
             raise ValueError('end_date nie może być wcześniejsza niż start_date')
         return v
 
+    @field_validator('amount')
+    @classmethod
+    def _amount_non_negative(cls, v):
+        if v < 0:
+            raise ValueError('amount nie może być ujemna')
+        return v
 
-class LocationCreate(BaseModel):
+    @field_validator('currency', mode='before')
+    @classmethod
+    def _currency_clean(cls, v):
+        if v is None or str(v).strip() == '':
+            return 'PLN'
+        s = str(v).strip().upper()
+        if not re.fullmatch(r'[A-Z]{3}', s):
+            raise ValueError('currency musi być 3-literowym kodem ISO (np. PLN, EUR, USD)')
+        return s
+
+
+class LocationBase(BaseModel):
     name: str
     country_id: int
     location_type_id: int
@@ -158,7 +176,6 @@ class LocationCreate(BaseModel):
     notes: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    force_duplicate: bool = False
 
     @field_validator('name', mode='before')
     @classmethod
@@ -172,6 +189,24 @@ class LocationCreate(BaseModel):
     @classmethod
     def _strip_or_none(cls, v):
         return _blank_to_none(v)
+
+    @field_validator('latitude')
+    @classmethod
+    def _lat_bounds(cls, v):
+        if v is not None and not (-90 <= v <= 90):
+            raise ValueError('latitude musi być w zakresie -90 do 90')
+        return v
+
+    @field_validator('longitude')
+    @classmethod
+    def _lon_bounds(cls, v):
+        if v is not None and not (-180 <= v <= 180):
+            raise ValueError('longitude musi być w zakresie -180 do 180')
+        return v
+
+
+class LocationCreate(LocationBase):
+    force_duplicate: bool = False
 
 
 class TravelUpdate(TravelCreate):
@@ -179,28 +214,9 @@ class TravelUpdate(TravelCreate):
     on_conflict: Optional[Literal['clip', 'ignore']] = None
 
 
-class LocationUpdate(BaseModel):
-    name: str
-    country_id: int
-    location_type_id: int
-    parent_location_id: Optional[int] = None
-    address: Optional[str] = None
-    notes: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-
-    @field_validator('name', mode='before')
-    @classmethod
-    def _name_required(cls, v):
-        s = (str(v).strip() if v is not None else '')
-        if not s:
-            raise ValueError('Podaj nazwę miejsca')
-        return s
-
-    @field_validator('address', 'notes', mode='before')
-    @classmethod
-    def _strip_or_none(cls, v):
-        return _blank_to_none(v)
+class LocationUpdate(LocationBase):
+    """Aktualizacja lokacji = wszystkie pola LocationBase (bez force_duplicate)."""
+    pass
 
 
 class _TravelLocationFields(BaseModel):
