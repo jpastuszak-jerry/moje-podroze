@@ -173,6 +173,19 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+/* iOS Safari sometimes reports stale input.value when the user taps a button
+ * while autocaps/spellcheck/autocomplete is still finalising. Forcing blur and
+ * yielding to the next frame reliably gets the committed value. */
+async function readInputValue(id) {
+  const el = document.getElementById(id);
+  if (!el) return '';
+  if (document.activeElement === el) {
+    el.blur();
+    await new Promise(r => requestAnimationFrame(r));
+  }
+  return (el.value || '').trim();
+}
+
 /* ── Toasts / snackbars ──────────────────────────────────── */
 const TOAST_ICONS = { success: '✓', error: '!', info: 'i' };
 

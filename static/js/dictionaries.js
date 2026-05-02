@@ -22,11 +22,11 @@ function buildDictList(items) {
   if (!items.length) return `<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Brak pozycji</div>`;
   return items.map(item => `
     <div class="dict-row" id="dict-row-${item.id}" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span class="dict-label" id="dict-label-${item.id}" style="flex:1;font-size:14px">${item.name}</span>
-      <input class="form-input dict-edit-input hidden" id="dict-edit-${item.id}" value="${item.name}" style="flex:1;margin-bottom:0;padding:6px 10px">
-      <button onclick="startEditDict(${item.id})" id="dict-edit-btn-${item.id}" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--text2)">✏️</button>
-      <button onclick="saveEditDict(${item.id})" id="dict-save-btn-${item.id}" class="hidden" style="background:var(--blue);color:white;border:none;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer">Zapisz</button>
-      <button onclick="deleteDictItem(${item.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px">✕</button>
+      <span class="dict-label" id="dict-label-${item.id}" style="flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.name)}</span>
+      <input class="form-input dict-edit-input hidden" id="dict-edit-${item.id}" value="${escapeHtml(item.name)}" style="flex:1;min-width:0;margin-bottom:0;padding:6px 10px">
+      <button onclick="startEditDict(${item.id})" id="dict-edit-btn-${item.id}" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;cursor:pointer;color:var(--text2);flex-shrink:0">✏️</button>
+      <button onclick="saveEditDict(${item.id})" id="dict-save-btn-${item.id}" class="hidden" style="background:var(--blue);color:white;border:none;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;flex-shrink:0">Zapisz</button>
+      <button onclick="deleteDictItem(${item.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0">✕</button>
     </div>`).join('');
 }
 
@@ -40,7 +40,7 @@ function startEditDict(id) {
 
 async function saveEditDict(id) {
   const overlay = document.getElementById('dict-overlay'); const apiPath = overlay._apiPath;
-  const newName = document.getElementById('dict-edit-'+id).value.trim();
+  const newName = await readInputValue('dict-edit-'+id);
   if (!newName) { toast('Podaj nazwę', 'error'); return; }
   const res = await apiPut(`${apiPath}/${id}`, { name: newName });
   if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
@@ -53,10 +53,17 @@ async function saveEditDict(id) {
 
 async function deleteDictItem(id) {
   const overlay = document.getElementById('dict-overlay'); const apiPath = overlay._apiPath;
-  const r = await fetch(`${API}${apiPath}/${id}`, { method: 'DELETE' });
-  const data = await r.json();
-  if (data.error) { toast(data.error, 'error'); return; }
+  const label = document.getElementById('dict-label-'+id)?.textContent || 'tę pozycję';
+  const ok = await askConfirm({
+    title: 'Usunąć pozycję?',
+    message: `"${label}" zostanie usunięta. Tej operacji nie można cofnąć.`,
+    confirmText: 'Usuń', danger: true,
+  });
+  if (!ok) return;
+  const data = await apiDelete(`${apiPath}/${id}`);
+  if (data && data.error) { toast(data.error, 'error'); return; }
   document.getElementById('dict-row-'+id)?.remove();
+  toast('Usunięto', 'success');
 }
 
 async function exportDatabase() {
@@ -88,7 +95,7 @@ async function exportDatabase() {
 }
 
 async function addDictItem(apiPath) {
-  const name = document.getElementById('dict-new-name').value.trim();
+  const name = await readInputValue('dict-new-name');
   if (!name) { toast('Podaj nazwę', 'error'); return; }
   const res = await apiPost(apiPath, { name });
   if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }

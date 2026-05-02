@@ -50,6 +50,7 @@
 #offline-banner.visible { transform: translateY(0); }
 #offline-banner-sync { font-weight: 400; opacity: .9; }
 body.offline-mode #app { padding-top: calc(env(safe-area-inset-top, 0px) + 32px); }
+body.offline-mode .toast-container { top: calc(env(safe-area-inset-top, 0px) + 48px); }
 
 body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
   background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }

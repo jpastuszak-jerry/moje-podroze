@@ -23,7 +23,7 @@ async function openPersonsModal() {
 }
 
 async function addPersonFromModal() {
-  const name = document.getElementById('new-person-modal-name').value.trim();
+  const name = await readInputValue('new-person-modal-name');
   if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('new-person-modal-rel').value;
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
@@ -43,14 +43,14 @@ function buildPersonsList(persons, relTypes) {
     const relOpts = `<option value="">– brak –</option>` +
       relTypes.map(r => `<option value="${r.id}"${r.id === p.relation_type_id ? ' selected' : ''}>${escapeHtml(r.name)}</option>`).join('');
     return `<div id="person-row-${p.id}" style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <div id="person-view-${p.id}" style="display:flex;align-items:center;gap:10px">
-        <div class="avatar">${initials(p.name)}</div>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:500">${escapeHtml(p.name)}</div>
-          ${p.relation_type ? `<div style="font-size:12px;color:var(--text2)">${escapeHtml(p.relation_type)}</div>` : ''}
+      <div id="person-view-${p.id}" style="display:flex;align-items:center;gap:8px">
+        <div class="avatar" style="flex-shrink:0">${initials(p.name)}</div>
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.name)}</div>
+          ${p.relation_type ? `<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.relation_type)}</div>` : ''}
         </div>
-        <button onclick="startEditPerson(${p.id})" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--text2)">✏️</button>
-        <button onclick="deletePersonFromModal(${p.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px">✕</button>
+        <button onclick="startEditPerson(${p.id})" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;cursor:pointer;color:var(--text2);flex-shrink:0">✏️</button>
+        <button onclick="deletePersonFromModal(${p.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0">✕</button>
       </div>
       <div id="person-edit-${p.id}" class="hidden">
         <input class="form-input" id="person-name-${p.id}" value="${(p.name||'').replace(/"/g,'&quot;')}" style="margin-top:8px">
@@ -75,7 +75,7 @@ function cancelEditPerson(id) {
 }
 
 async function saveEditPerson(id) {
-  const name = document.getElementById('person-name-'+id).value.trim();
+  const name = await readInputValue('person-name-'+id);
   if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('person-rel-'+id).value;
   const res = await apiPut('/api/persons/'+id, { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
