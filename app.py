@@ -15,10 +15,11 @@ Struktura pliku:
 
 import os
 import re
+import json
 import datetime
 from datetime import date
 from typing import Optional, Literal
-from flask import Flask, jsonify, request, send_from_directory, g
+from flask import Flask, jsonify, request, send_from_directory, g, Response
 from flask.json.provider import DefaultJSONProvider
 from pydantic import BaseModel, ValidationError, field_validator
 import psycopg2
@@ -320,9 +321,45 @@ def index():
     return send_from_directory('templates', 'index.html')
 
 
+_SW_CDN_SHELL = [
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+    'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
+    'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
+    'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+]
+
+
 @app.route('/sw.js')
 def service_worker():
-    response = send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    """Serwuje sw.js z auto-wstrzyknięciem wersji (mtime) i listy APP_SHELL
+    (skan static/). Dzięki temu po deployu cache się sam unieważnia, a nowe
+    pliki w static/ są automatycznie precache'owane bez ręcznych zmian."""
+    static_dir = os.path.join(app.root_path, 'static')
+    shell = ['/']
+    latest_mtime = 0.0
+    skip_names = {'sw.js'}
+
+    for root, _, files in os.walk(static_dir):
+        for f in files:
+            if f in skip_names:
+                continue
+            full = os.path.join(root, f)
+            rel = os.path.relpath(full, app.root_path).replace(os.sep, '/')
+            shell.append('/' + rel)
+            mt = os.path.getmtime(full)
+            if mt > latest_mtime:
+                latest_mtime = mt
+
+    shell.extend(_SW_CDN_SHELL)
+    version = f'v{int(latest_mtime)}'
+
+    with open(os.path.join(static_dir, 'sw.js'), 'r', encoding='utf-8') as fh:
+        content = fh.read()
+    content = content.replace("'__VERSION__'", json.dumps(version))
+    content = content.replace("'__APP_SHELL__'", json.dumps(shell))
+
+    response = Response(content, mimetype='application/javascript')
     response.headers['Cache-Control'] = 'no-cache'
     return response
 

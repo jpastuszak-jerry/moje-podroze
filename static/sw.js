@@ -2,34 +2,17 @@
  * - Cache statyki (CSS/JS/ikon + Leaflet z CDN) → stale-while-revalidate
  * - /api/* → network-first (świeże dane gdy net, cache fallback offline)
  * - Nawigacja (HTML) → network-first z fallback do cache /
- * Bumpuj CACHE_VERSION po każdej zmianie app shell.
+ *
+ * UWAGA: ten plik jest serwowany przez endpoint /sw.js w app.py, który
+ * wstrzykuje __VERSION__ (mtime statyk) i __APP_SHELL__ (auto-skan static/).
+ * Nie edytuj wartości placeholderów ręcznie — wersja i lista plików
+ * generują się same przy każdym deployu.
  */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = '__VERSION__';
 const STATIC_CACHE = `travel-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `travel-runtime-${CACHE_VERSION}`;
 
-const APP_SHELL = [
-  '/',
-  '/static/css/app.css',
-  '/static/js/utils.js',
-  '/static/js/map.js',
-  '/static/js/travels.js',
-  '/static/js/locations.js',
-  '/static/js/dictionaries.js',
-  '/static/js/persons.js',
-  '/static/js/stats.js',
-  '/static/js/timeline.js',
-  '/static/js/wizard.js',
-  '/static/manifest.json',
-  '/static/icons/icon-192.png',
-  '/static/icons/icon-512.png',
-  '/static/icons/apple-touch-icon.png',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-  'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
-  'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
-  'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
-];
+const APP_SHELL = '__APP_SHELL__';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
