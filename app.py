@@ -320,6 +320,13 @@ def index():
     return send_from_directory('templates', 'index.html')
 
 
+@app.route('/sw.js')
+def service_worker():
+    response = send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
+
 # =============================================================================
 # 2. TRAVELS — CRUD podróży
 # =============================================================================
