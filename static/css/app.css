@@ -36,6 +36,21 @@
   --red-light: #fdecea;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+/* Offline banner — sticky top, pokazywany gdy navigator.onLine=false */
+#offline-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1500;
+  background: var(--orange); color: #fff;
+  font-size: 13px; font-weight: 600; text-align: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 14px 8px;
+  transform: translateY(-110%);
+  transition: transform .22s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#offline-banner.visible { transform: translateY(0); }
+#offline-banner-sync { font-weight: 400; opacity: .9; }
+body.offline-mode #app { padding-top: calc(env(safe-area-inset-top, 0px) + 32px); }
+
 body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
   background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
 #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }

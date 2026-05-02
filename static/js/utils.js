@@ -14,6 +14,13 @@ const MAP_TYPE_COLORS = {
 async function api(path) {
   try {
     const r = await fetch(API + path);
+    if (r.status === 503) {
+      const body = await r.json().catch(() => ({}));
+      if (body && body.error === 'offline') {
+        toast('Brak połączenia — danych nie ma w cache', 'error');
+      }
+      return Array.isArray(body) ? body : [];
+    }
     return await r.json();
   } catch {
     console.error('Błąd sieci:', path);
@@ -21,32 +28,57 @@ async function api(path) {
   }
 }
 
+async function _mutationFetch(path, opts) {
+  let r;
+  try {
+    r = await fetch(API + path, opts);
+  } catch {
+    toast('Brak połączenia — zapis niemożliwy', 'error');
+    return { error: 'offline' };
+  }
+  if (r.status === 503) {
+    const body = await r.json().catch(() => ({ error: 'offline' }));
+    if (body && body.error === 'offline') {
+      toast('Brak połączenia — zapis niemożliwy', 'error');
+    }
+    return body;
+  }
+  if (!r.ok) {
+    try { return await r.json(); }
+    catch { return { error: 'Błąd serwera: ' + r.status }; }
+  }
+  return r.json();
+}
+
 async function apiPost(path, body) {
-  const r = await fetch(API + path, {
+  return _mutationFetch(path, {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify(body)
   });
-  if (!r.ok) {
-    try { return await r.json(); }
-    catch { return { error: 'Błąd serwera: ' + r.status }; }
-  }
-  return r.json();
 }
 
 async function apiPut(path, body) {
-  const r = await fetch(API + path, {
+  return _mutationFetch(path, {
     method: 'PUT', headers: {'Content-Type':'application/json'},
     body: JSON.stringify(body)
   });
-  if (!r.ok) {
-    try { return await r.json(); }
-    catch { return { error: 'Błąd serwera: ' + r.status }; }
-  }
-  return r.json();
 }
 
 async function apiDelete(path) {
-  const r = await fetch(API + path, { method: 'DELETE' });
+  let r;
+  try {
+    r = await fetch(API + path, { method: 'DELETE' });
+  } catch {
+    toast('Brak połączenia — usunięcie niemożliwe', 'error');
+    return { error: 'offline' };
+  }
+  if (r.status === 503) {
+    const body = await r.json().catch(() => ({ error: 'offline' }));
+    if (body && body.error === 'offline') {
+      toast('Brak połączenia — usunięcie niemożliwe', 'error');
+    }
+    return body;
+  }
   if (!r.ok) {
     try { return await r.json(); } catch { return { error: 'Błąd serwera: ' + r.status }; }
   }
@@ -355,6 +387,78 @@ function attachDragToDismiss(overlay, sheetSelector, onDismiss) {
   handle.addEventListener('pointerup', finish);
   handle.addEventListener('pointercancel', finish);
 }
+
+/* ── Offline banner (Etap 3 PWA) ──────────────────────────── */
+const _IDB_NAME = 'travel-mirror';
+const _IDB_VERSION = 1;
+const _IDB_STORE = 'responses';
+
+function _idbOpenPage() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(_IDB_NAME, _IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(_IDB_STORE)) {
+        db.createObjectStore(_IDB_STORE, { keyPath: 'url' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function _idbLastSync() {
+  try {
+    const db = await _idbOpenPage();
+    return await new Promise((resolve) => {
+      const tx = db.transaction(_IDB_STORE, 'readonly');
+      const store = tx.objectStore(_IDB_STORE);
+      let latest = 0;
+      store.openCursor().onsuccess = (e) => {
+        const c = e.target.result;
+        if (c) {
+          if (c.value.savedAt > latest) latest = c.value.savedAt;
+          c.continue();
+        } else {
+          db.close();
+          resolve(latest);
+        }
+      };
+      tx.onerror = () => { db.close(); resolve(0); };
+    });
+  } catch {
+    return 0;
+  }
+}
+
+function _fmtSyncTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const opts = sameDay
+    ? { hour: '2-digit', minute: '2-digit' }
+    : { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+  return d.toLocaleString('pl-PL', opts);
+}
+
+async function updateOfflineBanner() {
+  const banner = document.getElementById('offline-banner');
+  if (!banner) return;
+  if (navigator.onLine) {
+    banner.classList.remove('visible');
+    document.body.classList.remove('offline-mode');
+    return;
+  }
+  banner.classList.add('visible');
+  document.body.classList.add('offline-mode');
+  const sync = document.getElementById('offline-banner-sync');
+  const ts = await _idbLastSync();
+  if (sync) sync.textContent = ts ? ` — dane z ${_fmtSyncTime(ts)}` : '';
+}
+
+window.addEventListener('online', updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
 
 function showTab(tab) {
   currentTab = tab;
