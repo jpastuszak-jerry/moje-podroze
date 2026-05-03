@@ -273,6 +273,7 @@ async function renderStats() {
   html += '<div class="stat-card sc-blue"><div class="stat-icon">📆</div><div class="stat-value">'+(s.avg_trip_days||'–')+'</div><div class="stat-label">Śr. długość (dni)</div></div>';
   if (s.progress) html += '<div class="stat-card sc-purple"><div class="stat-icon">✍️</div><div class="stat-value">'+s.progress.described+'/'+s.progress.total+'</div><div class="stat-label">Opisanych</div></div>';
   html += '</div>';
+  html += '<div class="stats-2col">';
   if (s.purposes && s.purposes.length) {
     html += '<div class="chart-card"><div class="section-title">🎯 Cel podróży</div>'
       + svgDonut(s.purposes.map(p => ({ name: p.name || 'Inne', count: p.count })))
@@ -291,13 +292,20 @@ async function renderStats() {
   }
   if (s.top_places && s.top_places.length) {
     html += '<div class="chart-card"><div class="section-title">📍 Top miast i wysp</div>'
-      + svgGradientBars(s.top_places, {
+      + svgGradientBars(s.top_places.slice(0, 5), {
           nameKey: 'location_name',
           valueKey: 'visit_count',
           color: 'var(--purple)',
           valueLabel: p => `${p.visit_count}× · ${p.days_spent || 0}d`,
         })
       + '</div>';
+    const mapped = s.top_places.filter(p => p.lat != null && p.lon != null);
+    if (mapped.length) {
+      html += `<div class="chart-card stats-map-card">
+        <div class="section-title">🗺 Top miejsca na mapie</div>
+        <div id="stats-mini-map" class="stats-mini-map"></div>
+      </div>`;
+    }
   }
   if (!currentStatsYear && s.heatmap && s.heatmap.length) {
     html += '<div class="chart-card heatmap-card"><div class="section-title">🗓 Kalendarz podróży</div>'
@@ -319,6 +327,7 @@ async function renderStats() {
     s.cost_per_day.forEach(t => { html += '<div class="purpose-row"><div class="purpose-name" style="font-size:11px">'+escapeHtml(t.name)+'</div><div style="min-width:110px;text-align:right;font-size:11px;font-weight:500;color:var(--text)">'+parseFloat(t.cost_per_day).toLocaleString('pl-PL')+' '+escapeHtml(t.currency || 'PLN')+'/d</div></div>'; });
     html += '</div>';
   }
+  html += '</div>';
   html += '<div style="height:16px"></div>';
   view.innerHTML = html;
 
@@ -332,4 +341,26 @@ async function renderStats() {
       hofDots.forEach((d, i) => d.classList.toggle('active', i === idx));
     }, { passive: true });
   }
+
+  initStatsMiniMap(s.top_places || []);
+}
+
+function initStatsMiniMap(places) {
+  const el = document.getElementById('stats-mini-map');
+  if (!el || typeof L === 'undefined') return;
+  const mapped = places.filter(p => p.lat != null && p.lon != null);
+  if (!mapped.length) return;
+
+  const m = L.map(el, { zoomControl: false, attributionControl: false, scrollWheelZoom: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(m);
+
+  const markers = mapped.map(p => {
+    const icon = createColorIcon(p.location_type);
+    const marker = L.marker([p.lat, p.lon], { icon });
+    marker.bindTooltip(`${p.location_name} · ${p.visit_count}×`, { direction: 'top', offset: [0, -32] });
+    marker.on('click', () => showTravelOnMap([p.id]));
+    return marker;
+  });
+  const group = L.featureGroup(markers).addTo(m);
+  m.fitBounds(group.getBounds(), { padding: [24, 24], maxZoom: 6 });
 }

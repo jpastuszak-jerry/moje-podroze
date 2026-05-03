@@ -13,6 +13,7 @@ Struktura pliku:
   6. STATYSTYKI   — agregaty i raporty
 """
 
+import hashlib
 import os
 import re
 import json
@@ -90,6 +91,21 @@ def db_error_response(e, default_msg='Błąd bazy danych'):
     if 'unique' in msg or 'duplicate' in msg:
         return jsonify({'error': 'Pozycja o tej nazwie już istnieje'}), 409
     return jsonify({'error': f'{default_msg}: {str(e)[:200]}'}), 500
+
+
+def etag_json(payload):
+    """Zwraca jsonify(payload) z nagłówkiem ETag, lub 304 gdy klient ma świeżą wersję.
+    Strong ETag z md5 nad serializacją; Service Worker przesyła If-None-Match
+    z poprzednio zapisanego ETagu (zob. sw.js networkFirstApi)."""
+    raw = json.dumps(payload, sort_keys=True, default=str).encode('utf-8')
+    etag = '"' + hashlib.md5(raw).hexdigest() + '"'
+    if request.headers.get('If-None-Match', '') == etag:
+        resp = Response(status=304)
+    else:
+        resp = jsonify(payload)
+    resp.headers['ETag'] = etag
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 def validation_error_response(e: ValidationError):
@@ -281,7 +297,7 @@ def register_dictionary_endpoints(table_name, url_path):
     @app.route(f'/api/{url_path}', endpoint=f'get_{url_path}')
     def list_items():
         rows = query(f"SELECT id, name FROM {table_name} ORDER BY name")
-        return jsonify([dict(r) for r in rows])
+        return etag_json([dict(r) for r in rows])
 
     @app.route(f'/api/{url_path}', methods=['POST'], endpoint=f'create_{url_path}')
     def create_item():
@@ -532,7 +548,7 @@ def get_locations():
                      (f'%{q}%', f'%{q}%'))
     else:
         rows = query(base_sql + "ORDER BY c.name, l.name")
-    return jsonify([dict(r) for r in rows])
+    return etag_json([dict(r) for r in rows])
 
 
 @app.route('/api/locations/<int:lid>')
@@ -674,7 +690,7 @@ def get_map_locations():
                  l.address, l.notes, c.name, lt.name
         ORDER BY c.name, l.name
     """)
-    return jsonify([dict(r) for r in rows])
+    return etag_json([dict(r) for r in rows])
 
 
 # =============================================================================
@@ -794,7 +810,7 @@ def get_persons():
         LEFT JOIN relation_types rt ON p.relation_type_id = rt.id
         ORDER BY p.name
     """)
-    return jsonify([dict(r) for r in rows])
+    return etag_json([dict(r) for r in rows])
 
 
 @app.route('/api/persons', methods=['POST'])
@@ -933,9 +949,11 @@ def _period_stats(year=None):
     # days_spent: COUNT(DISTINCT day) zamiast SUM długości pobytów —
     # gdy parent (np. Lizbona) i jej dzieci (Alfama, Belém) mają nakładające
     # się daty, każdy dzień kalendarzowy liczy się tylko raz.
+    # latitude/longitude z parent location (l) — używane przez mini-mapę DASH7.
     top_places = [dict(r) for r in query(f"""
         SELECT l.id, l.name AS location_name, c.name AS country,
                lt.name AS location_type,
+               l.latitude AS lat, l.longitude AS lon,
                COUNT(DISTINCT tl.travel_id) AS visit_count,
                COUNT(DISTINCT d::date) AS days_spent
         FROM locations l
@@ -948,9 +966,12 @@ def _period_stats(year=None):
                                             tl.departure_date::timestamp,
                                             interval '1 day') d
         WHERE LOWER(lt.name) IN ('miasto', 'wyspa') {join_t_year}
-        GROUP BY l.id, l.name, c.name, lt.name
-        ORDER BY visit_count DESC, days_spent DESC LIMIT 5
+        GROUP BY l.id, l.name, c.name, lt.name, l.latitude, l.longitude
+        ORDER BY visit_count DESC, days_spent DESC LIMIT 10
     """, params)]
+    for p in top_places:
+        if p.get('lat') is not None: p['lat'] = float(p['lat'])
+        if p.get('lon') is not None: p['lon'] = float(p['lon'])
 
     by_month = [dict(r) for r in query(f"""
         SELECT EXTRACT(MONTH FROM start_date)::int AS month, COUNT(*) AS count
@@ -1127,7 +1148,7 @@ def get_stats():
         'most_flights': {'id': hof_most_flights['id'], 'name': hof_most_flights['name'], 'value': int(hof_most_flights['number_of_flights'])} if hof_most_flights else None,
     }
 
-    return jsonify({
+    return etag_json({
         **period,
         'locations':     locations_count,
         'by_year':       by_year,

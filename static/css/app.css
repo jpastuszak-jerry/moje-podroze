@@ -711,6 +711,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .heatmap-card { max-width: none; }
 .heatmap-svg { max-width: 540px; margin: 0 auto; }
 
+/* ── DASH7: mini Leaflet map w dashboardzie ──────────────── */
+.stats-map-card { max-width: none; }
+.stats-mini-map {
+  width: 100%; height: 240px; border-radius: 12px;
+  overflow: hidden; background: var(--bg);
+}
+.stats-mini-map .leaflet-container { background: var(--bg); }
+
+/* ── DASH8: 2-column layout na desktopie ─────────────────── */
+.stats-2col { display: contents; }
+@media (min-width: 900px) {
+  .stats-grid { grid-template-columns: repeat(4, 1fr); max-width: 1100px; margin-left: auto; margin-right: auto; }
+  .hero-card, .streak-strip, .hof-section { max-width: 1100px; margin-left: auto; margin-right: auto; }
+  .hero-card, .streak-strip { margin-top: 12px; margin-bottom: 12px; }
+  .stats-2col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin: 0 auto 12px; padding: 0 16px;
+    max-width: 1100px; align-items: start;
+  }
+  .stats-2col > .chart-card,
+  .stats-2col > .purpose-bar {
+    margin: 0; max-width: none; width: 100%; box-sizing: border-box;
+  }
+  .stats-2col > .heatmap-card,
+  .stats-2col > .stats-map-card { grid-column: 1 / -1; }
+}
+
 .donut-wrap {
   display: flex; gap: 16px; align-items: center;
 }

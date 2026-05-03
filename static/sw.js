@@ -41,11 +41,11 @@ function idbOpen() {
   });
 }
 
-async function idbPut(url, body) {
+async function idbPut(url, body, etag) {
   const db = await idbOpen();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).put({ url, body, savedAt: Date.now() });
+    tx.objectStore(IDB_STORE).put({ url, body, etag: etag || null, savedAt: Date.now() });
     tx.oncomplete = () => { db.close(); resolve(); };
     tx.onerror = () => { db.close(); reject(tx.error); };
   });
@@ -161,13 +161,44 @@ async function networkFirstApi(request) {
   const key = url.pathname + url.search;
   const cache = await caches.open(RUNTIME_CACHE);
 
+  // Pobierz zapamiętaną wersję — jeśli ma ETag, dodajemy If-None-Match.
+  let stored = null;
+  try { stored = await idbGet(key); } catch (e) { /* brak IDB = brak ETagu */ }
+
+  let reqToFetch = request;
+  if (stored && stored.etag) {
+    const headers = new Headers(request.headers);
+    headers.set('If-None-Match', stored.etag);
+    reqToFetch = new Request(request.url, {
+      method: request.method,
+      headers,
+      credentials: request.credentials,
+      cache: 'no-store',
+    });
+  }
+
   try {
-    const response = await fetch(request);
+    const response = await fetch(reqToFetch);
+
+    // 304 Not Modified — serwer potwierdził że nasz cache jest aktualny.
+    if (response.status === 304 && stored) {
+      // Odśwież savedAt (dane są wciąż świeże), zachowaj ten sam ETag.
+      try { await idbPut(key, stored.body, stored.etag); } catch (e) {}
+      return new Response(JSON.stringify(stored.body), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Source': 'idb-304',
+        },
+      });
+    }
+
     if (response && response.ok) {
       cache.put(request, response.clone());
+      const newEtag = response.headers.get('ETag');
       // Mirror do IDB — body jako parsed JSON. Klon bo body strumienia jest jednorazowe.
       response.clone().json().then((body) => {
-        idbPut(key, body).catch((err) => console.warn('[SW] IDB put fail:', key, err));
+        idbPut(key, body, newEtag).catch((err) => console.warn('[SW] IDB put fail:', key, err));
       }).catch(() => { /* nie-JSON, pomiń mirror */ });
     }
     return response;

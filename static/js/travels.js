@@ -61,6 +61,7 @@ async function openTravel(id) {
   const view = document.getElementById('view');
   view.innerHTML = skeletonCards(3);
   const t = await api('/api/travels/' + id);
+  window._currentTravel = t;
   view.innerHTML = `
     <div class="detail-header-gradient" style="background:${purposeGradient(t.purpose)}">
       <button class="back-btn" onclick="showTab('travels')">‹ Podróże</button>
@@ -131,7 +132,7 @@ async function openTravel(id) {
       <button class="delete-btn" onclick="confirmDelete(${t.id})">🗑 Usuń podróż</button>
       <div style="height:12px"></div>
     </div>
-    <button class="fab" onclick="openEditTravel(${JSON.stringify(t).replace(/"/g,'&quot;')})">✎</button>`;
+    <button class="fab" onclick="openEditTravel()">✎</button>`;
 }
 
 async function confirmDelete(id) {
@@ -217,7 +218,11 @@ async function createAndAddPerson(travelId) {
 }
 
 function openAddTravel() { openWizard(); }
-function openEditTravel(t) { openTravelModal(t, false); }
+function openEditTravel() {
+  const t = window._currentTravel;
+  if (!t) { toast('Brak danych podróży', 'error'); return; }
+  openTravelModal(t, false);
+}
 
 function openTravelModal(t, isNew) {
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
