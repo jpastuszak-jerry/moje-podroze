@@ -970,8 +970,10 @@ def _period_stats(year=None):
         ORDER BY visit_count DESC, days_spent DESC LIMIT 10
     """, params)]
     for p in top_places:
-        if p.get('lat') is not None: p['lat'] = float(p['lat'])
-        if p.get('lon') is not None: p['lon'] = float(p['lon'])
+        if p.get('lat') is not None:
+            p['lat'] = float(p['lat'])
+        if p.get('lon') is not None:
+            p['lon'] = float(p['lon'])
 
     by_month = [dict(r) for r in query(f"""
         SELECT EXTRACT(MONTH FROM start_date)::int AS month, COUNT(*) AS count
