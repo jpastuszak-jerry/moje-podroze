@@ -7,11 +7,12 @@ async function renderLocations(q = '') {
         <select id="loc-type-filter" onchange="applyLocTypeFilter()" style="width:100%;margin-top:8px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;cursor:pointer">
           <option value="">Wszystkie typy</option>
         </select>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button onclick="openDictionaryModal('/api/countries','Kraje')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🌍 Kraje</button>
-          <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy</button>
-          <button onclick="openPersonsModal()" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">👤 Osoby</button>
-          <button onclick="exportDatabase()" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">💾 Backup</button>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button onclick="openDictionaryModal('/api/countries','Kraje')" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🌍 Kraje</button>
+          <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy</button>
+          <button onclick="openPersonsModal()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">👤 Osoby</button>
+          <button onclick="exportDatabase()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">💾 Backup</button>
+          <button onclick="openTrashModal()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🗑 Kosz</button>
         </div></div>
       <div id="loc-list">${skeletonCards(4)}</div>
       <button class="fab" onclick="openNewLocationModal()">＋</button>`;
@@ -112,13 +113,13 @@ async function openLocation(id) {
 async function confirmDeleteLocation(id) {
   const ok = await askConfirm({
     title: 'Usunąć miejsce?',
-    message: 'Tej operacji nie można cofnąć.',
-    confirmText: 'Usuń', danger: true,
+    message: 'Trafi do Kosza — możesz przywrócić.',
+    confirmText: 'Do Kosza', danger: true,
   });
   if (!ok) return;
   const res = await apiDelete('/api/locations/' + id);
   if (res.error) { toast(res.error, 'error'); return; }
-  toast('Miejsce usunięte', 'success');
+  toast('Miejsce w koszu', 'success');
   showTab('locations');
 }
 
@@ -273,9 +274,11 @@ async function removeLocationFromTravel(travelId, tlid) {
   const ok = await askConfirm({ title: 'Usunąć miejsce z podróży?', confirmText: 'Usuń', danger: true });
   if (!ok) return;
   await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
-  const row = document.getElementById('tl-' + tlid); if (row) row.remove();
-  const list = document.getElementById('locations-list');
-  if (list && !list.querySelector('.loc-row')) list.innerHTML = `<div class="empty-locs" style="color:var(--text3);font-size:13px;padding:4px 0">Brak miejsc</div>`;
+  const row = document.getElementById('tl-' + tlid);
+  removeWithSlide(row, () => {
+    const list = document.getElementById('locations-list');
+    if (list && !list.querySelector('.loc-row')) list.innerHTML = `<div class="empty-locs" style="color:var(--text3);font-size:13px;padding:4px 0">Brak miejsc</div>`;
+  });
 }
 
 function openEditTravelLocation(travelId, tlid) {
@@ -553,4 +556,94 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
       </div>`;
     list.appendChild(row);
   }
+}
+
+/* ── Kosz (soft delete) ───────────────────────────────────── */
+async function openTrashModal() {
+  document.getElementById('trash-overlay')?.remove();
+  const data = await api('/api/trash');
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'trash-overlay';
+  overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">🗑 Kosz</span>
+      <button class="modal-save" onclick="closeModal(document.getElementById('trash-overlay'))">Gotowe</button></div>
+    <div class="form-section" id="trash-body"></div></div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
+  document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  renderTrashBody(data);
+}
+
+function renderTrashBody(data) {
+  const body = document.getElementById('trash-body');
+  if (!body) return;
+  const travels = data.travels || [];
+  const locations = data.locations || [];
+  if (!travels.length && !locations.length) {
+    body.innerHTML = `<div style="text-align:center;color:var(--text3);padding:24px 8px;font-size:14px">Kosz jest pusty</div>`;
+    return;
+  }
+  const travelHtml = travels.length ? `
+    <div class="form-label" style="margin-top:0">Podróże (${travels.length})</div>
+    ${travels.map(t => `
+      <div class="loc-row" id="trash-t-${t.id}">
+        <div class="loc-icon">✈️</div>
+        <div style="flex:1">
+          <div class="loc-name">${escapeHtml(t.name || '(bez nazwy)')}</div>
+          <div class="loc-sub">${fmtDate(t.start_date)} – ${fmtDate(t.end_date)}</div>
+          <div class="loc-sub" style="color:var(--text3);font-size:11px">usunięto ${fmtDate(t.deleted_at)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button onclick="restoreFromTrash('travel', ${t.id})" style="background:var(--green);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">Przywróć</button>
+          <button onclick="hardDeleteFromTrash('travel', ${t.id})" style="background:var(--red);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">Usuń trwale</button>
+        </div>
+      </div>`).join('')}
+  ` : '';
+  const locHtml = locations.length ? `
+    <div class="form-label" style="margin-top:${travels.length ? '14px' : '0'}">Miejsca (${locations.length})</div>
+    ${locations.map(l => `
+      <div class="loc-row" id="trash-l-${l.id}">
+        <div class="loc-icon">${locationIcon(l.location_type)}</div>
+        <div style="flex:1">
+          <div class="loc-name">${escapeHtml(l.name)}</div>
+          <div class="loc-sub">${escapeHtml(l.location_type)} · ${escapeHtml(l.country_name)}</div>
+          <div class="loc-sub" style="color:var(--text3);font-size:11px">usunięto ${fmtDate(l.deleted_at)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button onclick="restoreFromTrash('location', ${l.id})" style="background:var(--green);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">Przywróć</button>
+          <button onclick="hardDeleteFromTrash('location', ${l.id})" style="background:var(--red);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">Usuń trwale</button>
+        </div>
+      </div>`).join('')}
+  ` : '';
+  body.innerHTML = travelHtml + locHtml;
+}
+
+async function restoreFromTrash(kind, id) {
+  const path = kind === 'travel' ? `/api/travels/${id}/restore` : `/api/locations/${id}/restore`;
+  const res = await apiPost(path, {});
+  if (res.error) { toast(res.error, 'error'); return; }
+  const row = document.getElementById(`trash-${kind === 'travel' ? 't' : 'l'}-${id}`);
+  removeWithSlide(row, async () => {
+    toast('Przywrócono', 'success');
+    const data = await api('/api/trash');
+    renderTrashBody(data);
+  });
+}
+
+async function hardDeleteFromTrash(kind, id) {
+  const ok = await askConfirm({
+    title: 'Usunąć trwale?',
+    message: 'Tej operacji NIE można cofnąć.',
+    confirmText: 'Usuń trwale', danger: true,
+  });
+  if (!ok) return;
+  const path = (kind === 'travel' ? `/api/travels/${id}` : `/api/locations/${id}`) + '?hard=1';
+  const res = await apiDelete(path);
+  if (res.error) { toast(res.error, 'error'); return; }
+  const row = document.getElementById(`trash-${kind === 'travel' ? 't' : 'l'}-${id}`);
+  removeWithSlide(row, async () => {
+    toast('Usunięto trwale', 'success');
+    const data = await api('/api/trash');
+    renderTrashBody(data);
+  });
 }

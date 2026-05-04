@@ -138,22 +138,23 @@ async function openTravel(id) {
 async function confirmDelete(id) {
   const ok = await askConfirm({
     title: 'Usunąć podróż?',
-    message: 'Tej operacji nie można cofnąć.',
-    confirmText: 'Usuń', danger: true,
+    message: 'Trafi do Kosza — możesz przywrócić.',
+    confirmText: 'Do Kosza', danger: true,
   });
   if (!ok) return;
   await apiDelete('/api/travels/' + id);
-  toast('Podróż usunięta', 'success');
+  toast('Podróż w koszu', 'success');
   showTab('travels');
 }
 
 async function removeParticipantFromTravel(travelId, personId) {
   await apiDelete(`/api/travels/${travelId}/participants/${personId}`);
   const chip = document.getElementById('chip-' + personId);
-  if (chip) chip.remove();
-  const chips = document.getElementById('participants-chips');
-  if (chips && !chips.querySelector('.person-chip'))
-    chips.innerHTML = `<div class="empty-chips" style="color:var(--text3);font-size:13px">Brak uczestników</div>`;
+  removeWithSlide(chip, () => {
+    const chips = document.getElementById('participants-chips');
+    if (chips && !chips.querySelector('.person-chip'))
+      chips.innerHTML = `<div class="empty-chips" style="color:var(--text3);font-size:13px">Brak uczestników</div>`;
+  });
 }
 
 async function openAddParticipant(travelId) {

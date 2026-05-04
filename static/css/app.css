@@ -852,3 +852,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 @keyframes sheet-up   { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes sheet-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
 .wiz-picker-plus { color: var(--blue); font-size: 22px; font-weight: 300; }
+
+/* ── Card list slide-in / slide-out ───────────────────────── */
+@keyframes card-slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes card-slide-out {
+  from { opacity: 1; transform: translateX(0); max-height: 200px; margin-bottom: 8px; padding: var(--card-pad, 0); }
+  to   { opacity: 0; transform: translateX(-24px); max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+}
+.card-list > .card,
+.card-list > .loc-row,
+.card-list > .country-header {
+  animation: card-slide-in .26s cubic-bezier(.22,.61,.36,1) both;
+}
+.card-list > *:nth-child(1) { animation-delay: 0ms; }
+.card-list > *:nth-child(2) { animation-delay: 35ms; }
+.card-list > *:nth-child(3) { animation-delay: 70ms; }
+.card-list > *:nth-child(4) { animation-delay: 105ms; }
+.card-list > *:nth-child(5) { animation-delay: 140ms; }
+.card-list > *:nth-child(6) { animation-delay: 175ms; }
+.card-list > *:nth-child(n+7) { animation-delay: 210ms; }
+.card-leaving {
+  animation: card-slide-out .24s cubic-bezier(.4,0,.2,1) forwards !important;
+  pointer-events: none;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-list > * { animation: none !important; }
+}

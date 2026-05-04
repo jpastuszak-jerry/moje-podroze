@@ -24,6 +24,7 @@ async function api(path) {
     return await r.json();
   } catch {
     console.error('Błąd sieci:', path);
+    if (navigator.onLine) toast('Błąd sieci — spróbuj ponownie', 'error');
     return [];
   }
 }
@@ -354,6 +355,18 @@ function emptyState({ icon = '✨', title = 'Brak danych', message = '', ctaLabe
     ${message ? `<div class="empty-state-msg">${escapeHtml(message)}</div>` : ''}
     ${ctaLabel ? `<button class="empty-state-cta" onclick="${ctaOnclick}">${escapeHtml(ctaLabel)}</button>` : ''}
   </div>`;
+}
+
+/* ── Card list slide-out helper ───────────────────────────── */
+function removeWithSlide(el, after) {
+  if (!el) { if (after) after(); return; }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.remove();
+    if (after) after();
+    return;
+  }
+  el.classList.add('card-leaving');
+  setTimeout(() => { el.remove(); if (after) after(); }, 240);
 }
 
 /* ── Modal motion helpers ─────────────────────────────────── */
