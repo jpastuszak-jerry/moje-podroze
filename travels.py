@@ -28,13 +28,14 @@ def get_travels():
                 OR EXISTS (
                   SELECT 1 FROM travel_locations tl
                   JOIN locations l ON tl.location_id = l.id
+                  JOIN countries c ON l.country_id = c.id
                   WHERE tl.travel_id = travels.id
                     AND l.deleted_at IS NULL
-                    AND l.name ILIKE %s
+                    AND (l.name ILIKE %s OR c.name ILIKE %s)
                 )
               )
             ORDER BY start_date DESC
-        """, (f'%{q}%',) * 5)
+        """, (f'%{q}%',) * 6)
     else:
         rows = query("SELECT * FROM travels WHERE deleted_at IS NULL ORDER BY start_date DESC")
     return jsonify([dict(r) for r in rows])

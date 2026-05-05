@@ -4,7 +4,7 @@ async function renderTravels(q) {
   if (!document.getElementById('travel-list')) {
     view.innerHTML =
       '<div class="page-header"><div class="page-title">Moje Podróże</div>' +
-      '<div class="search-box"><input type="search" placeholder="Szukaj podróży..." id="travel-search" oninput="onTravelSearch(this.value)"></div></div>' +
+      '<div class="search-box"><input type="search" placeholder="Szukaj podróży..." id="travel-search" value="' + escapeHtml(currentSearch || '') + '" oninput="onTravelSearch(this.value)"></div></div>' +
       '<div class="sort-bar" id="year-bar"></div>' +
       '<div class="sort-bar" id="sort-bar"></div>' +
       '<div id="travel-list">' + skeletonCards(4) + '</div>' +
