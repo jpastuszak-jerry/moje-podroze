@@ -3,6 +3,7 @@ let currentTab = 'travels';
 let searchTimeout;
 let currentSort = 'date_desc';
 let currentSearch = '';
+let currentTravelYear = null;
 
 let allLocationsCache = [];
 

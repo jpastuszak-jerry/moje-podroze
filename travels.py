@@ -23,9 +23,18 @@ def get_travels():
         rows = query("""
             SELECT * FROM travels
             WHERE deleted_at IS NULL
-              AND (name ILIKE %s OR purpose ILIKE %s OR notes ILIKE %s OR reflections ILIKE %s)
+              AND (
+                name ILIKE %s OR purpose ILIKE %s OR notes ILIKE %s OR reflections ILIKE %s
+                OR EXISTS (
+                  SELECT 1 FROM travel_locations tl
+                  JOIN locations l ON tl.location_id = l.id
+                  WHERE tl.travel_id = travels.id
+                    AND l.deleted_at IS NULL
+                    AND l.name ILIKE %s
+                )
+              )
             ORDER BY start_date DESC
-        """, (f'%{q}%',) * 4)
+        """, (f'%{q}%',) * 5)
     else:
         rows = query("SELECT * FROM travels WHERE deleted_at IS NULL ORDER BY start_date DESC")
     return jsonify([dict(r) for r in rows])

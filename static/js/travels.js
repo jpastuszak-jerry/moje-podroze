@@ -1,10 +1,11 @@
-async function renderTravels(q = '') {
+async function renderTravels(q) {
   if (q !== undefined) currentSearch = q;
   const view = document.getElementById('view');
   if (!document.getElementById('travel-list')) {
     view.innerHTML =
       '<div class="page-header"><div class="page-title">Moje Podróże</div>' +
       '<div class="search-box"><input type="search" placeholder="Szukaj podróży..." id="travel-search" oninput="onTravelSearch(this.value)"></div></div>' +
+      '<div class="sort-bar" id="year-bar"></div>' +
       '<div class="sort-bar" id="sort-bar"></div>' +
       '<div id="travel-list">' + skeletonCards(4) + '</div>' +
       '<button class="fab" onclick="openWizard()">＋</button>';
@@ -21,9 +22,24 @@ async function renderTravels(q = '') {
   const list = document.getElementById('travel-list');
   list.innerHTML = skeletonCards(4);
   let travels = await api('/api/travels' + (currentSearch ? '?q='+encodeURIComponent(currentSearch) : ''));
+  const yearBar = document.getElementById('year-bar');
+  if (yearBar) {
+    const years = [...new Set(travels.map(t => t.start_date && String(t.start_date).slice(0,4)).filter(Boolean))]
+      .sort((a,b) => b.localeCompare(a));
+    if (currentTravelYear && !years.includes(String(currentTravelYear))) currentTravelYear = null;
+    yearBar.innerHTML = years.length
+      ? '<button class="sort-btn' + (!currentTravelYear ? ' active' : '') + '" onclick="setTravelYear(null)">Wszystkie</button>'
+        + years.map(y => '<button class="sort-btn' + (String(currentTravelYear) === y ? ' active' : '') + '" onclick="setTravelYear(' + y + ')">' + y + '</button>').join('')
+      : '';
+  }
+  if (currentTravelYear) {
+    travels = travels.filter(t => t.start_date && String(t.start_date).startsWith(String(currentTravelYear)));
+  }
   if (!travels.length) {
-    list.innerHTML = currentSearch
-      ? emptyState({ icon: '🔍', title: 'Brak wyników', message: `Żadna podróż nie pasuje do "${currentSearch}".` })
+    list.innerHTML = (currentSearch || currentTravelYear)
+      ? emptyState({ icon: '🔍', title: 'Brak wyników', message: currentSearch
+          ? `Żadna podróż nie pasuje do "${currentSearch}".`
+          : `Brak podróży w ${currentTravelYear}.` })
       : emptyState({ icon: '✈️', title: 'Brak podróży', message: 'Dodaj pierwszą podróż, żeby zacząć kolekcjonować wspomnienia.', ctaLabel: '＋ Nowa podróż', ctaOnclick: 'openWizard()' });
     return;
   }
@@ -55,12 +71,18 @@ function sortTravels(travels, sort) {
 }
 
 function setSort(sort) { currentSort = sort; renderTravels(); }
+function setTravelYear(y) { currentTravelYear = y; renderTravels(); }
 function onTravelSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderTravels(val), 400); }
 
 async function openTravel(id) {
   const view = document.getElementById('view');
   view.innerHTML = skeletonCards(3);
   const t = await api('/api/travels/' + id);
+  if (!t || !t.id) {
+    if (t && t.error) toast('Nie znaleziono podróży', 'error');
+    showTab('travels');
+    return;
+  }
   window._currentTravel = t;
   view.innerHTML = `
     <div class="detail-header-gradient" style="background:${purposeGradient(t.purpose)}">
