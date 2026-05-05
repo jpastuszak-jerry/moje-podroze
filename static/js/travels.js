@@ -10,6 +10,10 @@ async function renderTravels(q) {
       '<div id="travel-list">' + skeletonCards(4) + '</div>' +
       '<button class="fab" onclick="openWizard()">＋</button>';
   }
+  const searchInput = document.getElementById('travel-search');
+  if (searchInput && searchInput.value !== (currentSearch || '')) {
+    searchInput.value = currentSearch || '';
+  }
   const sortBar = document.getElementById('sort-bar');
   if (sortBar) {
     const sorts = [
