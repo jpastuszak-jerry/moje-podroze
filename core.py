@@ -95,18 +95,37 @@ def ensure_schema():
     try:
         conn = psycopg2.connect(DATABASE_URL)
         conn.autocommit = True
+        from psycopg2.extensions import quote_ident
         with conn.cursor() as cur:
             cur.execute("ALTER TABLE travels   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP")
             cur.execute("ALTER TABLE locations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP")
-            # rating: INTEGER → NUMERIC(2,1) dla półgwiazdek (idempotentne)
+            # rating: INTEGER → NUMERIC(2,1) dla półgwiazdek (idempotentne).
+            # Trzeba ominąć widoki zależne (np. ręcznie utworzone w bazie travel_summary):
+            # zapamiętujemy ich definicje, dropujemy, robimy ALTER, recreate.
             cur.execute("""
                 SELECT data_type FROM information_schema.columns
                 WHERE table_name = 'travels' AND column_name = 'rating'
             """)
             row = cur.fetchone()
             if row and row[0] == 'integer':
+                cur.execute("""
+                    SELECT DISTINCT cl.relname::text, pg_get_viewdef(cl.oid, true) AS definition
+                    FROM pg_depend d
+                    JOIN pg_rewrite r ON d.objid = r.oid
+                    JOIN pg_class cl ON r.ev_class = cl.oid
+                    JOIN pg_attribute a ON d.refobjid = a.attrelid AND d.refobjsubid = a.attnum
+                    JOIN pg_class tc ON a.attrelid = tc.oid
+                    WHERE tc.relname = 'travels' AND a.attname = 'rating' AND cl.relkind = 'v'
+                """)
+                dependent_views = cur.fetchall()
+                for vname, _ in dependent_views:
+                    cur.execute(f"DROP VIEW IF EXISTS {quote_ident(vname, cur)}")
+                    print(f'[schema] dropped dependent view: {vname}')
                 cur.execute("ALTER TABLE travels ALTER COLUMN rating TYPE NUMERIC(2,1) USING rating::numeric")
                 print('[schema] rating: INTEGER -> NUMERIC(2,1) — migracja wykonana')
+                for vname, vdef in dependent_views:
+                    cur.execute(f"CREATE VIEW {quote_ident(vname, cur)} AS {vdef}")
+                    print(f'[schema] recreated view: {vname}')
             else:
                 print(f'[schema] rating: typ={row[0] if row else "?"} — migracja niepotrzebna')
         conn.close()
