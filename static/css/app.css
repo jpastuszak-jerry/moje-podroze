@@ -100,8 +100,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   line-height: 1;
 }
 .half-star::before {
-  content: '☆';
+  content: '★';
   color: inherit;
+  opacity: 0.3;
 }
 .half-star::after {
   content: '★';
