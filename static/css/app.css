@@ -96,10 +96,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .badge-orange { background: var(--orange-light); color: var(--orange); }
 .half-star {
   display: inline-block;
-  background: linear-gradient(90deg, currentColor 50%, rgba(127,127,127,0.32) 50%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  position: relative;
+  line-height: 1;
+}
+.half-star::before {
+  content: '☆';
+  color: inherit;
+}
+.half-star::after {
+  content: '★';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50%;
+  overflow: hidden;
+  color: inherit;
 }
 .badge-purple { background: var(--purple-light); color: var(--purple); }
 .detail-header { background: var(--card); padding: 52px 16px 16px;

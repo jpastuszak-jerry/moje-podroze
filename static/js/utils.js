@@ -4,7 +4,6 @@ let searchTimeout;
 let currentSort = 'date_desc';
 let currentSearch = '';
 let currentTravelYear = null;
-let currentTravelRating = null;
 
 let allLocationsCache = [];
 
@@ -170,7 +169,7 @@ function stars(r) {
   const full = Math.floor(n);
   const half = (n - full) >= 0.5 ? 1 : 0;
   const empty = Math.max(0, 5 - full - half);
-  return '★'.repeat(full) + (half ? '<span class="half-star">★</span>' : '') + '☆'.repeat(empty);
+  return '★'.repeat(full) + (half ? '<span class="half-star" aria-hidden="true"></span>' : '') + '☆'.repeat(empty);
 }
 
 function initials(name) {

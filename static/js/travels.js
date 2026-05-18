@@ -6,7 +6,6 @@ async function renderTravels(q) {
       '<div class="page-header"><div class="page-title">Moje Podróże</div>' +
       '<div class="search-box"><input type="search" placeholder="Szukaj podróży..." id="travel-search" value="' + escapeHtml(currentSearch || '') + '" oninput="onTravelSearch(this.value)"></div></div>' +
       '<div class="sort-bar" id="year-bar"></div>' +
-      '<div class="sort-bar" id="rating-bar"></div>' +
       '<div class="sort-bar" id="sort-bar"></div>' +
       '<div id="travel-list">' + skeletonCards(4) + '</div>' +
       '<button class="fab" onclick="openWizard()">＋</button>';
@@ -20,6 +19,7 @@ async function renderTravels(q) {
     const sorts = [
       {key:'date_desc', label:'📅 Najnowsze'},{key:'date_asc', label:'📅 Najstarsze'},
       {key:'cost_desc', label:'💰 Najdroższe'},{key:'cost_asc', label:'💰 Najtańsze'},
+      {key:'rating_desc', label:'⭐ Najwyżej'},{key:'rating_asc', label:'⭐ Najniżej'},
       {key:'name_asc', label:'🔤 Nazwa'},{key:'todo', label:'✍️ Do uzupełnienia'},
     ];
     sortBar.innerHTML = sorts.map(s => '<button class="sort-btn' + (currentSort === s.key ? ' active' : '') + '" onclick="setSort(\'' + s.key + '\')">' + s.label + '</button>').join('');
@@ -40,35 +40,11 @@ async function renderTravels(q) {
   if (currentTravelYear) {
     travels = travels.filter(t => t.start_date && String(t.start_date).startsWith(String(currentTravelYear)));
   }
-  const ratingBar = document.getElementById('rating-bar');
-  if (ratingBar) {
-    const opts = [
-      {key: null, label: 'Wszystkie'},
-      {key: 5, label: '5★'},
-      {key: 4.5, label: '≥4.5'},
-      {key: 4, label: '≥4'},
-      {key: 3, label: '≥3'},
-      {key: 'none', label: 'Bez oceny'},
-    ];
-    ratingBar.innerHTML = opts.map(o =>
-      '<button class="sort-btn' + (currentTravelRating === o.key ? ' active' : '') +
-      '" onclick="setTravelRating(' + (o.key === null ? 'null' : (typeof o.key === 'string' ? "'"+o.key+"'" : o.key)) + ')">' +
-      o.label + '</button>'
-    ).join('');
-  }
-  if (currentTravelRating === 'none') {
-    travels = travels.filter(t => !t.rating);
-  } else if (currentTravelRating === 5) {
-    travels = travels.filter(t => parseFloat(t.rating) === 5);
-  } else if (typeof currentTravelRating === 'number') {
-    travels = travels.filter(t => t.rating != null && parseFloat(t.rating) >= currentTravelRating);
-  }
   if (!travels.length) {
-    const ratingActive = currentTravelRating !== null;
-    list.innerHTML = (currentSearch || currentTravelYear || ratingActive)
+    list.innerHTML = (currentSearch || currentTravelYear)
       ? emptyState({ icon: '🔍', title: 'Brak wyników', message: currentSearch
           ? `Żadna podróż nie pasuje do "${currentSearch}".`
-          : (currentTravelYear ? `Brak podróży w ${currentTravelYear}.` : 'Brak podróży pasujących do filtra oceny.') })
+          : `Brak podróży w ${currentTravelYear}.` })
       : emptyState({ icon: '✈️', title: 'Brak podróży', message: 'Dodaj pierwszą podróż, żeby zacząć kolekcjonować wspomnienia.', ctaLabel: '＋ Nowa podróż', ctaOnclick: 'openWizard()' });
     return;
   }
@@ -94,6 +70,8 @@ function sortTravels(travels, sort) {
   if (sort === 'date_asc')  return arr.sort((a,b) => a.start_date.localeCompare(b.start_date));
   if (sort === 'cost_desc') return arr.sort((a,b) => parseFloat(b.amount||0) - parseFloat(a.amount||0));
   if (sort === 'cost_asc')  return arr.sort((a,b) => parseFloat(a.amount||0) - parseFloat(b.amount||0));
+  if (sort === 'rating_desc') return arr.sort((a,b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0));
+  if (sort === 'rating_asc')  return arr.sort((a,b) => (parseFloat(a.rating) || Infinity) - (parseFloat(b.rating) || Infinity));
   if (sort === 'name_asc')  return arr.sort((a,b) => (a.name||'').localeCompare(b.name||'', 'pl'));
   if (sort === 'todo')      return arr.sort((a,b) => (a.is_description_complete?1:0) - (b.is_description_complete?1:0));
   return arr;
@@ -101,7 +79,6 @@ function sortTravels(travels, sort) {
 
 function setSort(sort) { currentSort = sort; renderTravels(); }
 function setTravelYear(y) { currentTravelYear = y; renderTravels(); }
-function setTravelRating(r) { currentTravelRating = r; renderTravels(); }
 function onTravelSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderTravels(val), 400); }
 
 async function openTravel(id) {
