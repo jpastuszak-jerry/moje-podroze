@@ -98,15 +98,17 @@ def ensure_schema():
         with conn.cursor() as cur:
             cur.execute("ALTER TABLE travels   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP")
             cur.execute("ALTER TABLE locations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP")
-            # rating: INTEGER → NUMERIC(2,1) dla półgwiazdek (idempotentne — sprawdza obecny typ)
+            # rating: INTEGER → NUMERIC(2,1) dla półgwiazdek (idempotentne)
             cur.execute("""
-                DO $$ BEGIN
-                  IF (SELECT data_type FROM information_schema.columns
-                      WHERE table_name = 'travels' AND column_name = 'rating') = 'integer' THEN
-                    ALTER TABLE travels ALTER COLUMN rating TYPE NUMERIC(2,1) USING rating::numeric;
-                  END IF;
-                END $$;
+                SELECT data_type FROM information_schema.columns
+                WHERE table_name = 'travels' AND column_name = 'rating'
             """)
+            row = cur.fetchone()
+            if row and row[0] == 'integer':
+                cur.execute("ALTER TABLE travels ALTER COLUMN rating TYPE NUMERIC(2,1) USING rating::numeric")
+                print('[schema] rating: INTEGER -> NUMERIC(2,1) — migracja wykonana')
+            else:
+                print(f'[schema] rating: typ={row[0] if row else "?"} — migracja niepotrzebna')
         conn.close()
     except Exception as e:
         print('[schema] migration failed:', e)
