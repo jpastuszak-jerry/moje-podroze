@@ -72,7 +72,7 @@ CREATE TABLE travels (
     amount NUMERIC(12,2),
     currency TEXT DEFAULT 'PLN',
     is_description_complete BOOLEAN DEFAULT FALSE,
-    rating INTEGER,
+    rating NUMERIC(2,1),
     reflections TEXT,
     notes TEXT,
     number_of_flights INTEGER DEFAULT 0

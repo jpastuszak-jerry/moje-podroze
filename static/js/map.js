@@ -29,7 +29,8 @@ function renderMap() {
       <div class="map-toolbar-right">
         <select id="map-filter-type" onchange="filterMapMarkers()"><option value="">Wszystkie typy</option></select>
         <select id="map-filter-country" onchange="filterMapMarkers()"><option value="">Wszystkie kraje</option></select>
-        <button onclick="resetMapView()" class="map-btn">🔄</button>
+        <button onclick="goHome()" class="map-btn" title="Pokaż dom">🏠</button>
+        <button onclick="resetMapView()" class="map-btn" title="Pokaż wszystkie">🔄</button>
       </div>
     </div>
     <div id="map-container"></div>
@@ -137,4 +138,8 @@ function resetMapView() {
   document.getElementById('map-filter-country').value = '';
   renderMapMarkers(allMapLocations);
   if (allMapLocations.length > 0) fitMapToMarkers();
+}
+
+function goHome() {
+  if (map) map.setView(HOME_COORDS, HOME_ZOOM);
 }

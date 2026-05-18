@@ -4,6 +4,7 @@ let searchTimeout;
 let currentSort = 'date_desc';
 let currentSearch = '';
 let currentTravelYear = null;
+let currentTravelRating = null;
 
 let allLocationsCache = [];
 
@@ -11,6 +12,9 @@ const MAP_TYPE_COLORS = {
   'miasto':'#e74c3c','wyspa':'#3498db','region':'#2ecc71',
   'kraj':'#9b59b6','wieś':'#e67e22','default':'#f39c12'
 };
+
+const HOME_COORDS = [53.1583, 18.0494];
+const HOME_ZOOM = 7;
 
 async function api(path) {
   try {
@@ -161,7 +165,12 @@ function locationIcon(t) {
 
 function stars(r) {
   if (!r) return '';
-  return '★'.repeat(r) + '☆'.repeat(5 - r);
+  const n = parseFloat(r);
+  if (!Number.isFinite(n)) return '';
+  const full = Math.floor(n);
+  const half = (n - full) >= 0.5 ? 1 : 0;
+  const empty = Math.max(0, 5 - full - half);
+  return '★'.repeat(full) + (half ? '<span class="half-star">★</span>' : '') + '☆'.repeat(empty);
 }
 
 function initials(name) {

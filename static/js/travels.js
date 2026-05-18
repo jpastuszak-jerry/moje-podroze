@@ -6,6 +6,7 @@ async function renderTravels(q) {
       '<div class="page-header"><div class="page-title">Moje Podróże</div>' +
       '<div class="search-box"><input type="search" placeholder="Szukaj podróży..." id="travel-search" value="' + escapeHtml(currentSearch || '') + '" oninput="onTravelSearch(this.value)"></div></div>' +
       '<div class="sort-bar" id="year-bar"></div>' +
+      '<div class="sort-bar" id="rating-bar"></div>' +
       '<div class="sort-bar" id="sort-bar"></div>' +
       '<div id="travel-list">' + skeletonCards(4) + '</div>' +
       '<button class="fab" onclick="openWizard()">＋</button>';
@@ -39,11 +40,35 @@ async function renderTravels(q) {
   if (currentTravelYear) {
     travels = travels.filter(t => t.start_date && String(t.start_date).startsWith(String(currentTravelYear)));
   }
+  const ratingBar = document.getElementById('rating-bar');
+  if (ratingBar) {
+    const opts = [
+      {key: null, label: 'Wszystkie'},
+      {key: 5, label: '5★'},
+      {key: 4.5, label: '≥4.5'},
+      {key: 4, label: '≥4'},
+      {key: 3, label: '≥3'},
+      {key: 'none', label: 'Bez oceny'},
+    ];
+    ratingBar.innerHTML = opts.map(o =>
+      '<button class="sort-btn' + (currentTravelRating === o.key ? ' active' : '') +
+      '" onclick="setTravelRating(' + (o.key === null ? 'null' : (typeof o.key === 'string' ? "'"+o.key+"'" : o.key)) + ')">' +
+      o.label + '</button>'
+    ).join('');
+  }
+  if (currentTravelRating === 'none') {
+    travels = travels.filter(t => !t.rating);
+  } else if (currentTravelRating === 5) {
+    travels = travels.filter(t => parseFloat(t.rating) === 5);
+  } else if (typeof currentTravelRating === 'number') {
+    travels = travels.filter(t => t.rating != null && parseFloat(t.rating) >= currentTravelRating);
+  }
   if (!travels.length) {
-    list.innerHTML = (currentSearch || currentTravelYear)
+    const ratingActive = currentTravelRating !== null;
+    list.innerHTML = (currentSearch || currentTravelYear || ratingActive)
       ? emptyState({ icon: '🔍', title: 'Brak wyników', message: currentSearch
           ? `Żadna podróż nie pasuje do "${currentSearch}".`
-          : `Brak podróży w ${currentTravelYear}.` })
+          : (currentTravelYear ? `Brak podróży w ${currentTravelYear}.` : 'Brak podróży pasujących do filtra oceny.') })
       : emptyState({ icon: '✈️', title: 'Brak podróży', message: 'Dodaj pierwszą podróż, żeby zacząć kolekcjonować wspomnienia.', ctaLabel: '＋ Nowa podróż', ctaOnclick: 'openWizard()' });
     return;
   }
@@ -76,6 +101,7 @@ function sortTravels(travels, sort) {
 
 function setSort(sort) { currentSort = sort; renderTravels(); }
 function setTravelYear(y) { currentTravelYear = y; renderTravels(); }
+function setTravelRating(r) { currentTravelRating = r; renderTravels(); }
 function onTravelSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderTravels(val), 400); }
 
 async function openTravel(id) {
@@ -269,7 +295,7 @@ function openTravelModal(t, isNew) {
       </div>
       <div class="form-row">
         <div><div class="form-label">Liczba lotów</div><input class="form-input" type="number" id="f-flights" value="${t.number_of_flights || 0}"></div>
-        <div><div class="form-label">Ocena (1–5)</div><input class="form-input" type="number" min="1" max="5" id="f-rating" value="${t.rating || ''}"></div>
+        <div><div class="form-label">Ocena (0.5–5, krok 0.5)</div><input class="form-input" type="number" min="0.5" max="5" step="0.5" id="f-rating" value="${t.rating || ''}"></div>
       </div>
       <div class="form-row">
         <div><div class="form-label">Album ze zdjęciami</div>
@@ -296,7 +322,7 @@ async function saveTravel(id, isNew) {
     name: document.getElementById('f-name').value, purpose: document.getElementById('f-purpose').value,
     start_date: document.getElementById('f-start').value, end_date: document.getElementById('f-end').value,
     amount: parseFloat(document.getElementById('f-amount').value) || 0, currency: document.getElementById('f-currency').value || 'PLN',
-    number_of_flights: parseInt(document.getElementById('f-flights').value) || 0, rating: parseInt(document.getElementById('f-rating').value) || null,
+    number_of_flights: parseInt(document.getElementById('f-flights').value) || 0, rating: parseFloat(document.getElementById('f-rating').value) || null,
     has_photo_album: parseInt(document.getElementById('f-album').value), notes: document.getElementById('f-notes').value,
     reflections: document.getElementById('f-reflections').value,
     is_description_complete: parseInt(document.getElementById('f-complete').value)

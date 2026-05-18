@@ -23,7 +23,7 @@ class TravelCreate(BaseModel):
     amount: float = 0
     currency: str = 'PLN'
     is_description_complete: bool = False
-    rating: Optional[int] = None
+    rating: Optional[float] = None
     reflections: Optional[str] = None
     notes: Optional[str] = None
     number_of_flights: int = 0
@@ -31,14 +31,20 @@ class TravelCreate(BaseModel):
     @field_validator('rating', mode='before')
     @classmethod
     def _rating_falsy_to_none(cls, v):
-        return v if v else None
+        return v if v not in (None, '', 0, '0') else None
 
     @field_validator('rating')
     @classmethod
     def _rating_range(cls, v):
-        if v is not None and not (1 <= v <= 5):
-            raise ValueError('rating musi być z zakresu 1–5')
-        return v
+        if v is None:
+            return v
+        if not (0.5 <= v <= 5):
+            raise ValueError('rating musi być z zakresu 0.5–5.0')
+        # krok 0.5 — zaokrąglij do 1 miejsca po przecinku i sprawdź
+        rounded = round(v * 2) / 2
+        if abs(rounded - v) > 1e-6:
+            raise ValueError('rating musi być wielokrotnością 0.5')
+        return rounded
 
     @field_validator('reflections', 'notes', mode='before')
     @classmethod

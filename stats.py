@@ -304,7 +304,7 @@ def get_stats():
     hall_of_fame = {
         'longest':      {'id': hof_longest['id'],      'name': hof_longest['name'],      'value': int(hof_longest['days'])}           if hof_longest      else None,
         'priciest':     {'id': hof_priciest['id'],     'name': hof_priciest['name'],     'value': float(hof_priciest['amount']),     'currency': hof_priciest['currency']} if hof_priciest     else None,
-        'best_rated':   {'id': hof_best_rated['id'],   'name': hof_best_rated['name'],   'value': int(hof_best_rated['rating'])}      if hof_best_rated   else None,
+        'best_rated':   {'id': hof_best_rated['id'],   'name': hof_best_rated['name'],   'value': float(hof_best_rated['rating'])}    if hof_best_rated   else None,
         'most_places':  {'id': hof_most_places['id'],  'name': hof_most_places['name'],  'value': int(hof_most_places['loc_count'])}  if hof_most_places  else None,
         'most_flights': {'id': hof_most_flights['id'], 'name': hof_most_flights['name'], 'value': int(hof_most_flights['number_of_flights'])} if hof_most_flights else None,
     }

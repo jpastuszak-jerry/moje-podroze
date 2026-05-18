@@ -94,6 +94,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .badge-blue { background: var(--blue-light); color: var(--blue); }
 .badge-green { background: var(--green-light); color: var(--green); }
 .badge-orange { background: var(--orange-light); color: var(--orange); }
+.half-star {
+  display: inline-block;
+  background: linear-gradient(90deg, currentColor 50%, rgba(127,127,127,0.32) 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .badge-purple { background: var(--purple-light); color: var(--purple); }
 .detail-header { background: var(--card); padding: 52px 16px 16px;
   border-bottom: 1px solid var(--border); }

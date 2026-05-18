@@ -121,8 +121,8 @@ function wizardStep0Html() {
     <div class="form-row">
       <div><div class="form-label">Liczba lotów</div>
         <input class="form-input" type="number" id="wi-flights" value="${s.number_of_flights}" min="0"></div>
-      <div><div class="form-label">Ocena (1–5)</div>
-        <input class="form-input" type="number" id="wi-rating" value="${s.rating}" min="1" max="5" placeholder="–"></div>
+      <div><div class="form-label">Ocena (0.5–5, krok 0.5)</div>
+        <input class="form-input" type="number" id="wi-rating" value="${s.rating}" min="0.5" max="5" step="0.5" placeholder="–"></div>
     </div>
 
     <div class="form-row">
@@ -160,7 +160,7 @@ function wizardStep0Save() {
     amount:   parseFloat(document.getElementById('wi-amount').value) || 0,
     currency: document.getElementById('wi-currency').value.trim() || 'PLN',
     number_of_flights: parseInt(document.getElementById('wi-flights').value) || 0,
-    rating:   parseInt(document.getElementById('wi-rating').value) || null,
+    rating:   parseFloat(document.getElementById('wi-rating').value) || null,
     has_photo_album: parseInt(document.getElementById('wi-album').value),
     is_description_complete: parseInt(document.getElementById('wi-complete').value),
     notes: document.getElementById('wi-notes').value.trim(),
