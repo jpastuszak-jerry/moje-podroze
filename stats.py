@@ -54,6 +54,105 @@ def _series_params(year):
     return _period_bounds(year)
 
 
+def _data_quality(year=None):
+    main_clause, main_params = _travel_period_clause(year, 't')
+    rows = [dict(r) for r in query(f"""
+        SELECT t.*,
+               COUNT(tl.id) AS loc_count
+        FROM travels t
+        LEFT JOIN travel_locations tl ON tl.travel_id = t.id
+        WHERE {main_clause}
+        GROUP BY t.id
+        ORDER BY t.start_date DESC
+    """, main_params)]
+
+    checks = [
+        ('missing_cost', 'brak kosztu', lambda t: float(t.get('amount') or 0) <= 0),
+        ('missing_rating', 'brak oceny', lambda t: t.get('rating') is None),
+        ('missing_locations', 'brak miejsc', lambda t: int(t.get('loc_count') or 0) == 0),
+        ('missing_reflections', 'brak wspomnień', lambda t: not (t.get('reflections') or '').strip()),
+        ('missing_album', 'brak albumu', lambda t: not t.get('has_photo_album')),
+        ('incomplete_description', 'opis niekompletny', lambda t: not t.get('is_description_complete')),
+    ]
+    counts = {key: 0 for key, _, _ in checks}
+    needs_attention = []
+
+    for t in rows:
+        missing = []
+        for key, label, predicate in checks:
+            if predicate(t):
+                counts[key] += 1
+                missing.append(label)
+        if missing:
+            needs_attention.append({
+                'id': t['id'],
+                'name': t.get('name') or '(bez nazwy)',
+                'start_date': str(t['start_date']) if t.get('start_date') else None,
+                'missing': missing,
+                'missing_count': len(missing),
+            })
+
+    needs_attention.sort(key=lambda t: (t['missing_count'], t['start_date'] or ''), reverse=True)
+    return {
+        'total': len(rows),
+        'counts': counts,
+        'needs_attention': needs_attention[:8],
+    }
+
+
+def _country_milestones(year=None):
+    if not year:
+        return {'new': [], 'returning': []}
+
+    period_start, period_end = _period_bounds(year)
+    rows = [dict(r) for r in query("""
+        WITH country_visits AS (
+            SELECT c.id,
+                   c.name,
+                   t.id AS travel_id,
+                   COALESCE(tl.arrival_date, t.start_date) AS visit_start,
+                   COALESCE(tl.departure_date, t.end_date) AS visit_end
+            FROM travel_locations tl
+            JOIN locations l ON l.id = tl.location_id
+            JOIN countries c ON c.id = l.country_id
+            JOIN travels t ON t.id = tl.travel_id
+            WHERE t.deleted_at IS NULL AND l.deleted_at IS NULL
+        )
+        SELECT id,
+               name,
+               MIN(visit_start) AS first_visit,
+               COUNT(DISTINCT travel_id) FILTER (
+                   WHERE visit_start <= %s AND visit_end >= %s
+               ) AS period_trips
+        FROM country_visits
+        GROUP BY id, name
+        HAVING COUNT(DISTINCT travel_id) FILTER (
+            WHERE visit_start <= %s AND visit_end >= %s
+        ) > 0
+        ORDER BY first_visit, name
+    """, (period_end, period_start, period_end, period_start))]
+
+    new_countries = []
+    returning = []
+    for r in rows:
+        first_visit = r['first_visit']
+        item = {
+            'id': r['id'],
+            'name': r['name'],
+            'first_visit': str(first_visit) if first_visit else None,
+            'trips': int(r['period_trips'] or 0),
+        }
+        if first_visit and period_start <= first_visit <= period_end:
+            new_countries.append(item)
+        elif first_visit and first_visit < period_start:
+            returning.append(item)
+
+    return {
+        'new': new_countries,
+        'returning': returning,
+    }
+
+
 def _period_stats(year=None):
     """Stats for all time or for activity overlapping the selected calendar year."""
     period_start, period_end = _period_bounds(year)
@@ -395,4 +494,6 @@ def get_stats():
         'current_trip': _current_trip(),
         'streak_months': _streak_months(),
         'heatmap': _heatmap_data(),
+        'data_quality': _data_quality(year),
+        'country_milestones': _country_milestones(year),
     })

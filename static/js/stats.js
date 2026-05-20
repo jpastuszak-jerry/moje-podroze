@@ -131,6 +131,72 @@ function simpleBar(val, max, color) {
   return `<div class="purpose-track"><div class="purpose-fill" style="width:${pct}%;background:${color}"></div></div>`;
 }
 
+function renderDataQuality(q) {
+  if (!q || !q.total) return '';
+  const labels = {
+    missing_cost: 'Bez kosztu',
+    missing_rating: 'Bez oceny',
+    missing_locations: 'Bez miejsc',
+    missing_reflections: 'Bez wspomnień',
+    missing_album: 'Bez albumu',
+    incomplete_description: 'Opis niekompletny',
+  };
+  const rows = Object.entries(labels)
+    .map(([key, label]) => ({ key, label, value: q.counts?.[key] || 0 }))
+    .filter(r => r.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const maxV = Math.max(...rows.map(r => r.value), 1);
+  const bars = rows.length
+    ? rows.map(r => `<div class="purpose-row">
+        <div class="purpose-name">${escapeHtml(r.label)}</div>
+        ${simpleBar(r.value, maxV, 'var(--orange)')}
+        <div class="purpose-count">${r.value}</div>
+      </div>`).join('')
+    : `<div style="color:var(--text2);font-size:13px">Wszystkie podróże w tym zakresie wyglądają kompletnie.</div>`;
+  const attention = (q.needs_attention || []).length
+    ? `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+        ${(q.needs_attention || []).slice(0, 5).map(t => `
+          <div class="purpose-row" onclick="openTravel(${t.id})" style="cursor:pointer">
+            <div class="purpose-name" style="font-size:11px;line-height:1.35">${escapeHtml(t.name)}</div>
+            <div style="font-size:11px;color:var(--text2);text-align:right;max-width:45%">${escapeHtml((t.missing || []).slice(0, 3).join(', '))}</div>
+          </div>`).join('')}
+      </div>`
+    : '';
+  return `<div class="purpose-bar">
+    <div class="section-title">🧭 Jakość danych</div>
+    ${bars}
+    ${attention}
+  </div>`;
+}
+
+function renderCountryMilestones(milestones, year) {
+  if (!year || !milestones) return '';
+  const newCountries = milestones.new || [];
+  const returning = milestones.returning || [];
+  if (!newCountries.length && !returning.length) return '';
+  const newHtml = newCountries.length
+    ? newCountries.slice(0, 8).map(c => `<div class="chart-legend-row">
+        <div class="chart-legend-dot" style="background:var(--green)"></div>
+        <div class="chart-legend-name">${escapeHtml(c.name)}</div>
+        <div class="chart-legend-val">${fmtDate(c.first_visit)}</div>
+      </div>`).join('')
+    : `<div style="color:var(--text2);font-size:13px">Brak nowych krajów w tym roku.</div>`;
+  const returningHtml = returning.length
+    ? returning.slice(0, 8).map(c => `<div class="chart-legend-row">
+        <div class="chart-legend-dot" style="background:var(--blue)"></div>
+        <div class="chart-legend-name">${escapeHtml(c.name)}</div>
+        <div class="chart-legend-val">${c.trips}×</div>
+      </div>`).join('')
+    : `<div style="color:var(--text2);font-size:13px">Brak powrotów do wcześniej odwiedzonych krajów.</div>`;
+  return `<div class="chart-card">
+    <div class="section-title">🌱 Kraje w ${year}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px">Nowe kraje (${newCountries.length})</div>
+    <div class="chart-legend" style="margin-bottom:12px">${newHtml}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px">Powroty (${returning.length})</div>
+    <div class="chart-legend">${returningHtml}</div>
+  </div>`;
+}
+
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
@@ -251,6 +317,8 @@ async function renderStats() {
   html += '</div>';
 
   html += '<div class="stats-2col">';
+  html += renderDataQuality(s.data_quality);
+  html += renderCountryMilestones(s.country_milestones, currentStatsYear);
   if (s.purposes && s.purposes.length) {
     html += '<div class="chart-card"><div class="section-title">🎯 Cel podróży</div>'
       + svgDonut(s.purposes.map(p => ({ name: p.name || 'Inne', count: p.count }))) + '</div>';
