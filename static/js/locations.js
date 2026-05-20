@@ -11,6 +11,7 @@ async function renderLocations(q = '') {
           <button onclick="openDictionaryModal('/api/countries','Kraje')" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🌍 Kraje</button>
           <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy</button>
           <button onclick="openPersonsModal()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">👤 Osoby</button>
+          <button onclick="openLocationTodoView()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">✍️ Braki</button>
           <button onclick="exportDatabase()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">💾 Backup</button>
           <button onclick="openTrashModal()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🗑 Kosz</button>
         </div></div>
@@ -59,6 +60,88 @@ function renderLocList(locs) {
 }
 
 function onLocSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderLocations(val), 400); }
+
+let currentLocationTodoFilter = 'all';
+
+function openLocationTodoView() {
+  currentLocationTodoFilter = 'all';
+  showTab('locationTodo');
+}
+
+function setLocationTodoFilter(filter) {
+  currentLocationTodoFilter = filter || 'all';
+  renderLocationTodo();
+}
+
+async function renderLocationTodo() {
+  const view = document.getElementById('view');
+  view.innerHTML = `<div class="page-header"><div class="page-title">Miejsca do uzupełnienia</div></div>` + skeletonCards(3);
+  const data = await api('/api/locations/todo');
+  if (data.error) {
+    view.innerHTML = emptyState({ icon: '📍', title: 'Nie udało się wczytać listy', message: data.error });
+    return;
+  }
+
+  const labels = data.labels || {};
+  const filters = Object.entries(labels)
+    .map(([key, label]) => ({ key, label, count: data.counts?.[key] || 0 }))
+    .filter(f => f.count > 0);
+  const items = (data.needs_attention || []).filter(item =>
+    currentLocationTodoFilter === 'all' || (item.missing_keys || []).includes(currentLocationTodoFilter)
+  );
+
+  let html = `<div class="page-header">
+    <div>
+      <button class="back-btn" onclick="showTab('locations')">‹ Miejsca</button>
+      <div class="page-title">Miejsca do uzupełnienia</div>
+    </div>
+  </div>`;
+  html += `<div class="sort-bar">
+    <button class="sort-btn${currentLocationTodoFilter === 'all' ? ' active' : ''}" onclick="setLocationTodoFilter('all')">Wszystkie (${data.needs_attention?.length || 0})</button>
+    ${filters.map(f => `<button class="sort-btn${currentLocationTodoFilter === f.key ? ' active' : ''}" onclick="setLocationTodoFilter('${f.key}')">${escapeHtml(f.label)} (${f.count})</button>`).join('')}
+  </div>`;
+  html += `<div class="hero-card" style="margin-top:10px">
+    <div class="hero-label">Jakość miejsc</div>
+    <div class="hero-numbers">
+      <div class="hero-number"><div class="hero-val">${data.total || 0}</div><div class="hero-key">miejsc w bazie</div></div>
+      <div class="hero-number"><div class="hero-val">${data.needs_attention?.length || 0}</div><div class="hero-key">wymaga uwagi</div></div>
+      <div class="hero-number"><div class="hero-val">${items.length}</div><div class="hero-key">na tej liście</div></div>
+      <div class="hero-number"><div class="hero-val">${filters.length}</div><div class="hero-key">typów braków</div></div>
+    </div>
+  </div>`;
+
+  if (!items.length) {
+    html += emptyState({
+      icon: '✅',
+      title: 'Nie ma miejsc do uzupełnienia',
+      message: currentLocationTodoFilter === 'all'
+        ? 'Wszystkie miejsca wyglądają kompletnie.'
+        : 'Ten typ braku nie występuje w miejscach.',
+    });
+    view.innerHTML = html;
+    return;
+  }
+
+  html += '<div class="card-list" style="padding:12px 16px 24px">';
+  html += items.map(item => `
+    <div class="card" onclick="openLocation(${item.id})">
+      <div class="card-inner">
+        <div class="card-icon" style="background:var(--blue-light)">${locationIcon(item.location_type)}</div>
+        <div class="card-body">
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <div class="card-title" style="flex:1">${escapeHtml(item.name || '(bez nazwy)')}</div>
+            <button class="btn-add-small" onclick="event.stopPropagation(); openEditLocationModal(${item.id})">Edytuj</button>
+          </div>
+          <div class="card-subtitle">${escapeHtml(item.location_type)} · ${escapeHtml(item.country_name)} · ${item.visit_count || 0} wizyt</div>
+          <div class="card-meta">
+            ${(item.missing || []).map(label => `<span class="badge badge-orange">${escapeHtml(label)}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+  html += '</div>';
+  view.innerHTML = html;
+}
 
 async function openLocation(id) {
   const view = document.getElementById('view');

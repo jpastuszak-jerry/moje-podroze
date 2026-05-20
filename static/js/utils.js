@@ -537,6 +537,7 @@ function showTab(tab) {
   else if (tab === 'stats') renderStats();
   else if (tab === 'timeline') renderTimeline();
   else if (tab === 'todo') renderTodo();
+  else if (tab === 'locationTodo') renderLocationTodo();
   const view = document.getElementById('view');
   if (view) {
     view.classList.remove('view-fade');
