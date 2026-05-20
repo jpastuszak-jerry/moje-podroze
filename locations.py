@@ -3,7 +3,7 @@
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
-from core import db_error_response, etag_json, execute, query, validation_error_response
+from core import db_error_response, etag_json, execute, execute_rowcount, query, validation_error_response
 from schemas import LocationCreate, LocationUpdate
 
 
@@ -123,7 +123,7 @@ def update_location(lid):
         return validation_error_response(e)
     try:
         # GEO: tylko None to "brak współrzędnych"; 0.0 to ważna lokalizacja (równik / południk zerowy)
-        execute("""
+        rowcount = execute_rowcount("""
             UPDATE locations SET
                 name=%s, country_id=%s, location_type_id=%s,
                 parent_location_id=%s, address=%s, notes=%s,
@@ -134,6 +134,8 @@ def update_location(lid):
             loc.parent_location_id, loc.address, loc.notes,
             loc.latitude, loc.longitude, lid,
         ))
+        if rowcount == 0:
+            return jsonify({'error': 'Not found'}), 404
         return jsonify({'ok': True})
     except Exception as e:
         return db_error_response(e)
@@ -145,17 +147,20 @@ def delete_location(lid):
     — jeśli miejsce jest w użyciu (FK z travel_locations), zwracamy 409."""
     if request.args.get('hard') == '1':
         try:
-            execute("DELETE FROM locations WHERE id=%s", (lid,))
+            if execute_rowcount("DELETE FROM locations WHERE id=%s", (lid,)) == 0:
+                return jsonify({'error': 'Not found'}), 404
             return jsonify({'ok': True, 'hard': True})
         except Exception as e:
             return db_error_response(e)
-    execute("UPDATE locations SET deleted_at = NOW() WHERE id=%s AND deleted_at IS NULL", (lid,))
+    if execute_rowcount("UPDATE locations SET deleted_at = NOW() WHERE id=%s AND deleted_at IS NULL", (lid,)) == 0:
+        return jsonify({'error': 'Not found'}), 404
     return jsonify({'ok': True})
 
 
 @bp.route('/api/locations/<int:lid>/restore', methods=['POST'])
 def restore_location(lid):
-    execute("UPDATE locations SET deleted_at = NULL WHERE id=%s", (lid,))
+    if execute_rowcount("UPDATE locations SET deleted_at = NULL WHERE id=%s", (lid,)) == 0:
+        return jsonify({'error': 'Not found'}), 404
     return jsonify({'ok': True})
 
 

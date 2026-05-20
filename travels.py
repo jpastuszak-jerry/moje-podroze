@@ -3,7 +3,7 @@
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
-from core import db_error_response, execute, get_db, query, validation_error_response
+from core import db_error_response, execute, execute_rowcount, get_db, query, validation_error_response
 from schemas import (
     ParticipantAdd,
     TravelCreate,
@@ -140,6 +140,9 @@ def update_travel(tid):
             t.amount, t.currency, t.is_description_complete,
             t.rating, t.reflections, t.notes, t.number_of_flights, tid,
         ))
+        if cur.rowcount == 0:
+            db.rollback()
+            return jsonify({'error': 'Not found'}), 404
         if t.on_conflict == 'clip':
             # Zacisnij niepuste arrival_date / departure_date do zakresu [start_date, end_date].
             # CASE zachowuje NULL-e (PostgreSQL LEAST/GREATEST ignoruje NULL).
@@ -170,15 +173,20 @@ def delete_travel(tid):
             cur.execute("DELETE FROM travel_participants WHERE travel_id=%s", (tid,))
             cur.execute("DELETE FROM travel_locations    WHERE travel_id=%s", (tid,))
             cur.execute("DELETE FROM travels             WHERE id=%s",        (tid,))
+            if cur.rowcount == 0:
+                db.rollback()
+                return jsonify({'error': 'Not found'}), 404
             db.commit()
         return jsonify({'ok': True, 'hard': True})
-    execute("UPDATE travels SET deleted_at = NOW() WHERE id=%s AND deleted_at IS NULL", (tid,))
+    if execute_rowcount("UPDATE travels SET deleted_at = NOW() WHERE id=%s AND deleted_at IS NULL", (tid,)) == 0:
+        return jsonify({'error': 'Not found'}), 404
     return jsonify({'ok': True})
 
 
 @bp.route('/api/travels/<int:tid>/restore', methods=['POST'])
 def restore_travel(tid):
-    execute("UPDATE travels SET deleted_at = NULL WHERE id=%s", (tid,))
+    if execute_rowcount("UPDATE travels SET deleted_at = NULL WHERE id=%s", (tid,)) == 0:
+        return jsonify({'error': 'Not found'}), 404
     return jsonify({'ok': True})
 
 

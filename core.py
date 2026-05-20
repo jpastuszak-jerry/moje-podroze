@@ -48,6 +48,15 @@ def execute(sql, params=()):
             return None
 
 
+def execute_rowcount(sql, params=()):
+    db = get_db()
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        rowcount = cur.rowcount
+        db.commit()
+        return rowcount
+
+
 def clean_str(value):
     return (value or '').strip() or None
 
