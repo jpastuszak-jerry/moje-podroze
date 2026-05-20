@@ -9,14 +9,14 @@
 <meta name="apple-mobile-web-app-title" content="Podróże">
 <meta name="theme-color" content="#1a6fdb">
 <title>Moje Podróże</title>
-<link rel="manifest" href="/static/manifest.json">
-<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
+<link rel="manifest" href="/static/manifest.json?v={{ asset_version }}">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png?v={{ asset_version }}">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png?v={{ asset_version }}">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png?v={{ asset_version }}">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/app.css?v={{ asset_version }}">
 <script>
   (function() {
     var t = localStorage.getItem('theme');
@@ -59,15 +59,15 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="/static/js/utils.js"></script>
-<script src="/static/js/map.js"></script>
-<script src="/static/js/travels.js"></script>
-<script src="/static/js/locations.js"></script>
-<script src="/static/js/dictionaries.js"></script>
-<script src="/static/js/persons.js"></script>
-<script src="/static/js/stats.js"></script>
-<script src="/static/js/timeline.js"></script>
-<script src="/static/js/wizard.js"></script>
+<script src="/static/js/utils.js?v={{ asset_version }}"></script>
+<script src="/static/js/map.js?v={{ asset_version }}"></script>
+<script src="/static/js/travels.js?v={{ asset_version }}"></script>
+<script src="/static/js/locations.js?v={{ asset_version }}"></script>
+<script src="/static/js/dictionaries.js?v={{ asset_version }}"></script>
+<script src="/static/js/persons.js?v={{ asset_version }}"></script>
+<script src="/static/js/stats.js?v={{ asset_version }}"></script>
+<script src="/static/js/timeline.js?v={{ asset_version }}"></script>
+<script src="/static/js/wizard.js?v={{ asset_version }}"></script>
 <script>
 setThemeIcon();
 updateOfflineBanner();

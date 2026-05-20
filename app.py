@@ -14,7 +14,7 @@ import json
 import os
 from datetime import date
 
-from flask import Flask, Response, jsonify, send_from_directory
+from flask import Flask, Response, jsonify, render_template
 from flask.json.provider import DefaultJSONProvider
 
 import dicts
@@ -47,7 +47,18 @@ app.register_blueprint(stats.bp)
 
 @app.route('/')
 def index():
-    return send_from_directory('templates', 'index.html')
+    return render_template('index.html', asset_version=static_asset_version())
+
+
+def static_asset_version():
+    static_dir = os.path.join(app.root_path, 'static')
+    latest_mtime = 0.0
+    for root, _, files in os.walk(static_dir):
+        for f in files:
+            if f == 'sw.js':
+                continue
+            latest_mtime = max(latest_mtime, os.path.getmtime(os.path.join(root, f)))
+    return f'v{int(latest_mtime)}'
 
 
 _SW_CDN_SHELL = [
@@ -66,7 +77,8 @@ def service_worker():
     pliki w static/ są automatycznie precache'owane bez ręcznych zmian."""
     static_dir = os.path.join(app.root_path, 'static')
     shell = ['/']
-    latest_mtime = 0.0
+    shell_static = []
+    version = static_asset_version()
     skip_names = {'sw.js'}
 
     for root, _, files in os.walk(static_dir):
@@ -75,13 +87,10 @@ def service_worker():
                 continue
             full = os.path.join(root, f)
             rel = os.path.relpath(full, app.root_path).replace(os.sep, '/')
-            shell.append('/' + rel)
-            mt = os.path.getmtime(full)
-            if mt > latest_mtime:
-                latest_mtime = mt
+            shell_static.append('/' + rel)
 
+    shell.extend(f'{url}?v={version}' for url in shell_static)
     shell.extend(_SW_CDN_SHELL)
-    version = f'v{int(latest_mtime)}'
 
     with open(os.path.join(static_dir, 'sw.js'), 'r', encoding='utf-8') as fh:
         content = fh.read()
