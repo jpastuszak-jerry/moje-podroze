@@ -277,13 +277,19 @@ async function renderStats() {
       hof.best_rated && { icon:'⭐', title:'Najwyżej oceniana', value: stars(hof.best_rated.value), id: hof.best_rated.id, name: hof.best_rated.name },
       hof.most_places && { icon:'📍', title:'Najwięcej miejsc', value: hof.most_places.value+' miejsc', id: hof.most_places.id, name: hof.most_places.name },
       hof.most_flights && { icon:'🛫', title:'Najwięcej lotów', value: hof.most_flights.value+' lotów', id: hof.most_flights.id, name: hof.most_flights.name },
+      hof.most_countries && { icon:'🌍', title:'Najwięcej krajów', value: hof.most_countries.value+' krajów', id: hof.most_countries.id, name: hof.most_countries.name },
+      hof.top_country && { icon:'🏳️', title:'Najczęstszy kraj', value: `${hof.top_country.visits}× · ${hof.top_country.days} dni`, name: hof.top_country.name },
+      hof.longest_gap && { icon:'⏳', title:'Najdłuższa przerwa', value: hof.longest_gap.value+' dni', id: hof.longest_gap.id, name: hof.longest_gap.name },
+      hof.longest_streak && { icon:'🔥', title:'Najdłuższa seria', value: hof.longest_streak.value+' dni', name: `${fmtDate(hof.longest_streak.start_date)} – ${fmtDate(hof.longest_streak.end_date)}` },
+      hof.best_month && { icon:'🗓', title:'Najlepszy miesiąc', value: hof.best_month.value+' dni', name: `${months[hof.best_month.month]} ${hof.best_month.year}` },
     ].filter(Boolean);
     if (records.length) {
       html += '<div class="hof-section">';
       html += `<div class="section-title hof-title-row">🏆 Hall of Fame <span class="hof-hint">${records.length} kategorie · przesuń →</span></div>`;
       html += '<div class="hof-scroll-wrap"><div class="hof-scroll">';
       records.forEach((r, i) => {
-        html += `<div class="hof-card" onclick="openTravel(${r.id})" style="background:${grads[i % grads.length]}">
+        const clickAttr = r.id ? ` onclick="openTravel(${r.id})"` : '';
+        html += `<div class="hof-card"${clickAttr} style="background:${grads[i % grads.length]}">
           <div class="hof-icon">${r.icon}</div>
           <div class="hof-cat">${escapeHtml(r.title)}</div>
           <div class="hof-name">${escapeHtml(r.name)}</div>
