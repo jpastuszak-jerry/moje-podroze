@@ -110,7 +110,7 @@ function fmtDate(s) {
 function daysCount(s, e) {
   const start = parseDate(s); const end = parseDate(e);
   if (!start || !end) return 0;
-  return Math.round((end - start) / 86400000);
+  return Math.max(0, Math.round((end - start) / 86400000) + 1);
 }
 
 function purposeIcon(p) {
