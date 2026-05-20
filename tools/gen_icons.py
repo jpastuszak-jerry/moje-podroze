@@ -6,7 +6,6 @@ Uruchom raz po zmianie designu:
 
 Pliki wynikowe trafiają do static/icons/.
 """
-import math
 from PIL import Image, ImageDraw
 from pathlib import Path
 

@@ -15,4 +15,5 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install ruff
-      - run: ruff check app.py
+      - run: ruff check .
+      - run: python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py
