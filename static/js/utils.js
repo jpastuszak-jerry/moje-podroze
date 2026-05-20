@@ -169,7 +169,12 @@ function stars(r) {
   const full = Math.floor(n);
   const half = (n - full) >= 0.5 ? 1 : 0;
   const empty = Math.max(0, 5 - full - half);
-  return '★'.repeat(full) + (half ? '<span class="half-star" aria-hidden="true"></span>' : '') + '☆'.repeat(empty);
+  const label = `Ocena ${n.toLocaleString('pl-PL')} na 5`;
+  return `<span class="stars" role="img" aria-label="${label}">` +
+    '★'.repeat(full) +
+    (half ? '<span class="half-star" aria-hidden="true"></span>' : '') +
+    '☆'.repeat(empty) +
+    '</span>';
 }
 
 function initials(name) {
