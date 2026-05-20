@@ -4,22 +4,15 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ## P1 - Najblizsze
 
-### 1. Szybka edycja z listy "Do uzupelnienia"
+### 1. Szybka edycja z listy "Do uzupelnienia" - DONE
 
-**Problem:** lista pokazuje braki, ale klik otwiera tylko szczegoly podrozy. Uzytkownik nadal musi wejsc w edycje i znalezc odpowiednie pola.
-
-**Propozycja:** dodac akcje przy karcie, np. "Edytuj", oraz opcjonalnie automatycznie otwierac modal edycji podrozy. Docelowo mozna podswietlac brakujace pola.
+**Status:** zrobione w `424c743 Add quick edit from completion list`.
 
 **Weryfikacja:** w Statystyki -> Jakosc danych -> Lista klik "Edytuj" przy podrozy; powinien otworzyc sie formularz tej podrozy.
 
-### 2. Dalsze rekordy w Hall of Fame
+### 2. Dalsze rekordy w Hall of Fame - DONE
 
-**Do dodania:**
-- najwiecej krajow w jednej podrozy,
-- najczesciej odwiedzany kraj,
-- najdluzsza przerwa miedzy podrozami,
-- najdluzsza seria dni w trasie,
-- najlepszy miesiac podrozniczy.
+**Status:** zrobione w `7211d05 Expand stats hall of fame`.
 
 **Weryfikacja:** sekcja Hall of Fame pokazuje nowe kafle, a klik w rekord zwiazany z podroza otwiera jej szczegoly.
 
@@ -49,15 +42,9 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ## P2 - UX i praca z danymi
 
-### 5. Widok miejsc "Do uzupelnienia"
+### 5. Widok miejsc "Do uzupelnienia" - DONE
 
-**Problem:** jakosc danych dotyczy teraz podrozy, a miejsca tez moga miec braki.
-
-**Do dodania:**
-- miejsca bez GPS,
-- miejsca bez typu,
-- miejsca bez kraju lub z niepelna hierarchia,
-- miasta/wyspy bez wspolrzednych, ktore nie pojawia sie dobrze na mapach.
+**Status:** zrobione w `34f9ee9 Add location completion worklist`.
 
 **Weryfikacja:** osobny filtr/lista pozwala szybko znalezc miejsca wymagajace poprawy.
 

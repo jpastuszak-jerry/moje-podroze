@@ -1,70 +1,111 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code and other coding agents working in this repository.
 
-## Uruchamianie lokalnie
+## Run Locally
 
 ```bash
-set DATABASE_URL=postgresql://...   # connection string z Neon.tech
+set DATABASE_URL=postgresql://...   # Neon.tech connection string
 pip install -r requirements.txt
-python app.py                        # http://localhost:5000
+python app.py                       # http://localhost:5000
 ```
 
-Na produkcji (Render.com) startuje przez `gunicorn app:app` (Procfile). Zmienna `DATABASE_URL` musi być ustawiona w Environment na Render.
+Production on Render starts with `gunicorn app:app` from `Procfile`. `DATABASE_URL` must be configured in Render environment variables.
 
-Brak testów automatycznych i buildu — weryfikacja przez ręczne odpalenie w przeglądarce.
+## Deployment
 
-## Architektura
+Changes are deployed by pushing to `main`:
 
-**Backend** — `app.py` (Flask, ~735 linii). Jeden plik, 6 sekcji:
-1. Setup — `get_db()` / `query()` / `execute()` / `register_dictionary_endpoints()`
-2. Travels — CRUD podróży
-3. Locations — CRUD miejsc z GPS
-4. Powiązania — tabele łączące `travel_locations` i `travel_participants`
-5. Słowniki — `countries`, `location_types`, `relation_types`, `persons`
-6. Statystyki — `/api/stats` (agregaty, hall of fame)
-
-`register_dictionary_endpoints(table, url)` — generuje automatycznie 4 endpointy (GET/POST/PUT/DELETE) dla prostych słowników.
-
-**Frontend** — SPA bez frameworka. `templates/index.html` to tylko shell z nawigacją i tagami `<script>`. Cała logika w `static/js/`:
-
-| Plik | Odpowiedzialność |
-|------|-----------------|
-| `utils.js` | `api()`, `apiPost()`, `escapeHtml()`, helpery dat i ikon |
-| `travels.js` | lista podróży, widok szczegółów podróży |
-| `locations.js` | lista miejsc, widok szczegółów miejsca |
-| `wizard.js` | multi-step wizard tworzenia nowej podróży |
-| `map.js` | mapa Leaflet z MarkerCluster |
-| `stats.js` | widok statystyk |
-| `timeline.js` | oś czasu podróży |
-| `dictionaries.js` | CRUD krajów, typów miejsc, typów relacji |
-| `persons.js` | CRUD uczestników |
-
-Nawigacja między zakładkami przez `showTab(name)`. Każda zakładka re-renderuje swój widok przy każdym wejściu.
-
-## Kluczowe wzorce
-
-**Dane w wizardzie** — stan przechowywany wyłącznie w obiekcie `wizardState` (nie na elementach DOM). Przy re-renderze `wizardState.allLocs / countries / locTypes / relTypes` muszą być zachowane.
-
-**Overlaye** — sub-overlaye wizarda (`#wiz-loc-date-overlay`, `#wiz-new-loc-overlay`) są appendowane do `document.body`. `closeWizard()` musi je usuwać ręcznie.
-
-**Baza danych** — PostgreSQL na Neon.tech. `query()` zwraca listę `RealDictRow`, `execute()` zwraca `RETURNING id` lub `None`. Każdy request dostaje nowe połączenie przez `g.db`, zamykane w `teardown_appcontext`.
-
-**Statystyki uczestnictwa** — `person_id=1` to Jarek, `person_id=2` to Hanna — hardkodowane w SQL w `/api/stats`.
-
-## Baza danych — schemat
-
-```
-countries, location_types, relation_types   ← słowniki (id, name)
-locations      ← miejsca (country_id, location_type_id, parent_location_id?, latitude?, longitude?)
-persons        ← uczestnicy (relation_type_id?)
-travels        ← podróże (start_date, end_date, amount, currency, rating, ...)
-travel_locations    ← M:N travels↔locations (arrival_date, departure_date, notes)
-travel_participants ← M:N travels↔persons
+```bash
+git add ...
+git commit -m "..."
+git push origin main
 ```
 
-Lokacje obsługują hierarchię przez `parent_location_id` (np. dzielnica → miasto). Widok miejsca pokazuje zarówno bezpośrednie wizyty jak i wizyty przez lokacje podrzędne (`child_visits`).
+Render automatically deploys from GitHub.
 
-## Wdrożenie
+## Architecture
 
-Po zmianach w kodzie: `git add` → `git commit` → `git push` — Render automatycznie przebudowuje aplikację z brancha `main`.
+Backend is Flask + PostgreSQL split into modules:
+
+| File | Responsibility |
+|------|----------------|
+| `app.py` | Flask app setup, static shell, service worker, trash/export endpoints |
+| `core.py` | DB connection, query helpers, validation/error helpers, schema migrations |
+| `travels.py` | travel CRUD, travel locations, travel participants |
+| `locations.py` | location CRUD, location detail, map data, location completion worklist |
+| `dicts.py` | countries, location types, relation types, persons |
+| `stats.py` | stats dashboard, Hall of Fame, data quality, travel completion worklist |
+| `schemas.py` | Pydantic request validation |
+| `migrate.py` | destructive SQLite -> PostgreSQL migration, requires `--force` |
+
+Frontend is a vanilla JS SPA. `templates/index.html` is the shell and loads scripts from `static/js/`.
+
+| File | Responsibility |
+|------|----------------|
+| `utils.js` | API helpers, escaping, dates, icons, navigation |
+| `travels.js` | travel list, travel detail, travel edit modal |
+| `locations.js` | location list/detail/edit, location completion worklist |
+| `wizard.js` | multi-step new travel wizard |
+| `map.js` | Leaflet map with MarkerCluster |
+| `stats.js` | stats dashboard and charts |
+| `todo.js` | travel completion worklist |
+| `timeline.js` | travel timeline |
+| `dictionaries.js` | dictionary CRUD modals |
+| `persons.js` | participant CRUD modal |
+
+Navigation is handled by `showTab(name)` in `utils.js`. Some views such as `todo` and `locationTodo` are tabless internal views opened from other screens.
+
+## Product Rules
+
+- Travel length is counted inclusively: `2025-07-11` to `2025-07-12` is 2 days.
+- Yearly stats are activity-based: a trip crossing year boundary contributes days to each overlapping year.
+- Costs are kept per currency. Do not silently merge currencies into one total.
+- Incomplete travel is allowed intentionally. Do not remove the ability to save a partially filled trip.
+- Technical partial-save failures should not be hidden from the user.
+
+## Data Quality Views
+
+Travel data quality lives in:
+
+- API: `/api/stats/todo`
+- UI: `static/js/todo.js`
+- Entry point: `Statystyki -> Jakosc danych -> Lista`
+
+Location data quality lives in:
+
+- API: `/api/locations/todo`
+- UI: `static/js/locations.js`
+- Entry point: `Miejsca -> Braki`
+
+## Database
+
+Core tables:
+
+```text
+countries, location_types, relation_types
+locations
+persons
+travels
+travel_locations
+travel_participants
+```
+
+Locations support hierarchy through `parent_location_id`.
+
+## Testing And Checks
+
+Current checks used during development:
+
+```bash
+python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py
+python -m ruff check .
+```
+
+For frontend syntax, use `node --check` when available, or parse changed JS files with the Node runtime.
+
+## Important Notes
+
+- Do not commit local untracked `AGENTS.md` unless explicitly requested.
+- `migrate.py` drops/recreates PostgreSQL tables and must be run with `--force`.
+- Static assets are loaded with `?v={{ asset_version }}` to avoid stale PWA/cache behavior after deploys.
