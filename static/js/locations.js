@@ -64,6 +64,11 @@ async function openLocation(id) {
   const view = document.getElementById('view');
   view.innerHTML = skeletonCards(3);
   const loc = await api('/api/locations/' + id);
+  if (!loc || !loc.id || isApiError(loc)) {
+    if (loc && loc.error) toast('Nie znaleziono miejsca', 'error');
+    showTab('locations');
+    return;
+  }
   view.innerHTML = `
     <div class="detail-header">
       <button class="back-btn" onclick="showTab('locations')">‹ Miejsca</button>

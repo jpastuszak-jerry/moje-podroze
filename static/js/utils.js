@@ -18,19 +18,28 @@ const HOME_ZOOM = 7;
 async function api(path) {
   try {
     const r = await fetch(API + path);
+    const body = await r.json().catch(() => ({}));
     if (r.status === 503) {
-      const body = await r.json().catch(() => ({}));
       if (body && body.error === 'offline') {
         toast('Brak połączenia — danych nie ma w cache', 'error');
       }
       return Array.isArray(body) ? body : [];
     }
-    return await r.json();
+    if (!r.ok) {
+      return body && !Array.isArray(body)
+        ? { ...body, status: r.status }
+        : { error: 'Błąd serwera: ' + r.status, status: r.status };
+    }
+    return body;
   } catch {
     console.error('Błąd sieci:', path);
     if (navigator.onLine) toast('Błąd sieci — spróbuj ponownie', 'error');
     return [];
   }
+}
+
+function isApiError(value) {
+  return !!(value && !Array.isArray(value) && value.error);
 }
 
 async function _mutationFetch(path, opts) {
