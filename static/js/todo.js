@@ -81,7 +81,10 @@ async function renderTodo() {
       <div class="card-inner">
         <div class="card-icon" style="background:var(--orange-light);color:var(--orange)">✍️</div>
         <div class="card-body">
-          <div class="card-title">${escapeHtml(item.name || '(bez nazwy)')}</div>
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <div class="card-title" style="flex:1">${escapeHtml(item.name || '(bez nazwy)')}</div>
+            <button class="btn-add-small" onclick="event.stopPropagation(); openTodoEdit(${item.id})">Edytuj</button>
+          </div>
           <div class="card-subtitle">${fmtDate(item.start_date)} · ${item.missing_count} ${item.missing_count === 1 ? 'brak' : 'braki'}</div>
           <div class="card-meta">
             ${(item.missing || []).map(label => `<span class="badge badge-orange">${escapeHtml(label)}</span>`).join('')}
@@ -91,6 +94,16 @@ async function renderTodo() {
     </div>`).join('');
   html += '</div>';
   view.innerHTML = html;
+}
+
+async function openTodoEdit(id) {
+  const travel = await api('/api/travels/' + id);
+  if (!travel || travel.error) {
+    toast('Nie udało się wczytać podróży', 'error');
+    return;
+  }
+  window._currentTravel = travel;
+  openTravelModal(travel, false);
 }
 
 function collectTodoYears(items) {
