@@ -163,7 +163,10 @@ function renderDataQuality(q) {
       </div>`
     : '';
   return `<div class="purpose-bar">
-    <div class="section-title">🧭 Jakość danych</div>
+    <div class="section-header" style="padding:0;margin-bottom:8px">
+      <div class="section-title">🧭 Jakość danych</div>
+      <button class="btn-add-small" onclick="openTodoView(currentStatsYear)">Lista</button>
+    </div>
     ${bars}
     ${attention}
   </div>`;

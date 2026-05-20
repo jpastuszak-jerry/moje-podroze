@@ -529,12 +529,14 @@ window.addEventListener('offline', updateOfflineBanner);
 function showTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
+  const tabButton = document.getElementById('tab-'+tab);
+  if (tabButton) tabButton.classList.add('active');
   if (tab === 'travels') renderTravels();
   else if (tab === 'locations') renderLocations();
   else if (tab === 'map') renderMap();
   else if (tab === 'stats') renderStats();
   else if (tab === 'timeline') renderTimeline();
+  else if (tab === 'todo') renderTodo();
   const view = document.getElementById('view');
   if (view) {
     view.classList.remove('view-fade');

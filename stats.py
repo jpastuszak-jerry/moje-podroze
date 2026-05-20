@@ -54,7 +54,7 @@ def _series_params(year):
     return _period_bounds(year)
 
 
-def _data_quality(year=None):
+def _data_quality(year=None, limit=8):
     main_clause, main_params = _travel_period_clause(year, 't')
     rows = [dict(r) for r in query(f"""
         SELECT t.*,
@@ -89,14 +89,18 @@ def _data_quality(year=None):
                 'name': t.get('name') or '(bez nazwy)',
                 'start_date': str(t['start_date']) if t.get('start_date') else None,
                 'missing': missing,
+                'missing_keys': [key for key, _, predicate in checks if predicate(t)],
                 'missing_count': len(missing),
             })
 
     needs_attention.sort(key=lambda t: (t['missing_count'], t['start_date'] or ''), reverse=True)
+    if limit is not None:
+        needs_attention = needs_attention[:limit]
     return {
         'total': len(rows),
         'counts': counts,
-        'needs_attention': needs_attention[:8],
+        'needs_attention': needs_attention,
+        'labels': {key: label for key, label, _ in checks},
     }
 
 
@@ -496,4 +500,14 @@ def get_stats():
         'heatmap': _heatmap_data(),
         'data_quality': _data_quality(year),
         'country_milestones': _country_milestones(year),
+    })
+
+
+@bp.route('/api/stats/todo')
+def get_stats_todo():
+    raw_year = request.args.get('year')
+    year = int(raw_year) if raw_year and raw_year.isdigit() else None
+    return etag_json({
+        'year': year,
+        **_data_quality(year, limit=None),
     })
