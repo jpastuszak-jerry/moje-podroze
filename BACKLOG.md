@@ -84,7 +84,79 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
-### 9. Role uzytkownikow: admin i viewer
+### 9. Testy automatyczne dla logiki dat i statystyk
+
+**Problem:** najwazniejsza logika domenowa jest obecnie weryfikowana glownie recznie. Dotyczy to szczegolnie statystyk, dat i jakosci danych.
+
+**Do dodania:**
+- testy liczenia dni inkluzywnie,
+- testy podrozy przechodzacej przez granice roku,
+- testy jakosci danych podrozy,
+- testy jakosci danych miejsc,
+- testy nowych/powrotnych krajow,
+- testy kontraktu `/api/stats`, `/api/stats/todo`, `/api/locations/todo`.
+
+**Weryfikacja:** GitHub Actions uruchamia testy przy pushu i lapie regresje w statystykach.
+
+### 10. Wspolne komponenty frontendu
+
+**Problem:** frontend coraz czesciej sklada podobne elementy recznie w template stringach. Powtarzaja sie karty, badge, paski filtrow, puste stany, metryki i rankingowe belki.
+
+**Propozycja:** dodac lekki `static/js/components.js` bez frameworka, np.:
+- `renderCard`,
+- `renderFilterBar`,
+- `renderBadges`,
+- `renderMetricCard`,
+- `renderRankingBars`.
+
+**Weryfikacja:** `stats.js`, `todo.js`, `locations.js` i `travels.js` maja mniej duplikacji, a wyglad kart/filtrow pozostaje spojny.
+
+### 11. Kontrakty API dla widokow
+
+**Problem:** endpointy zwracaja coraz bogatsze struktury, ale ich kontrakty sa opisane tylko przez kod.
+
+**Do zrobienia:**
+- opisac odpowiedzi `/api/stats`,
+- opisac odpowiedzi `/api/stats/todo`,
+- opisac odpowiedzi `/api/locations/todo`,
+- najlepiej dodac testy sprawdzajace minimalny kontrakt.
+
+**Weryfikacja:** nowy agent albo przyszly refaktor wie, ktore pola sa wymagane przez UI.
+
+### 12. Strategia cache/PWA pod dane wrazliwe
+
+**Problem:** service worker i IndexedDB cache sa bardzo przydatne, ale przy rolach uzytkownikow moga pokazac viewerowi dane admina, jesli cache nie bedzie rozdzielony lub czyszczony.
+
+**Do zrobienia przed rolami viewer/admin:**
+- zdecydowac, ktore endpointy moga byc cache'owane,
+- dane z kosztami oznaczyc jako `no-store` albo cache'owac per rola,
+- czyscic cache/IndexedDB przy login/logout,
+- upewnic sie, ze viewer po przelogowaniu nie widzi kosztow z poprzedniej sesji admina.
+
+**Weryfikacja:** test reczny admin -> logout -> viewer nie pokazuje kosztow ani danych administracyjnych.
+
+### 13. Migracje bazy danych
+
+**Problem:** obecnie schemat jest utrzymywany przez helpery startowe i `migrate.py`. Przy rolach, ustawieniach, albumach albo kolejnych tabelach bedzie potrzebny bezpieczniejszy mechanizm zmian schematu.
+
+**Propozycja:**
+- wprowadzic Alembic albo prosty wlasny system migracji wersjonowanych,
+- zostawic `migrate.py --force` tylko do pelnej migracji SQLite -> PostgreSQL,
+- dokumentowac migracje w repo.
+
+**Weryfikacja:** zmiana schematu moze byc odpalona deterministycznie na lokalnym srodowisku i Renderze.
+
+### 14. Wydzielenie agregacji statystyk
+
+**Problem:** `stats.py` zawiera coraz wiecej zapytan analitycznych. To nadal dziala, ale plik bedzie trudny do utrzymania, jesli statystyki dalej beda rosly.
+
+**Propozycja:**
+- wydzielic helpery/sekcje agregacji, np. `stats_queries.py` albo klasy/funkcje per obszar: koszty, kraje, jakosc danych, Hall of Fame,
+- zachowac endpoint Flask w `stats.py` jako cienka warstwe HTTP.
+
+**Weryfikacja:** dodanie nowej statystyki nie wymaga edycji jednego bardzo duzego endpointu.
+
+### 15. Role uzytkownikow: admin i viewer
 
 **Problem:** aplikacja docelowo powinna wspierac dwa tryby dostepu:
 - admin: widzi wszystko i moze zmieniac baze danych,
@@ -103,7 +175,7 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - viewer nie moze zapisac/usunac przez API,
 - po przelogowaniu admin -> viewer stare dane z cache nie pokazuja kosztow.
 
-### 10. Kreator podrozy - bezpieczny zapis koncowy
+### 16. Kreator podrozy - bezpieczny zapis koncowy
 
 **Kontekst:** nie zmieniac zasady, ze mozna swiadomie zapisac niepelna podroz. Problemem jest tylko sytuacja, gdy klik "Zapisz podroz" technicznie utworzy podroz, ale nie dopnie wszystkich miejsc/uczestnikow.
 
@@ -111,25 +183,9 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** przy bledzie dopinania miejsca/uczestnika aplikacja nie udaje pelnego sukcesu.
 
-### 11. Testy automatyczne dla logiki dat i statystyk
+### 17. Aktualizacja dokumentacji technicznej - DONE
 
-**Do dodania:**
-- testy liczenia dni inkluzywnie,
-- testy podrozy przechodzacej przez granice roku,
-- testy jakosci danych,
-- testy nowych/powrotnych krajow.
-
-**Weryfikacja:** GitHub Actions uruchamia testy przy pushu i lapie regresje w statystykach.
-
-### 12. Aktualizacja dokumentacji technicznej
-
-**Problem:** `CLAUDE.md` opisuje starsza architekture i zawiera informacje, ktore po refaktorach sa nieaktualne.
-
-**Do zrobienia:**
-- opisac aktualny podzial backendu na blueprinty,
-- usunac wzmianke o hardkodowanym `person_id=1/2` w statystykach,
-- dopisac `todo.js` i `/api/stats/todo`,
-- dopisac zasade: dni liczymy inkluzywnie.
+**Status:** zrobione w `fef84cf Update project documentation`.
 
 **Weryfikacja:** nowy agent moze wejsc w repo i zrozumiec aktualny stan bez czytania historii commitow.
 
