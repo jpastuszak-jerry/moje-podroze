@@ -97,34 +97,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .stars {
   display: inline-flex;
   align-items: center;
+  gap: 1px;
   white-space: nowrap;
   line-height: 1;
   vertical-align: -0.08em;
 }
-.half-star {
-  display: inline-block;
+.star-slot {
   position: relative;
   flex: 0 0 1em;
   width: 1em;
   height: 1em;
+  display: inline-block;
   line-height: 1;
-  vertical-align: -0.08em;
 }
-.half-star::before {
-  content: '★';
-  color: inherit;
-  opacity: 0.3;
-  display: block;
-}
-.half-star::after {
-  content: '★';
+.star-base,
+.star-fill {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 50%;
-  overflow: hidden;
-  color: inherit;
+  inset: 0;
+  display: block;
+  line-height: 1;
 }
+.star-base {
+  color: currentColor;
+  opacity: 0.3;
+}
+.star-fill {
+  color: currentColor;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.star-empty .star-fill { width: 0; }
+.star-half .star-fill { width: 50%; }
+.star-full .star-fill { width: 100%; }
 .badge-purple { background: var(--purple-light); color: var(--purple); }
 .detail-header { background: var(--card); padding: 52px 16px 16px;
   border-bottom: 1px solid var(--border); }

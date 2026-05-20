@@ -166,15 +166,19 @@ function stars(r) {
   if (!r) return '';
   const n = parseFloat(r);
   if (!Number.isFinite(n)) return '';
-  const full = Math.floor(n);
-  const half = (n - full) >= 0.5 ? 1 : 0;
-  const empty = Math.max(0, 5 - full - half);
+  const rating = Math.max(0, Math.min(5, Math.round(n * 2) / 2));
   const label = `Ocena ${n.toLocaleString('pl-PL')} na 5`;
-  return `<span class="stars" role="img" aria-label="${label}">` +
-    '★'.repeat(full) +
-    (half ? '<span class="half-star" aria-hidden="true"></span>' : '') +
-    '☆'.repeat(empty) +
-    '</span>';
+  const slots = [];
+  for (let i = 0; i < 5; i++) {
+    const fill = Math.max(0, Math.min(1, rating - i));
+    const cls = fill >= 1 ? 'star-full' : fill >= 0.5 ? 'star-half' : 'star-empty';
+    slots.push(
+      `<span class="star-slot ${cls}" aria-hidden="true">` +
+      '<span class="star-base">★</span><span class="star-fill">★</span>' +
+      '</span>'
+    );
+  }
+  return `<span class="stars" role="img" aria-label="${label}">${slots.join('')}</span>`;
 }
 
 function initials(name) {
