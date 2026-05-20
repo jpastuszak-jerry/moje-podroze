@@ -84,13 +84,24 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
-### 9. Autoryzacja aplikacji/API
+### 9. Role uzytkownikow: admin i viewer
 
-**Problem:** endpointy API sa publiczne, jesli aplikacja jest publicznie dostepna.
+**Problem:** aplikacja docelowo powinna wspierac dwa tryby dostepu:
+- admin: widzi wszystko i moze zmieniac baze danych,
+- viewer: moze ogladac dane, ale nie widzi kosztow, nie widzi widokow jakosci/brakow i nie moze wykonywac mutacji.
 
-**Propozycja:** dodac prosta autoryzacje haslem lub tokenem, najlepiej aktywowana przez zmienna srodowiskowa, zeby nie popsuc lokalnej pracy.
+**Propozycja wdrozenia etapami:**
+1. Dodac logowanie, sesje i role przez zmienne srodowiskowe, np. `SECRET_KEY`, `ADMIN_PASSWORD_HASH`, `VIEWER_PASSWORD_HASH`.
+2. Zablokowac na backendzie `POST`, `PUT`, `PATCH`, `DELETE` dla viewerow.
+3. Redagowac koszty po stronie backendu dla viewerow: `amount`, `currency`, `amount_by_currency`, `top_expensive`, `cost_per_day`, koszt w podgladzie/listach/statystykach/Hall of Fame.
+4. Ukryc w UI przyciski i widoki administracyjne: dodawanie, edycje, usuwanie, kosz, backup, slowniki, jakosc danych, `Do uzupelnienia`, `Miejsca -> Braki`.
+5. Poprawic PWA/cache: przy login/logout albo zmianie roli czyscic cache/IndexedDB albo kluczowac cache rola. Viewer nie moze zobaczyc danych admina z cache.
 
-**Weryfikacja:** bez zalogowania mutacje API sa blokowane, a Render da sie skonfigurowac przez environment.
+**Weryfikacja:**
+- admin widzi koszty i moze edytowac,
+- viewer nie dostaje kosztow nawet w JSON API,
+- viewer nie moze zapisac/usunac przez API,
+- po przelogowaniu admin -> viewer stare dane z cache nie pokazuja kosztow.
 
 ### 10. Kreator podrozy - bezpieczny zapis koncowy
 
