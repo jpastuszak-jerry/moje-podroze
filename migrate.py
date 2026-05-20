@@ -10,12 +10,28 @@ Przed uruchomieniem ustaw zmienną środowiskową DATABASE_URL:
     set "DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require"
 """
 
+import argparse
 import os
 import sqlite3
 import psycopg2
 
 SQLITE_PATH = 'travel.sqlite'
 DATABASE_URL = os.environ.get('DATABASE_URL')
+
+parser = argparse.ArgumentParser(
+    description="Copy local SQLite data to PostgreSQL. This drops and recreates PostgreSQL tables."
+)
+parser.add_argument(
+    "--force",
+    action="store_true",
+    help="Confirm that PostgreSQL data can be overwritten.",
+)
+args = parser.parse_args()
+
+if not args.force:
+    print("SAFETY STOP: this migration drops and recreates PostgreSQL tables.")
+    print("Run `python migrate.py --force` only when you intentionally want to overwrite PostgreSQL data.")
+    exit(1)
 
 if not DATABASE_URL:
     print("BŁĄD: Ustaw zmienną DATABASE_URL przed uruchomieniem!")

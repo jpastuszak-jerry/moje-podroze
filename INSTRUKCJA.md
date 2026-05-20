@@ -58,7 +58,7 @@ Ten krok kopiuje Twoje dane z SQLite do PostgreSQL.
    ```
 7. Uruchom migrację:
    ```
-   python migrate.py
+   python migrate.py --force
    ```
 8. Powinieneś zobaczyć:
    ```
@@ -114,7 +114,7 @@ Otwórz aplikację na iPhonie. Teraz:
 Jeśli zrobisz zmiany w lokalnym pliku `travel.sqlite`, uruchom ponownie:
 ```
 set DATABASE_URL=postgresql://...
-python migrate.py
+python migrate.py --force
 ```
 ⚠️ Uwaga: migrate.py **nadpisuje** wszystkie dane w PostgreSQL!
 Używaj go tylko gdy chcesz pełną synchronizację z lokalnego SQLite.
