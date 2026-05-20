@@ -197,10 +197,10 @@ async function openAddParticipant(travelId) {
       <button class="modal-save" onclick="closeModal(document.getElementById('participant-overlay'))">Gotowe</button></div>
     <div class="form-section"><div class="form-label">Wybierz z listy</div>
       ${available.length ? available.map(p => `
-        <div class="person-row" onclick="addParticipantToTravel(${travelId}, ${p.id}, '${p.name.replace(/'/g,"\\'")}', '${(p.relation_type||'').replace(/'/g,"\\'")}', this)">
-          <div class="avatar">${initials(p.name)}</div>
-          <div class="person-row-info"><div style="font-size:14px;font-weight:500">${p.name}</div>
-            ${p.relation_type ? `<div style="font-size:12px;color:var(--text2)">${p.relation_type}</div>` : ''}</div>
+        <div class="person-row" onclick="addParticipantToTravel(${travelId}, ${p.id}, '${jsStringArg(p.name)}', '${jsStringArg(p.relation_type || '')}', this)">
+          <div class="avatar">${escapeHtml(initials(p.name))}</div>
+          <div class="person-row-info"><div style="font-size:14px;font-weight:500">${escapeHtml(p.name)}</div>
+            ${p.relation_type ? `<div style="font-size:12px;color:var(--text2)">${escapeHtml(p.relation_type)}</div>` : ''}</div>
           <div class="person-row-plus">＋</div></div>`).join('') : `<div style="color:var(--text3);font-size:13px;padding:8px 0">Wszystkie osoby już dodane</div>`}
     </div>
     <div class="form-section" style="margin-top:4px;border-top:1px solid var(--border);padding-top:16px">
@@ -224,7 +224,7 @@ async function addParticipantToTravel(travelId, personId, name, relType, rowEl) 
   if (chips) {
     chips.querySelectorAll('.empty-chips').forEach(el => el.remove());
     const chip = document.createElement('div'); chip.className = 'person-chip'; chip.id = 'chip-' + personId;
-    chip.innerHTML = `<div class="avatar">${initials(name)}</div><div><div style="font-size:13px;font-weight:500">${name.split(' ')[0]}</div>${relType ? `<div style="font-size:11px;color:var(--text2)">${relType}</div>` : ''}</div>
+    chip.innerHTML = `<div class="avatar">${escapeHtml(initials(name))}</div><div><div style="font-size:13px;font-weight:500">${escapeHtml(name.split(' ')[0])}</div>${relType ? `<div style="font-size:11px;color:var(--text2)">${escapeHtml(relType)}</div>` : ''}</div>
       <button onclick="removeParticipantFromTravel(${travelId}, ${personId})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 0 0 4px;line-height:1">✕</button>`;
     chips.appendChild(chip);
   }
@@ -240,7 +240,7 @@ async function createAndAddPerson(travelId) {
   if (chips) {
     chips.querySelectorAll('.empty-chips').forEach(el => el.remove());
     const chip = document.createElement('div'); chip.className = 'person-chip'; chip.id = 'chip-' + res.id;
-    chip.innerHTML = `<div class="avatar">${initials(name)}</div><div><div style="font-size:13px;font-weight:500">${name.split(' ')[0]}</div></div>
+    chip.innerHTML = `<div class="avatar">${escapeHtml(initials(name))}</div><div><div style="font-size:13px;font-weight:500">${escapeHtml(name.split(' ')[0])}</div></div>
       <button onclick="removeParticipantFromTravel(${travelId}, ${res.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 0 0 4px;line-height:1">✕</button>`;
     chips.appendChild(chip);
   }
@@ -260,15 +260,15 @@ function openTravelModal(t, isNew) {
     <div class="modal-header"><span class="modal-title">${isNew ? 'Nowa podróż' : 'Edytuj podróż'}</span>
       <button class="modal-save" onclick="saveTravel(${t.id || 0}, ${isNew})">Zapisz</button></div>
     <div class="form-section">
-      <div class="form-label">Nazwa</div><input class="form-input" id="f-name" value="${t.name || ''}" placeholder="np. Wakacje w Lizbonie">
-      <div class="form-label">Cel</div><input class="form-input" id="f-purpose" value="${t.purpose || ''}" placeholder="np. Wakacje">
+      <div class="form-label">Nazwa</div><input class="form-input" id="f-name" value="${escapeAttr(t.name || '')}" placeholder="np. Wakacje w Lizbonie">
+      <div class="form-label">Cel</div><input class="form-input" id="f-purpose" value="${escapeAttr(t.purpose || '')}" placeholder="np. Wakacje">
       <div class="form-row">
         <div><div class="form-label">Data początek</div><input class="form-input" type="date" id="f-start" value="${t.start_date || ''}"></div>
         <div><div class="form-label">Data koniec</div><input class="form-input" type="date" id="f-end" value="${t.end_date || ''}"></div>
       </div>
       <div class="form-row">
         <div><div class="form-label">Koszt</div><input class="form-input" type="number" id="f-amount" value="${t.amount || 0}"></div>
-        <div><div class="form-label">Waluta</div><input class="form-input" id="f-currency" value="${t.currency || 'PLN'}"></div>
+        <div><div class="form-label">Waluta</div><input class="form-input" id="f-currency" value="${escapeAttr(t.currency || 'PLN')}"></div>
       </div>
       <div class="form-row">
         <div><div class="form-label">Liczba lotów</div><input class="form-input" type="number" id="f-flights" value="${t.number_of_flights || 0}"></div>
@@ -286,8 +286,8 @@ function openTravelModal(t, isNew) {
             <option value="1" ${t.is_description_complete ? 'selected' : ''}>Tak</option>
           </select></div>
       </div>
-      <div class="form-label">Notatki</div><textarea class="form-input form-textarea" id="f-notes">${t.notes || ''}</textarea>
-      <div class="form-label">Wspomnienia</div><textarea class="form-input form-textarea" id="f-reflections">${t.reflections || ''}</textarea>
+      <div class="form-label">Notatki</div><textarea class="form-input form-textarea" id="f-notes">${escapeHtml(t.notes || '')}</textarea>
+      <div class="form-label">Wspomnienia</div><textarea class="form-input form-textarea" id="f-reflections">${escapeHtml(t.reflections || '')}</textarea>
     </div></div>`;
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);

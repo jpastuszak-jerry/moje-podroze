@@ -201,6 +201,19 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function escapeAttr(text) {
+  return escapeHtml(text).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function jsStringArg(text) {
+  return escapeAttr(String(text ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/</g, '\\x3C'));
+}
+
 /* iOS Safari sometimes reports stale input.value when the user taps a button
  * while autocaps/spellcheck/autocomplete is still finalising. Forcing blur and
  * yielding to the next frame reliably gets the committed value. */

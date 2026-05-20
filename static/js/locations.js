@@ -82,7 +82,7 @@ async function openLocation(id) {
           <div class="info-item"><label>Kraj</label><span>${escapeHtml(loc.country_name)}</span></div>
           ${loc.parent_name ? `<div class="info-item"><label>Region / miasto</label><span onclick="openLocation(${loc.parent_location_id})" style="color:var(--blue);cursor:pointer">${escapeHtml(loc.parent_name)}</span></div>` : ''}
           <div class="info-item"><label>Liczba wizyt</label><span>${loc.visit_count} ${loc.visit_count === 1 ? 'raz' : 'razy'}</span></div>
-          ${loc.address ? `<div class="info-item" style="grid-column:span 2"><label>Adres</label><span>${loc.address}</span></div>` : ''}
+          ${loc.address ? `<div class="info-item" style="grid-column:span 2"><label>Adres</label><span>${escapeHtml(loc.address)}</span></div>` : ''}
           ${(loc.latitude != null && loc.longitude != null) ? `
           <div class="info-item" style="grid-column:span 2">
             <label>Współrzędne GPS</label>
@@ -104,7 +104,7 @@ async function openLocation(id) {
       ${loc.child_visits && loc.child_visits.length ? `<div class="section"><div class="section-title">Wizyty przez lokalizacje podrzędne (${loc.child_visits.length})</div>
         ${loc.child_visits.map(v => `<div class="loc-row" onclick="openTravel(${v.id})" style="cursor:pointer">
           <div class="loc-icon">📍</div><div style="flex:1">
-          <div class="loc-name">${v.travel_name || '(bez nazwy)'}</div>
+          <div class="loc-name">${escapeHtml(v.travel_name || '(bez nazwy)')}</div>
           <div class="loc-sub">${escapeHtml(v.child_location_name)}</div>
           <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div></div>
           <div style="color:var(--text3);font-size:18px">›</div></div>`).join('')}
@@ -211,7 +211,7 @@ async function geocodeForLocModal(prefix) {
       resultsDiv.innerHTML = data.map(r => `
         <div onclick="selectGeoResult('${prefix}',${parseFloat(r.lat).toFixed(5)},${parseFloat(r.lon).toFixed(5)})"
           style="padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;color:var(--text);line-height:1.4">
-          ${r.display_name}
+          ${escapeHtml(r.display_name)}
         </div>`).join('');
       resultsDiv.style.display = 'block';
     }
@@ -465,11 +465,11 @@ function buildLocPickerList(locs, travelId, travelStart, travelEnd) {
   const grouped = {};
   locs.forEach(l => { if (!grouped[l.country_name]) grouped[l.country_name] = []; grouped[l.country_name].push(l); });
   return Object.entries(grouped).map(([country, items]) => `
-    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:8px 0 4px">${country}</div>
-    ${items.map(l => `<div class="person-row" onclick="openConfirmAddLocation(${travelId}, ${l.id}, '${l.name.replace(/'/g,"\\'")}', '${l.location_type.replace(/'/g,"\\'")}', '${travelStart}', '${travelEnd}', ${l.parent_location_id || 'null'}, '${(l.parent_name||'').replace(/'/g,"\\'")}')">
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:8px 0 4px">${escapeHtml(country)}</div>
+    ${items.map(l => `<div class="person-row" onclick="openConfirmAddLocation(${travelId}, ${l.id}, '${jsStringArg(l.name)}', '${jsStringArg(l.location_type)}', '${jsStringArg(travelStart)}', '${jsStringArg(travelEnd)}', ${l.parent_location_id || 'null'}, '${jsStringArg(l.parent_name || '')}')">
       <div style="font-size:20px;width:28px;text-align:center;flex-shrink:0">${locationIcon(l.location_type)}</div>
-      <div class="person-row-info"><div style="font-size:14px;font-weight:500">${l.name}</div>
-        <div style="font-size:12px;color:var(--text2)">${l.location_type}${l.parent_name ? ' · ' + l.parent_name : ''}</div></div>
+      <div class="person-row-info"><div style="font-size:14px;font-weight:500">${escapeHtml(l.name)}</div>
+        <div style="font-size:12px;color:var(--text2)">${escapeHtml(l.location_type)}${l.parent_name ? ' · ' + escapeHtml(l.parent_name) : ''}</div></div>
       <div class="person-row-plus">＋</div></div>`).join('')}`).join('');
 }
 
@@ -500,7 +500,7 @@ function openConfirmAddLocation(travelId, locationId, locationName, locationType
       </div>
       <div class="form-label">Notatka (opcjonalnie)</div>
       <input class="form-input" id="lc-notes" placeholder="np. hotel nad morzem">
-      <button id="lc-save-btn" onclick="saveLocationToTravel(${travelId}, ${locationId}, '${locationName.replace(/'/g,"\\'")}', '${locationType.replace(/'/g,"\\'")}', ${parentId || 'null'}, '${(parentName||'').replace(/'/g,"\\'")}' )"
+      <button id="lc-save-btn" onclick="saveLocationToTravel(${travelId}, ${locationId}, '${jsStringArg(locationName)}', '${jsStringArg(locationType)}', ${parentId || 'null'}, '${jsStringArg(parentName || '')}' )"
         style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
         Dodaj miejsce
       </button>
