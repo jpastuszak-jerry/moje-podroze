@@ -290,34 +290,34 @@ async function openLocation(id) {
         <div class="info-grid">
           <div class="info-item"><label>Typ miejsca</label><span>${escapeHtml(loc.location_type)}</span></div>
           <div class="info-item"><label>Kraj</label><span>${escapeHtml(loc.country_name)}</span></div>
-          ${loc.parent_name ? `<div class="info-item"><label>Region / miasto</label><span onclick="openLocation(${loc.parent_location_id})" style="color:var(--blue);cursor:pointer">${escapeHtml(loc.parent_name)}</span></div>` : ''}
+          ${loc.parent_name ? `<div class="info-item"><label>Region / miasto</label><span class="item-link" onclick="openLocation(${loc.parent_location_id})">${escapeHtml(loc.parent_name)}</span></div>` : ''}
           <div class="info-item"><label>Liczba wizyt</label><span>${loc.visit_count} ${loc.visit_count === 1 ? 'raz' : 'razy'}</span></div>
-          ${loc.address ? `<div class="info-item" style="grid-column:span 2"><label>Adres</label><span>${escapeHtml(loc.address)}</span></div>` : ''}
+          ${loc.address ? `<div class="info-item info-wide"><label>Adres</label><span>${escapeHtml(loc.address)}</span></div>` : ''}
           ${(loc.latitude != null && loc.longitude != null) ? `
-          <div class="info-item" style="grid-column:span 2">
+          <div class="info-item info-wide">
             <label>Współrzędne GPS</label>
-            <span style="font-family:monospace;font-size:13px">
+            <span class="mono-detail">
               ${parseFloat(loc.latitude).toFixed(5)}, ${parseFloat(loc.longitude).toFixed(5)}
-              &nbsp;<a href="https://maps.google.com/?q=${loc.latitude},${loc.longitude}" target="_blank" style="color:var(--blue);font-size:12px;text-decoration:none">📍 Google Maps</a>
+              &nbsp;<a class="text-link" href="https://maps.google.com/?q=${loc.latitude},${loc.longitude}" target="_blank">📍 Google Maps</a>
             </span>
           </div>` : ''}
         </div>
         ${loc.notes ? `<div style="margin-top:10px"><div class="form-label">Notatki</div><div class="notes-text">${escapeHtml(loc.notes)}</div></div>` : ''}
       </div>
       ${loc.visits && loc.visits.length ? `<div class="section"><div class="section-title">Wizyty bezpośrednie (${loc.visits.length})</div>
-        ${loc.visits.map(v => `<div class="loc-row" onclick="openTravel(${v.id})" style="cursor:pointer">
+        ${loc.visits.map(v => `<div class="loc-row clickable-row" onclick="openTravel(${v.id})">
           <div class="loc-icon">✈️</div><div style="flex:1"><div class="loc-name">${escapeHtml(v.travel_name || '(bez nazwy)')}</div>
           <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div>
           ${v.notes ? `<div class="loc-sub" style="font-style:italic">${escapeHtml(v.notes)}</div>` : ''}</div>
-          <div style="color:var(--text3);font-size:18px">›</div></div>`).join('')}
-      </div>` : `<div class="section"><div class="empty" style="padding:20px">Brak wizyt w bazie</div></div>`}
+          <div class="list-chevron">›</div></div>`).join('')}
+      </div>` : `<div class="section"><div class="empty inline-empty">Brak wizyt w bazie</div></div>`}
       ${loc.child_visits && loc.child_visits.length ? `<div class="section"><div class="section-title">Wizyty przez lokalizacje podrzędne (${loc.child_visits.length})</div>
-        ${loc.child_visits.map(v => `<div class="loc-row" onclick="openTravel(${v.id})" style="cursor:pointer">
+        ${loc.child_visits.map(v => `<div class="loc-row clickable-row" onclick="openTravel(${v.id})">
           <div class="loc-icon">📍</div><div style="flex:1">
           <div class="loc-name">${escapeHtml(v.travel_name || '(bez nazwy)')}</div>
           <div class="loc-sub">${escapeHtml(v.child_location_name)}</div>
           <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div></div>
-          <div style="color:var(--text3);font-size:18px">›</div></div>`).join('')}
+          <div class="list-chevron">›</div></div>`).join('')}
       </div>` : ''}
       <button class="delete-btn" onclick="confirmDeleteLocation(${loc.id})">🗑 Usuń miejsce</button>
       <div style="height:12px"></div>

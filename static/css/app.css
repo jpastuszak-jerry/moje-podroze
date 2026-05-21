@@ -284,6 +284,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .section-header .section-title { margin-bottom: 0; }
 .btn-add-small { background: var(--blue); color: white; border: none; border-radius: 20px;
   padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.section-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.section-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-height: 26px; padding: 5px 12px; border-radius: 20px;
+  background: var(--blue); color: white; border: none;
+  font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: transform .1s, background .15s, color .15s;
+}
+.section-action.secondary { background: var(--blue-light); color: var(--blue); }
+.section-action:active { transform: scale(0.96); }
+.row-actions { display: flex; flex-direction: column; gap: 4px; align-self: flex-start; margin-top: 2px; }
+.row-icon-button {
+  width: 24px; height: 24px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; color: var(--text3);
+  font-size: 16px; line-height: 1; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+.row-icon-button.primary { color: var(--blue); }
+.row-icon-button:hover { background: var(--bg); border-color: var(--border); color: var(--text); }
+.row-icon-button.danger:hover { color: var(--red); }
+.row-icon-button:active { transform: scale(0.92); }
+.inline-empty { color: var(--text3); font-size: 13px; padding: 4px 0; }
+.person-chip-text { min-width: 0; }
+.person-chip-name { font-size: 13px; font-weight: 500; }
+.person-chip-meta { font-size: 11px; color: var(--text2); }
+.clickable-row { cursor: pointer; }
+.list-chevron { color: var(--text3); font-size: 18px; align-self: center; }
+.item-link { color: var(--blue); cursor: pointer; }
+.text-link { color: var(--blue); font-size: 12px; text-decoration: none; }
+.info-wide { grid-column: span 2; }
+.mono-detail { font-family: monospace; font-size: 13px; }
 .person-row { display: flex; align-items: center; gap: 12px; padding: 10px 0;
   border-bottom: 1px solid var(--border); cursor: pointer; }
 .person-row:last-child { border-bottom: none; }

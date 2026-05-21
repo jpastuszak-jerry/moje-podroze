@@ -114,9 +114,9 @@ async function openTravel(id) {
       <div class="section" id="section-locations">
         <div class="section-header">
           <div class="section-title">Odwiedzone miejsca${t.locations && t.locations.length ? ' (' + t.locations.length + ')' : ''}</div>
-          <div style="display:flex;gap:6px">
-            ${t.locations && t.locations.length ? `<button class="btn-add-small" onclick="showTravelOnMap([${t.locations.map(l=>l.location_id).join(',')}])" style="background:var(--blue-light);color:var(--blue)">🗺 Mapa</button>` : ''}
-            <button class="btn-add-small" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
+          <div class="section-actions">
+            ${t.locations && t.locations.length ? `<button class="section-action secondary" onclick="showTravelOnMap([${t.locations.map(l=>l.location_id).join(',')}])">🗺 Mapa</button>` : ''}
+            <button class="section-action" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
           </div>
         </div>
         <div id="locations-list">
@@ -133,29 +133,26 @@ async function openTravel(id) {
                 <div class="loc-sub" id="tl-dates-${l.id}">${fmtDate(l.arrival_date)} – ${fmtDate(l.departure_date)}</div>
                 <div class="loc-sub" id="tl-notes-${l.id}" style="font-style:italic">${l.notes ? escapeHtml(l.notes) : ''}</div>
               </div>
-              <div style="display:flex;flex-direction:column;gap:4px;align-self:flex-start;margin-top:2px">
-                <button onclick="openEditTravelLocation(${t.id}, ${l.id})"
-                  style="background:none;border:none;color:var(--blue);font-size:16px;cursor:pointer;padding:0;line-height:1">✎</button>
-                <button onclick="removeLocationFromTravel(${t.id}, ${l.id})"
-                  style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0;line-height:1">✕</button>
+              <div class="row-actions">
+                <button class="row-icon-button primary" onclick="openEditTravelLocation(${t.id}, ${l.id})" title="Edytuj wizytę">✎</button>
+                <button class="row-icon-button danger" onclick="removeLocationFromTravel(${t.id}, ${l.id})" title="Usuń z podróży">✕</button>
               </div>
-            </div>`).join('') : `<div class="empty-locs" style="color:var(--text3);font-size:13px;padding:4px 0">Brak miejsc</div>`}
+            </div>`).join('') : `<div class="empty-locs inline-empty">Brak miejsc</div>`}
         </div>
       </div>
       <div class="section" id="section-participants">
         <div class="section-header">
           <div class="section-title">Uczestnicy</div>
-          <button class="btn-add-small" onclick="openAddParticipant(${t.id})">＋ Dodaj</button>
+          <button class="section-action" onclick="openAddParticipant(${t.id})">＋ Dodaj</button>
         </div>
         <div class="person-chips" id="participants-chips">
           ${(t.participants && t.participants.length) ? t.participants.map(p => `
             <div class="person-chip" id="chip-${p.id}">
               <div class="avatar">${initials(p.name)}</div>
-              <div><div style="font-size:13px;font-weight:500">${escapeHtml(p.name.split(' ')[0])}</div>
-              ${p.relation_type ? `<div style="font-size:11px;color:var(--text2)">${escapeHtml(p.relation_type)}</div>` : ''}</div>
-              <button onclick="removeParticipantFromTravel(${t.id}, ${p.id})"
-                style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 0 0 4px;line-height:1">✕</button>
-            </div>`).join('') : `<div class="empty-chips" style="color:var(--text3);font-size:13px">Brak uczestników</div>`}
+              <div class="person-chip-text"><div class="person-chip-name">${escapeHtml(p.name.split(' ')[0])}</div>
+              ${p.relation_type ? `<div class="person-chip-meta">${escapeHtml(p.relation_type)}</div>` : ''}</div>
+              <button class="row-icon-button danger" onclick="removeParticipantFromTravel(${t.id}, ${p.id})" title="Usuń uczestnika">✕</button>
+            </div>`).join('') : `<div class="empty-chips inline-empty">Brak uczestników</div>`}
         </div>
       </div>
       <button class="delete-btn" onclick="confirmDelete(${t.id})">🗑 Usuń podróż</button>
@@ -182,7 +179,7 @@ async function removeParticipantFromTravel(travelId, personId) {
   removeWithSlide(chip, () => {
     const chips = document.getElementById('participants-chips');
     if (chips && !chips.querySelector('.person-chip'))
-      chips.innerHTML = `<div class="empty-chips" style="color:var(--text3);font-size:13px">Brak uczestników</div>`;
+      chips.innerHTML = `<div class="empty-chips inline-empty">Brak uczestników</div>`;
   });
 }
 
@@ -224,8 +221,8 @@ async function addParticipantToTravel(travelId, personId, name, relType, rowEl) 
   if (chips) {
     chips.querySelectorAll('.empty-chips').forEach(el => el.remove());
     const chip = document.createElement('div'); chip.className = 'person-chip'; chip.id = 'chip-' + personId;
-    chip.innerHTML = `<div class="avatar">${escapeHtml(initials(name))}</div><div><div style="font-size:13px;font-weight:500">${escapeHtml(name.split(' ')[0])}</div>${relType ? `<div style="font-size:11px;color:var(--text2)">${escapeHtml(relType)}</div>` : ''}</div>
-      <button onclick="removeParticipantFromTravel(${travelId}, ${personId})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 0 0 4px;line-height:1">✕</button>`;
+    chip.innerHTML = `<div class="avatar">${escapeHtml(initials(name))}</div><div class="person-chip-text"><div class="person-chip-name">${escapeHtml(name.split(' ')[0])}</div>${relType ? `<div class="person-chip-meta">${escapeHtml(relType)}</div>` : ''}</div>
+      <button class="row-icon-button danger" onclick="removeParticipantFromTravel(${travelId}, ${personId})" title="Usuń uczestnika">✕</button>`;
     chips.appendChild(chip);
   }
 }
@@ -240,8 +237,8 @@ async function createAndAddPerson(travelId) {
   if (chips) {
     chips.querySelectorAll('.empty-chips').forEach(el => el.remove());
     const chip = document.createElement('div'); chip.className = 'person-chip'; chip.id = 'chip-' + res.id;
-    chip.innerHTML = `<div class="avatar">${escapeHtml(initials(name))}</div><div><div style="font-size:13px;font-weight:500">${escapeHtml(name.split(' ')[0])}</div></div>
-      <button onclick="removeParticipantFromTravel(${travelId}, ${res.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 0 0 4px;line-height:1">✕</button>`;
+    chip.innerHTML = `<div class="avatar">${escapeHtml(initials(name))}</div><div class="person-chip-text"><div class="person-chip-name">${escapeHtml(name.split(' ')[0])}</div></div>
+      <button class="row-icon-button danger" onclick="removeParticipantFromTravel(${travelId}, ${res.id})" title="Usuń uczestnika">✕</button>`;
     chips.appendChild(chip);
   }
   await apiPost(`/api/travels/${travelId}/participants`, { person_id: res.id });

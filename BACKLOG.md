@@ -115,6 +115,25 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** filtry i przyciski narzedziowe w Miejscach oraz na Mapie wygladaja spojniej i korzystaja ze wspolnych klas.
 
+### 8c. Ujednolicenie UI - faza 2 - PARTIAL
+
+**Status:** kolejna faza zaczeta w `Unify detail action controls`.
+
+**Zrobione:**
+- wspolne klasy dla akcji w naglowkach sekcji (`section-actions`, `section-action`),
+- wspolne klasy dla malych przyciskow w wierszach (`row-actions`, `row-icon-button`),
+- uporzadkowanie przyciskow dodawania/mapy w szczegolach podrozy,
+- uporzadkowanie przyciskow edycji/usuwania miejsc w podrozy,
+- uporzadkowanie chipow uczestnikow,
+- pierwsze wspolne klasy dla linkow i metadanych w szczegolach miejsc.
+
+**Do zrobienia dalej:**
+- przeniesc style formularzy i geokodowania z inline CSS do klas,
+- ujednolicic przyciski zapisu/anulowania w modalach,
+- uporzadkowac akcje kosza i slownikow.
+
+**Weryfikacja:** w szczegolach podrozy przyciski `Mapa`, `Dodaj`, edycja/usuwanie miejsc i usuwanie uczestnikow maja spojny wyglad.
+
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
 ### 9. Testy automatyczne dla logiki dat i statystyk
