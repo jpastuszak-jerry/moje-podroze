@@ -7,14 +7,14 @@ async function renderLocations(q = '') {
     view.innerHTML = `
       <div class="page-header"><div class="page-title">Miejsca</div>
         <div class="search-box"><input type="search" placeholder="Szukaj miejsca lub kraju..." id="loc-search" oninput="onLocSearch(this.value)"></div>
-        <div class="loc-filter-grid">
-          <select id="loc-country-filter" onchange="applyLocationFilters()">
+        <div class="filter-grid">
+          <select class="filter-select" id="loc-country-filter" onchange="applyLocationFilters()">
             <option value="">Wszystkie kraje</option>
           </select>
-          <select id="loc-type-filter" onchange="applyLocationFilters()">
+          <select class="filter-select" id="loc-type-filter" onchange="applyLocationFilters()">
             <option value="">Wszystkie typy</option>
           </select>
-          <select id="loc-sort" onchange="setLocSort(this.value)">
+          <select class="filter-select filter-wide" id="loc-sort" onchange="setLocSort(this.value)">
             <option value="country_name">Kraj i nazwa</option>
             <option value="name_asc">Nazwa A-Z</option>
             <option value="visit_count_desc">Najwięcej wizyt</option>
@@ -27,13 +27,13 @@ async function renderLocations(q = '') {
           <button class="sort-btn" data-loc-quality="not_visited" onclick="setLocQualityFilter('not_visited')">Nieodwiedzone</button>
           <button class="sort-btn" data-loc-quality="missing_gps" onclick="setLocQualityFilter('missing_gps')">Bez GPS</button>
         </div>
-        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-          <button onclick="openDictionaryModal('/api/countries','Kraje')" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🌍 Kraje</button>
-          <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy</button>
-          <button onclick="openPersonsModal()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">👤 Osoby</button>
-          <button onclick="openLocationTodoView()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">✍️ Braki</button>
-          <button onclick="exportDatabase()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">💾 Backup</button>
-          <button onclick="openTrashModal()" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🗑 Kosz</button>
+        <div class="action-strip">
+          <button class="action-button" onclick="openDictionaryModal('/api/countries','Kraje')"><span class="action-button-icon">🌍</span><span>Kraje</span></button>
+          <button class="action-button" onclick="openDictionaryModal('/api/location_types','Typy miejsc')"><span class="action-button-icon">📍</span><span>Typy</span></button>
+          <button class="action-button" onclick="openPersonsModal()"><span class="action-button-icon">👤</span><span>Osoby</span></button>
+          <button class="action-button" onclick="openLocationTodoView()"><span class="action-button-icon">✍️</span><span>Braki</span></button>
+          <button class="action-button" onclick="exportDatabase()"><span class="action-button-icon">💾</span><span>Backup</span></button>
+          <button class="action-button" onclick="openTrashModal()"><span class="action-button-icon">🗑</span><span>Kosz</span></button>
         </div></div>
       <div id="loc-list">${skeletonCards(4)}</div>
       <button class="fab" onclick="openNewLocationModal()">＋</button>`;

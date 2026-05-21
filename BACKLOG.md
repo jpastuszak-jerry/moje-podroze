@@ -98,6 +98,23 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** dolna nawigacja ma cztery glowne obszary: Podroze, Miejsca, Mapa, Statystyki.
 
+### 8b. Ujednolicenie UI - faza 1 - PARTIAL
+
+**Status:** pierwsza faza zaczeta w `Unify basic UI controls`.
+
+**Zrobione:**
+- wspolne klasy CSS dla filtrow (`filter-grid`, `filter-select`) i malych akcji (`action-strip`, `action-button`, `icon-button`),
+- podpiecie nowych klas w widoku Miejsca,
+- podpiecie nowych klas w pasku narzedzi mapy.
+
+**Do zrobienia dalej:**
+- usunac kolejne inline style z formularzy i modalow,
+- ujednolicic przyciski edycji/usuwania w szczegolach podrozy i miejsc,
+- wydzielic najczestsze template stringi do lekkiego `components.js`,
+- podzielic ekran Statystyk na czytelne sekcje.
+
+**Weryfikacja:** filtry i przyciski narzedziowe w Miejscach oraz na Mapie wygladaja spojniej i korzystaja ze wspolnych klas.
+
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
 ### 9. Testy automatyczne dla logiki dat i statystyk

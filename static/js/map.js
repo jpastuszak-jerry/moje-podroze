@@ -27,10 +27,10 @@ function renderMap() {
         <span id="map-counter" class="map-badge">…</span>
       </div>
       <div class="map-toolbar-right">
-        <select id="map-filter-type" onchange="filterMapMarkers()"><option value="">Wszystkie typy</option></select>
-        <select id="map-filter-country" onchange="filterMapMarkers()"><option value="">Wszystkie kraje</option></select>
-        <button onclick="goHome()" class="map-btn" title="Pokaż dom">🏠</button>
-        <button onclick="resetMapView()" class="map-btn" title="Pokaż wszystkie">🔄</button>
+        <select class="filter-select map-filter-select" id="map-filter-type" onchange="filterMapMarkers()"><option value="">Wszystkie typy</option></select>
+        <select class="filter-select map-filter-select" id="map-filter-country" onchange="filterMapMarkers()"><option value="">Wszystkie kraje</option></select>
+        <button onclick="goHome()" class="icon-button map-btn" title="Pokaż dom">🏠</button>
+        <button onclick="resetMapView()" class="icon-button map-btn" title="Pokaż wszystkie">🔄</button>
       </div>
     </div>
     <div id="map-container"></div>
