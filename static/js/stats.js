@@ -321,8 +321,8 @@ async function renderStats() {
     ].filter(Boolean);
     if (records.length) {
       html += '<div class="hof-section">';
-      html += `<div class="section-title hof-title-row">🏆 Hall of Fame <span class="hof-hint">${records.length} kategorie · przesuń →</span></div>`;
-      html += '<div class="hof-scroll-wrap"><div class="hof-scroll">';
+      html += `<div class="section-title hof-title-row">🏆 Hall of Fame <span class="hof-hint">${records.length} kategorie</span></div>`;
+      html += '<div class="hof-scroll-wrap"><button class="hof-nav hof-nav-prev" type="button" aria-label="Poprzednie rekordy">‹</button><div class="hof-scroll">';
       records.forEach((r, i) => {
         const clickAttr = r.id ? ` onclick="openTravel(${r.id})"` : '';
         html += `<div class="hof-card"${clickAttr} style="background:${grads[i % grads.length]}">
@@ -332,7 +332,7 @@ async function renderStats() {
           <div class="hof-value">${r.value}</div>
         </div>`;
       });
-      html += '</div><div class="hof-fade"></div></div>';
+      html += '</div><button class="hof-nav hof-nav-next" type="button" aria-label="Następne rekordy">›</button><div class="hof-fade"></div></div>';
       html += '<div class="hof-dots">' + records.map((_, i) => `<div class="hof-dot${i === 0 ? ' active' : ''}"></div>`).join('') + '</div>';
       html += '</div>';
     }
@@ -436,10 +436,28 @@ async function renderStats() {
   if (hofScroll && hofDots.length) {
     const firstCard = hofScroll.querySelector('.hof-card');
     const cardStep = firstCard ? firstCard.offsetWidth + 10 : 180;
-    hofScroll.addEventListener('scroll', () => {
+    const prevBtn = view.querySelector('.hof-nav-prev');
+    const nextBtn = view.querySelector('.hof-nav-next');
+    const updateHofNav = () => {
       const idx = Math.min(hofDots.length - 1, Math.round(hofScroll.scrollLeft / cardStep));
       hofDots.forEach((d, i) => d.classList.toggle('active', i === idx));
-    }, { passive: true });
+      const maxScroll = hofScroll.scrollWidth - hofScroll.clientWidth - 2;
+      if (prevBtn) prevBtn.disabled = hofScroll.scrollLeft <= 2;
+      if (nextBtn) nextBtn.disabled = hofScroll.scrollLeft >= maxScroll;
+    };
+    const scrollHof = direction => {
+      hofScroll.scrollBy({ left: direction * cardStep * 2, behavior: 'smooth' });
+    };
+    prevBtn?.addEventListener('click', () => scrollHof(-1));
+    nextBtn?.addEventListener('click', () => scrollHof(1));
+    hofScroll.addEventListener('wheel', e => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      hofScroll.scrollLeft += e.deltaY;
+    }, { passive: false });
+    hofScroll.addEventListener('scroll', updateHofNav, { passive: true });
+    window.addEventListener('resize', updateHofNav, { passive: true });
+    updateHofNav();
   }
 
   initStatsMiniMap(s.top_places || []);
