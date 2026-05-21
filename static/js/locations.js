@@ -1,12 +1,32 @@
+let currentLocationQualityFilter = 'all';
+let currentLocationSort = 'country_name';
+
 async function renderLocations(q = '') {
   const view = document.getElementById('view');
   if (!document.getElementById('loc-list')) {
     view.innerHTML = `
       <div class="page-header"><div class="page-title">Miejsca</div>
         <div class="search-box"><input type="search" placeholder="Szukaj miejsca lub kraju..." id="loc-search" oninput="onLocSearch(this.value)"></div>
-        <select id="loc-type-filter" onchange="applyLocTypeFilter()" style="width:100%;margin-top:8px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;cursor:pointer">
-          <option value="">Wszystkie typy</option>
-        </select>
+        <div class="loc-filter-grid">
+          <select id="loc-country-filter" onchange="applyLocationFilters()">
+            <option value="">Wszystkie kraje</option>
+          </select>
+          <select id="loc-type-filter" onchange="applyLocationFilters()">
+            <option value="">Wszystkie typy</option>
+          </select>
+          <select id="loc-sort" onchange="setLocSort(this.value)">
+            <option value="country_name">Kraj i nazwa</option>
+            <option value="name_asc">Nazwa A-Z</option>
+            <option value="visit_count_desc">Najwięcej wizyt</option>
+            <option value="last_visit_desc">Ostatnio odwiedzone</option>
+          </select>
+        </div>
+        <div class="sort-bar loc-quality-bar">
+          <button class="sort-btn active" data-loc-quality="all" onclick="setLocQualityFilter('all')">Wszystkie</button>
+          <button class="sort-btn" data-loc-quality="visited" onclick="setLocQualityFilter('visited')">Odwiedzone</button>
+          <button class="sort-btn" data-loc-quality="not_visited" onclick="setLocQualityFilter('not_visited')">Nieodwiedzone</button>
+          <button class="sort-btn" data-loc-quality="missing_gps" onclick="setLocQualityFilter('missing_gps')">Bez GPS</button>
+        </div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
           <button onclick="openDictionaryModal('/api/countries','Kraje')" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">🌍 Kraje</button>
           <button onclick="openDictionaryModal('/api/location_types','Typy miejsc')" style="flex:1;min-width:80px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer">📍 Typy</button>
@@ -21,41 +41,148 @@ async function renderLocations(q = '') {
   const list = document.getElementById('loc-list');
   list.innerHTML = skeletonCards(4);
   const locs = await api('/api/locations' + (q ? '?q='+encodeURIComponent(q) : ''));
-  allLocationsCache = locs;
-  const filterEl = document.getElementById('loc-type-filter');
-  if (filterEl) {
-    const selected = filterEl.value;
-    const types = [...new Set(locs.map(l => l.location_type))].sort();
-    filterEl.innerHTML = '<option value="">Wszystkie typy</option>' + types.map(t => `<option value="${t}"${t===selected?' selected':''}>${t}</option>`).join('');
+  if (isApiError(locs)) {
+    list.innerHTML = emptyState({ icon: '📍', title: 'Nie udało się wczytać miejsc', message: locs.error });
+    return;
   }
-  renderLocList(locs);
+  allLocationsCache = Array.isArray(locs) ? locs : [];
+  populateLocationFilters(allLocationsCache);
+  applyLocationFilters();
+}
+
+function populateLocationFilters(locs) {
+  const countryEl = document.getElementById('loc-country-filter');
+  const typeEl = document.getElementById('loc-type-filter');
+  const sortEl = document.getElementById('loc-sort');
+  if (sortEl) sortEl.value = currentLocationSort;
+  if (countryEl) {
+    const selected = countryEl.value;
+    const countries = [...new Set(locs.map(l => l.country_name).filter(Boolean))].sort();
+    countryEl.innerHTML = '<option value="">Wszystkie kraje</option>' +
+      countries.map(c => `<option value="${escapeAttr(c)}"${c === selected ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('');
+  }
+  if (typeEl) {
+    const selected = typeEl.value;
+    const types = [...new Set(locs.map(l => l.location_type).filter(Boolean))].sort();
+    typeEl.innerHTML = '<option value="">Wszystkie typy</option>' +
+      types.map(t => `<option value="${escapeAttr(t)}"${t === selected ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('');
+  }
 }
 
 function applyLocTypeFilter() {
+  applyLocationFilters();
+}
+
+function setLocQualityFilter(filter) {
+  currentLocationQualityFilter = filter || 'all';
+  applyLocationFilters();
+}
+
+function setLocSort(sort) {
+  currentLocationSort = sort || 'country_name';
+  applyLocationFilters();
+}
+
+function updateLocQualityButtons() {
+  document.querySelectorAll('[data-loc-quality]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.locQuality === currentLocationQualityFilter);
+  });
+}
+
+function compareLocName(a, b) {
+  return String(a.name || '').localeCompare(String(b.name || ''), 'pl', { sensitivity: 'base' });
+}
+
+function compareLocCountryName(a, b) {
+  const country = String(a.country_name || '').localeCompare(String(b.country_name || ''), 'pl', { sensitivity: 'base' });
+  return country || compareLocName(a, b);
+}
+
+function locationHasGps(loc) {
+  return loc.latitude != null && loc.longitude != null;
+}
+
+function locationVisitCount(loc) {
+  return Number(loc.visit_count || 0);
+}
+
+function applyLocationFilters() {
   const type = document.getElementById('loc-type-filter')?.value || '';
-  renderLocList(type ? allLocationsCache.filter(l => l.location_type === type) : allLocationsCache);
+  const country = document.getElementById('loc-country-filter')?.value || '';
+  const quality = currentLocationQualityFilter || 'all';
+  let locs = Array.isArray(allLocationsCache) ? [...allLocationsCache] : [];
+  if (type) locs = locs.filter(l => l.location_type === type);
+  if (country) locs = locs.filter(l => l.country_name === country);
+  if (quality === 'missing_gps') locs = locs.filter(l => !locationHasGps(l));
+  if (quality === 'visited') locs = locs.filter(l => locationVisitCount(l) > 0);
+  if (quality === 'not_visited') locs = locs.filter(l => locationVisitCount(l) === 0);
+
+  if (currentLocationSort === 'name_asc') {
+    locs.sort(compareLocName);
+  } else if (currentLocationSort === 'visit_count_desc') {
+    locs.sort((a, b) => (locationVisitCount(b) - locationVisitCount(a)) || compareLocCountryName(a, b));
+  } else if (currentLocationSort === 'last_visit_desc') {
+    locs.sort((a, b) => String(b.last_visit || '').localeCompare(String(a.last_visit || '')) || compareLocCountryName(a, b));
+  } else {
+    locs.sort(compareLocCountryName);
+  }
+  updateLocQualityButtons();
+  renderLocList(locs);
+}
+
+function locVisitCountLabel(count) {
+  count = Number(count || 0);
+  if (count === 1) return '1 wizyta';
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return `${count} wizyty`;
+  return `${count} wizyt`;
+}
+
+function locVisitSummary(loc) {
+  const count = locationVisitCount(loc);
+  const last = loc.last_visit ? `ostatnio ${fmtDate(loc.last_visit)}` : 'brak wizyt';
+  return `${locVisitCountLabel(count)} · ${last}`;
+}
+
+function locCardHtml(l, showCountry = false) {
+  const type = escapeHtml(l.location_type || '');
+  const parent = l.parent_name ? ` · ${escapeHtml(l.parent_name)}` : '';
+  const country = showCountry ? `${escapeHtml(l.country_name || '')} · ` : '';
+  const gpsBadge = locationHasGps(l) ? '' : '<span class="badge badge-orange">bez GPS</span>';
+  return `<div class="card" onclick="openLocation(${l.id})"><div class="card-inner">
+    <div class="card-icon" style="background:var(--blue-light)">${locationIcon(l.location_type)}</div>
+    <div class="card-body">
+      <div class="card-title">${escapeHtml(l.name || '(bez nazwy)')}</div>
+      <div class="card-subtitle">${country}${type}${parent}</div>
+      <div class="card-subtitle">${escapeHtml(locVisitSummary(l))}</div>
+      ${l.address ? `<div class="card-subtitle">${escapeHtml(l.address)}</div>` : ''}
+      ${gpsBadge ? `<div class="card-meta">${gpsBadge}</div>` : ''}
+    </div>
+    <div style="color:var(--text3);font-size:20px;align-self:center">›</div>
+  </div></div>`;
 }
 
 function renderLocList(locs) {
   const list = document.getElementById('loc-list');
   if (!locs.length) {
     const search = document.getElementById('loc-search')?.value || '';
-    const filter = document.getElementById('loc-type-filter')?.value || '';
-    list.innerHTML = (search || filter)
-      ? emptyState({ icon: '🔍', title: 'Brak wyników', message: 'Spróbuj innego zapytania lub wyczyść filtr.' })
+    const type = document.getElementById('loc-type-filter')?.value || '';
+    const country = document.getElementById('loc-country-filter')?.value || '';
+    const hasFilter = search || type || country || currentLocationQualityFilter !== 'all';
+    list.innerHTML = hasFilter
+      ? emptyState({ icon: '🔍', title: 'Brak wyników', message: 'Spróbuj innego zapytania albo wyczyść filtry.' })
       : emptyState({ icon: '📍', title: 'Brak miejsc', message: 'Dodaj pierwsze miejsce do swojej kolekcji podróży.', ctaLabel: '＋ Nowe miejsce', ctaOnclick: 'openNewLocationModal()' });
+    return;
+  }
+  if (currentLocationSort !== 'country_name') {
+    list.innerHTML = `<div class="card-list">${locs.map(l => locCardHtml(l, true)).join('')}</div>`;
     return;
   }
   const grouped = {};
   locs.forEach(l => { if (!grouped[l.country_name]) grouped[l.country_name] = []; grouped[l.country_name].push(l); });
   list.innerHTML = Object.entries(grouped).map(([country, items]) => `
-    <div class="country-header">${country}</div>
+    <div class="country-header">${escapeHtml(country)}</div>
     <div class="card-list" style="padding-top:4px;padding-bottom:4px">
-      ${items.map(l => `<div class="card" onclick="openLocation(${l.id})"><div class="card-inner">
-        <div class="card-icon" style="background:var(--blue-light)">${locationIcon(l.location_type)}</div>
-        <div class="card-body"><div class="card-title">${l.name}</div><div class="card-subtitle">${l.location_type}</div>
-          ${l.address ? `<div class="card-subtitle">${l.address}</div>` : ''}</div>
-        <div style="color:var(--text3);font-size:20px;align-self:center">›</div></div></div>`).join('')}
+      ${items.map(l => locCardHtml(l)).join('')}
     </div>`).join('');
 }
 

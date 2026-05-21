@@ -15,18 +15,40 @@ def get_locations():
     q = request.args.get('q', '').strip()
     base_sql = """
             SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type,
-                   l.address, l.notes, l.parent_location_id, pl.name AS parent_name
+                   l.address, l.notes, l.latitude, l.longitude,
+                   l.parent_location_id, pl.name AS parent_name,
+                   COUNT(DISTINCT t.id) AS visit_count,
+                   MAX(t.start_date) AS last_visit
             FROM locations l
             JOIN countries c ON l.country_id = c.id
             JOIN location_types lt ON l.location_type_id = lt.id
             LEFT JOIN locations pl ON l.parent_location_id = pl.id
+            LEFT JOIN locations child ON ((child.id = l.id OR child.parent_location_id = l.id) AND child.deleted_at IS NULL)
+            LEFT JOIN travel_locations tl ON tl.location_id = child.id
+            LEFT JOIN travels t ON tl.travel_id = t.id AND t.deleted_at IS NULL
     """
     if q:
-        rows = query(base_sql + "WHERE l.deleted_at IS NULL AND (l.name ILIKE %s OR c.name ILIKE %s) ORDER BY c.name, l.name",
-                     (f'%{q}%', f'%{q}%'))
+        rows = query(base_sql + """
+            WHERE l.deleted_at IS NULL AND (l.name ILIKE %s OR c.name ILIKE %s)
+            GROUP BY l.id, l.name, c.name, lt.name, l.address, l.notes,
+                     l.latitude, l.longitude, l.parent_location_id, pl.name
+            ORDER BY c.name, l.name
+        """, (f'%{q}%', f'%{q}%'))
     else:
-        rows = query(base_sql + "WHERE l.deleted_at IS NULL ORDER BY c.name, l.name")
-    return etag_json([dict(r) for r in rows])
+        rows = query(base_sql + """
+            WHERE l.deleted_at IS NULL
+            GROUP BY l.id, l.name, c.name, lt.name, l.address, l.notes,
+                     l.latitude, l.longitude, l.parent_location_id, pl.name
+            ORDER BY c.name, l.name
+        """)
+    locs = []
+    for row in rows:
+        loc = dict(row)
+        loc['visit_count'] = int(loc.get('visit_count') or 0)
+        if loc.get('last_visit'):
+            loc['last_visit'] = str(loc['last_visit'])
+        locs.append(loc)
+    return etag_json(locs)
 
 
 @bp.route('/api/locations/todo')

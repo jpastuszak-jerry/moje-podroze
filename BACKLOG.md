@@ -48,14 +48,17 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** osobny filtr/lista pozwala szybko znalezc miejsca wymagajace poprawy.
 
-### 6. Lepsze filtrowanie miejsc
+### 6. Lepsze filtrowanie miejsc - DONE
 
-**Do dodania:**
+**Status:** zrobione w `Add location filters and sorting`.
+
+**Dodane:**
 - filtr kraju,
 - filtr typu miejsca,
 - filtr "bez GPS",
 - filtr "odwiedzone / nieodwiedzone",
-- sortowanie po liczbie wizyt i ostatniej wizycie.
+- sortowanie po liczbie wizyt i ostatniej wizycie,
+- liczba wizyt i ostatnia wizyta na kafelkach miejsc.
 
 **Weryfikacja:** lista miejsc pozwala szybko znalezc np. wszystkie miasta w Finlandii bez wspolrzednych.
 
