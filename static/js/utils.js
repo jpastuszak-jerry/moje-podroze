@@ -535,7 +535,6 @@ function showTab(tab) {
   else if (tab === 'locations') renderLocations();
   else if (tab === 'map') renderMap();
   else if (tab === 'stats') renderStats();
-  else if (tab === 'timeline') renderTimeline();
   else if (tab === 'todo') renderTodo();
   else if (tab === 'locationTodo') renderLocationTodo();
   const view = document.getElementById('view');

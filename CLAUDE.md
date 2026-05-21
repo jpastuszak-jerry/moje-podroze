@@ -50,7 +50,6 @@ Frontend is a vanilla JS SPA. `templates/index.html` is the shell and loads scri
 | `map.js` | Leaflet map with MarkerCluster |
 | `stats.js` | stats dashboard and charts |
 | `todo.js` | travel completion worklist |
-| `timeline.js` | travel timeline |
 | `dictionaries.js` | dictionary CRUD modals |
 | `persons.js` | participant CRUD modal |
 

@@ -90,6 +90,14 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** ekran jest mniej dlugi i latwiej znalezc konkretna analize.
 
+### 8a. Os czasu jako osobna zakladka - DONE
+
+**Status:** osobna zakladka zostala usunieta w `Remove timeline tab`.
+
+**Uzasadnienie:** widok dublowal liste podrozy, ale mial mniej filtrow i nie dawal wystarczajaco nowej wartosci, zeby zajmowac miejsce w dolnej nawigacji.
+
+**Weryfikacja:** dolna nawigacja ma cztery glowne obszary: Podroze, Miejsca, Mapa, Statystyki.
+
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
 ### 9. Testy automatyczne dla logiki dat i statystyk
@@ -214,3 +222,7 @@ Lepsze komunikaty, kiedy dane pochodza z cache, oraz reczne "odswiez dane".
 ### 16. Dalsze porzadkowanie kodu frontendu
 
 Wspolne komponenty dla kart, paskow filtrow, rankingow i pustych stanow, zeby zmniejszyc duplikacje w `travels.js`, `stats.js`, `todo.js` i `locations.js`.
+
+### 17. Historia / Rocznik podrozy
+
+Lepszy nastepca usunietej osi czasu: widok narracyjny w Statystykach, ktory pokazuje lata jako rozdzialy, najwazniejsze podroze roku, nowe kraje, powroty po latach, najdluzsze przerwy i miesiace najbardziej wypelnione podrozami.
