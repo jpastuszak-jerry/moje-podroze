@@ -16,14 +16,19 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** sekcja Hall of Fame pokazuje nowe kafle, a klik w rekord zwiazany z podroza otwiera jej szczegoly.
 
-### 3. Koszty - srednie i rozklad
+### 3. Koszty - srednie i rozklad - PARTIAL
+
+**Status:** czesciowo zrobione w `Add cost summary stats`.
 
 **Problem:** koszty sa obecnie prezentowane glownie jako suma per waluta i top najdrozszych wyjazdow.
 
-**Do dodania:**
-- sredni koszt podrozy,
-- mediana kosztu podrozy,
+**Zrobione:**
+- sredni koszt podrozy per waluta,
+- mediana kosztu podrozy per waluta,
 - koszt per dzien per waluta,
+- liczba podrozy z kosztem per waluta.
+
+**Do dodania pozniej:**
 - miesiace/lata z najwyzszymi kosztami,
 - opcjonalnie reczne kursy walut albo wybrana waluta bazowa.
 

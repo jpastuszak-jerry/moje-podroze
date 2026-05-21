@@ -1,6 +1,7 @@
 """Blueprint /api/stats: aggregate travel analytics for the dashboard."""
 
 from datetime import date
+from statistics import median
 
 from flask import Blueprint, request
 
@@ -185,12 +186,14 @@ def _period_stats(year=None):
     total_days_set = set()
     trip_days = []
     amount_by_currency = {}
+    cost_buckets = {}
     ratings = []
     flights = 0
     albums = 0
     purposes = {}
 
     for t in travels:
+        days = 0
         try:
             start = t['start_date'] if isinstance(t['start_date'], date) else date.fromisoformat(str(t['start_date']))
             end = t['end_date'] if isinstance(t['end_date'], date) else date.fromisoformat(str(t['end_date']))
@@ -209,6 +212,9 @@ def _period_stats(year=None):
         if amount > 0:
             cur = (t.get('currency') or 'PLN').upper()
             amount_by_currency[cur] = amount_by_currency.get(cur, 0) + amount
+            bucket = cost_buckets.setdefault(cur, {'amounts': [], 'days': 0})
+            bucket['amounts'].append(amount)
+            bucket['days'] += days
         if t.get('rating'):
             ratings.append(float(t['rating']))
         flights += int(t.get('number_of_flights') or 0)
@@ -310,6 +316,21 @@ def _period_stats(year=None):
         m['count'] = int(m['count'])
 
     avg_trip_days = round(sum(trip_days) / len(trip_days), 1) if trip_days else 0
+    cost_summary = []
+    for cur, bucket in cost_buckets.items():
+        amounts = bucket['amounts']
+        total = sum(amounts)
+        days = bucket['days']
+        cost_summary.append({
+            'currency': cur,
+            'trip_count': len(amounts),
+            'days': days,
+            'total': round(total, 2),
+            'avg_trip': round(total / len(amounts), 2),
+            'median_trip': round(median(amounts), 2),
+            'avg_per_day': round(total / days, 2) if days else None,
+        })
+    cost_summary.sort(key=lambda item: item['total'], reverse=True)
 
     cost_per_day = [dict(r) for r in query(f"""
         SELECT name, amount, currency,
@@ -340,6 +361,7 @@ def _period_stats(year=None):
             cur: round(amt, 2)
             for cur, amt in sorted(amount_by_currency.items(), key=lambda x: -x[1])
         },
+        'cost_summary': cost_summary,
         'purposes': sorted(
             [{'name': k, 'count': v} for k, v in purposes.items()],
             key=lambda x: -x['count'],

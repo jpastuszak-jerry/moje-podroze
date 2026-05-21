@@ -112,7 +112,43 @@ function setStatsYear(y) {
 }
 
 function pluralTrips(n) {
-  return n === 1 ? 'podróż' : (n < 5 ? 'podróże' : 'podróży');
+  if (n === 1) return 'podróż';
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  return [2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100) ? 'podróże' : 'podróży';
+}
+
+function formatCost(value, currency, digits = 0) {
+  if (value == null || Number.isNaN(Number(value))) return '–';
+  return Number(value).toLocaleString('pl-PL', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }) + (currency ? ' ' + escapeHtml(currency) : '');
+}
+
+function renderCostSummary(summary) {
+  if (!summary || !summary.length) return '';
+  const rows = summary.map(row => {
+    const currency = row.currency || 'PLN';
+    return `<div class="cost-summary-row">
+      <div class="cost-summary-head">
+        <div>
+          <div class="cost-currency">${escapeHtml(currency)}</div>
+          <div class="cost-sub">${row.trip_count} ${pluralTrips(row.trip_count)} z kosztem · ${row.days || 0} dni</div>
+        </div>
+        <div class="cost-total">${formatCost(row.total, currency)}</div>
+      </div>
+      <div class="cost-metrics">
+        <div><span>średnio</span><strong>${formatCost(row.avg_trip, currency)}</strong></div>
+        <div><span>mediana</span><strong>${formatCost(row.median_trip, currency)}</strong></div>
+        <div><span>za dzień</span><strong>${row.avg_per_day == null ? '–' : formatCost(row.avg_per_day, currency, 0) + '/d'}</strong></div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="chart-card cost-summary-card">
+    <div class="section-title">💸 Koszty według walut</div>
+    <div class="cost-summary-list">${rows}</div>
+  </div>`;
 }
 
 function yoyDelta(current, prev, lowerBetter = false) {
@@ -326,6 +362,7 @@ async function renderStats() {
   html += '</div>';
 
   html += '<div class="stats-2col">';
+  html += renderCostSummary(s.cost_summary);
   html += renderDataQuality(s.data_quality);
   html += renderCountryMilestones(s.country_milestones, currentStatsYear);
   if (s.purposes && s.purposes.length) {
