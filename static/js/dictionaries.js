@@ -5,9 +5,9 @@ async function openDictionaryModal(apiPath, title) {
     <div class="modal-header"><span class="modal-title">${title}</span>
       <button class="modal-save" onclick="closeModal(document.getElementById('dict-overlay'))">Gotowe</button></div>
     <div class="form-section">
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <input class="form-input" id="dict-new-name" placeholder="Nowa pozycja..." style="margin-bottom:0;flex:1">
-        <button id="dict-add-btn" style="background:var(--blue);color:white;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;flex-shrink:0">Dodaj</button>
+      <div class="form-inline-row">
+        <input class="form-input" id="dict-new-name" placeholder="Nowa pozycja...">
+        <button class="form-icon-btn" id="dict-add-btn">Dodaj</button>
       </div>
       <div id="dict-list">${buildDictList(items)}</div>
     </div></div>`;
@@ -19,14 +19,14 @@ async function openDictionaryModal(apiPath, title) {
 }
 
 function buildDictList(items) {
-  if (!items.length) return `<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Brak pozycji</div>`;
+  if (!items.length) return `<div class="modal-list-empty">Brak pozycji</div>`;
   return items.map(item => `
-    <div class="dict-row" id="dict-row-${item.id}" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span class="dict-label" id="dict-label-${item.id}" style="flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.name)}</span>
-      <input class="form-input dict-edit-input hidden" id="dict-edit-${item.id}" value="${escapeHtml(item.name)}" style="flex:1;min-width:0;margin-bottom:0;padding:6px 10px">
-      <button onclick="startEditDict(${item.id})" id="dict-edit-btn-${item.id}" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;cursor:pointer;color:var(--text2);flex-shrink:0">✏️</button>
-      <button onclick="saveEditDict(${item.id})" id="dict-save-btn-${item.id}" class="hidden" style="background:var(--blue);color:white;border:none;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;flex-shrink:0">Zapisz</button>
-      <button onclick="deleteDictItem(${item.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0">✕</button>
+    <div class="dict-row modal-list-row modal-row-view" id="dict-row-${item.id}">
+      <span class="dict-label modal-row-main modal-row-title" id="dict-label-${item.id}">${escapeHtml(item.name)}</span>
+      <input class="form-input dict-edit-input compact-input modal-row-main hidden" id="dict-edit-${item.id}" value="${escapeHtml(item.name)}">
+      <button class="modal-row-button neutral" onclick="startEditDict(${item.id})" id="dict-edit-btn-${item.id}">✏️</button>
+      <button class="modal-row-button primary hidden" onclick="saveEditDict(${item.id})" id="dict-save-btn-${item.id}">Zapisz</button>
+      <button class="modal-row-button danger" onclick="deleteDictItem(${item.id})">✕</button>
     </div>`).join('');
 }
 
@@ -102,7 +102,7 @@ async function addDictItem(apiPath) {
   toast('Dodano: ' + name, 'success');
   document.getElementById('dict-new-name').value = '';
   const list = document.getElementById('dict-list');
-  if (list.querySelector('div[style*="text-align:center"]')) list.innerHTML = '';
+  if (list.querySelector('.modal-list-empty')) list.innerHTML = '';
   const tmp = document.createElement('div');
   tmp.innerHTML = buildDictList([{ id: res.id, name }]);
   list.appendChild(tmp.firstElementChild);

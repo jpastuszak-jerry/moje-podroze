@@ -349,17 +349,15 @@ function locationFormHtml({ prefix, countries, locTypes, parentChangeHandler, in
     <div class="form-label">Adres (opcjonalnie)</div>
     <input class="form-input" id="${prefix}-address" placeholder="np. centrum">
     <div class="form-label">GPS (opcjonalnie)</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <input class="form-input" id="${prefix}-lat" placeholder="Szer. np. 37.50745" style="margin-bottom:0;flex:1;min-width:0">
-      <input class="form-input" id="${prefix}-lng" placeholder="Dług. np. 15.08720" style="margin-bottom:0;flex:1;min-width:0">
-      <button id="${prefix}-geocode-btn" onclick="geocodeForLocModal('${prefix}')"
-        style="background:var(--blue);color:white;border:none;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">🔍</button>
+    <div class="form-inline-row">
+      <input class="form-input" id="${prefix}-lat" placeholder="Szer. np. 37.50745">
+      <input class="form-input" id="${prefix}-lng" placeholder="Dług. np. 15.08720">
+      <button class="form-icon-btn" id="${prefix}-geocode-btn" onclick="geocodeForLocModal('${prefix}')">🔍</button>
     </div>
-    <div id="${prefix}-geo-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;max-height:200px;overflow-y:auto"></div>
+    <div class="form-results" id="${prefix}-geo-results"></div>
     ${includeNotes ? `<div class="form-label">Notatki (opcjonalnie)</div>
       <textarea class="form-input form-textarea" id="${prefix}-notes" placeholder="Dodatkowe informacje..."></textarea>` : ''}
-    <button id="${saveBtnId}" onclick="${saveBtnOnclick}"
-      style="background:var(--blue);color:white;border:none;border-radius:12px;padding:14px;width:100%;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">
+    <button class="form-primary-btn" id="${saveBtnId}" onclick="${saveBtnOnclick}">
       ${escapeHtml(saveBtnLabel)}
     </button>
   `;

@@ -134,6 +134,24 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** w szczegolach podrozy przyciski `Mapa`, `Dodaj`, edycja/usuwanie miejsc i usuwanie uczestnikow maja spojny wyglad.
 
+### 8d. Ujednolicenie UI - faza 3
+
+**Status:** formularze i listy modalne uporzadkowane w `Unify modal form controls`.
+
+**Zrobione:**
+- wspolne klasy dla glownych przyciskow formularzy (`form-primary-btn`, `form-secondary-btn`),
+- wspolna klasa dla rzedow inline w formularzach (`form-inline-row`),
+- wspolne klasy dla geokodowania i wynikow geokodowania (`form-icon-btn`, `form-results`, `form-result-item`),
+- podpiecie nowych klas w formularzu miejsca uzywanym przez widok Miejsca i kreator,
+- podpiecie nowych klas w edycji miejsca, edycji pobytu, dodawaniu miejsca do podrozy oraz dodawaniu uczestnika,
+- przeniesienie styli list i edycji inline w modalach Osoby i Slowniki do wspolnych klas.
+
+**Do zrobienia dalej:**
+- ujednolicic widok konfliktu dat podrozy,
+- uporzadkowac formularze w kreatorze podrozy.
+
+**Weryfikacja:** modale dodawania/edycji miejsca, dodawania miejsca do podrozy, edycji pobytu, dodawania uczestnika, Osoby i Slowniki maja spojniejsze przyciski oraz rzedy formularzy.
+
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
 ### 9. Testy automatyczne dla logiki dat i statystyk

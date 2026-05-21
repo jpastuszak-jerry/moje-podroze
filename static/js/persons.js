@@ -6,11 +6,11 @@ async function openPersonsModal() {
     <div class="modal-header"><span class="modal-title">Osoby</span>
       <button class="modal-save" onclick="closeModal(document.getElementById('persons-overlay'))">Gotowe</button></div>
     <div class="form-section">
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input class="form-input" id="new-person-modal-name" placeholder="Imię i nazwisko" style="margin-bottom:0;flex:1">
-        <button onclick="addPersonFromModal()" style="background:var(--blue);color:white;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;flex-shrink:0">Dodaj</button>
+      <div class="form-inline-row">
+        <input class="form-input" id="new-person-modal-name" placeholder="Imię i nazwisko">
+        <button class="form-icon-btn" onclick="addPersonFromModal()">Dodaj</button>
       </div>
-      <select class="form-input" id="new-person-modal-rel" style="margin-bottom:14px">
+      <select class="form-input form-spaced" id="new-person-modal-rel">
         <option value="">– typ relacji –</option>
         ${relOpts}
       </select>
@@ -38,26 +38,26 @@ async function addPersonFromModal() {
 }
 
 function buildPersonsList(persons, relTypes) {
-  if (!persons.length) return `<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Brak osób</div>`;
+  if (!persons.length) return `<div class="modal-list-empty">Brak osób</div>`;
   return persons.map(p => {
     const relOpts = `<option value="">– brak –</option>` +
       relTypes.map(r => `<option value="${r.id}"${r.id === p.relation_type_id ? ' selected' : ''}>${escapeHtml(r.name)}</option>`).join('');
-    return `<div id="person-row-${p.id}" style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <div id="person-view-${p.id}" style="display:flex;align-items:center;gap:8px">
-        <div class="avatar" style="flex-shrink:0">${initials(p.name)}</div>
-        <div style="flex:1;min-width:0;overflow:hidden">
-          <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.name)}</div>
-          ${p.relation_type ? `<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.relation_type)}</div>` : ''}
+    return `<div class="modal-list-row" id="person-row-${p.id}">
+      <div class="modal-row-view" id="person-view-${p.id}">
+        <div class="avatar modal-row-avatar">${initials(p.name)}</div>
+        <div class="modal-row-main">
+          <div class="modal-row-title">${escapeHtml(p.name)}</div>
+          ${p.relation_type ? `<div class="modal-row-sub">${escapeHtml(p.relation_type)}</div>` : ''}
         </div>
-        <button onclick="startEditPerson(${p.id})" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;cursor:pointer;color:var(--text2);flex-shrink:0">✏️</button>
-        <button onclick="deletePersonFromModal(${p.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0">✕</button>
+        <button class="modal-row-button neutral" onclick="startEditPerson(${p.id})">✏️</button>
+        <button class="modal-row-button danger" onclick="deletePersonFromModal(${p.id})">✕</button>
       </div>
       <div id="person-edit-${p.id}" class="hidden">
-        <input class="form-input" id="person-name-${p.id}" value="${(p.name||'').replace(/"/g,'&quot;')}" style="margin-top:8px">
+        <input class="form-input form-edit-input" id="person-name-${p.id}" value="${(p.name||'').replace(/"/g,'&quot;')}">
         <select class="form-input" id="person-rel-${p.id}">${relOpts}</select>
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button onclick="saveEditPerson(${p.id})" style="flex:1;background:var(--blue);color:white;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer">Zapisz</button>
-          <button onclick="cancelEditPerson(${p.id})" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;cursor:pointer;color:var(--text2)">Anuluj</button>
+        <div class="inline-edit-actions">
+          <button class="inline-form-button primary" onclick="saveEditPerson(${p.id})">Zapisz</button>
+          <button class="inline-form-button secondary" onclick="cancelEditPerson(${p.id})">Anuluj</button>
         </div>
       </div>
     </div>`;

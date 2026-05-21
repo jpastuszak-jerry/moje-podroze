@@ -370,19 +370,17 @@ async function openEditLocationModal(id) {
       <div class="form-label">Adres / opis (opcjonalnie)</div>
       <input class="form-input" id="el-address" value="${(loc.address||'').replace(/"/g,'&quot;')}">
       <div class="form-label">Współrzędne GPS (opcjonalnie)</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-        <input class="form-input" id="el-lat" placeholder="Szer. np. 37.50745" style="margin-bottom:0;flex:1;min-width:0"
+      <div class="form-inline-row">
+        <input class="form-input" id="el-lat" placeholder="Szer. np. 37.50745"
           value="${loc.latitude != null ? parseFloat(loc.latitude).toFixed(5) : ''}">
-        <input class="form-input" id="el-lng" placeholder="Dług. np. 15.08720" style="margin-bottom:0;flex:1;min-width:0"
+        <input class="form-input" id="el-lng" placeholder="Dług. np. 15.08720"
           value="${loc.longitude != null ? parseFloat(loc.longitude).toFixed(5) : ''}">
-        <button id="el-geocode-btn" onclick="geocodeForLocModal('el')"
-          style="background:var(--blue);color:white;border:none;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">🔍</button>
+        <button class="form-icon-btn" id="el-geocode-btn" onclick="geocodeForLocModal('el')">🔍</button>
       </div>
-      <div id="el-geo-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;max-height:200px;overflow-y:auto"></div>
+      <div class="form-results" id="el-geo-results"></div>
       <div class="form-label">Notatki (opcjonalnie)</div>
       <textarea class="form-input form-textarea" id="el-notes"></textarea>
-      <button id="el-save-btn" onclick="saveEditLocation(${id})"
-        style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
+      <button class="form-primary-btn" id="el-save-btn" onclick="saveEditLocation(${id})">
         Zapisz zmiany
       </button>
     </div></div>`;
@@ -420,7 +418,7 @@ async function geocodeForLocModal(prefix) {
       btn.textContent = '🔍'; btn.style.background = ''; btn.disabled = false;
       resultsDiv.innerHTML = data.map(r => `
         <div onclick="selectGeoResult('${prefix}',${parseFloat(r.lat).toFixed(5)},${parseFloat(r.lon).toFixed(5)})"
-          style="padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;color:var(--text);line-height:1.4">
+          class="form-result-item">
           ${escapeHtml(r.display_name)}
         </div>`).join('');
       resultsDiv.style.display = 'block';
@@ -492,7 +490,7 @@ async function removeLocationFromTravel(travelId, tlid) {
   const row = document.getElementById('tl-' + tlid);
   removeWithSlide(row, () => {
     const list = document.getElementById('locations-list');
-    if (list && !list.querySelector('.loc-row')) list.innerHTML = `<div class="empty-locs" style="color:var(--text3);font-size:13px;padding:4px 0">Brak miejsc</div>`;
+    if (list && !list.querySelector('.loc-row')) list.innerHTML = `<div class="empty-locs inline-empty">Brak miejsc</div>`;
   });
 }
 
@@ -513,8 +511,7 @@ function openEditTravelLocation(travelId, tlid) {
       </div>
       <div class="form-label">Notatka</div>
       <input class="form-input" id="etl-notes" value="${notes.replace(/"/g,'&quot;')}">
-      <button id="etl-save-btn" onclick="saveEditTravelLocation(${travelId}, ${tlid})"
-        style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
+      <button class="form-primary-btn" id="etl-save-btn" onclick="saveEditTravelLocation(${travelId}, ${tlid})">
         Zapisz zmiany
       </button>
     </div></div>`;
@@ -652,15 +649,13 @@ async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
     <div class="modal-header"><span class="modal-title">Dodaj miejsce do podróży</span>
       <button class="modal-save" onclick="closeModal(document.getElementById('loc-picker-overlay'))">Anuluj</button></div>
     <div class="form-section">
-      <div class="search-box" style="margin-bottom:10px">
-        <input type="search" placeholder="Szukaj miejsca lub kraju..." oninput="filterLocPicker(this.value)"
-          style="width:100%;padding:8px 12px 8px 36px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:15px;outline:none">
+      <div class="search-box modal-search">
+        <input type="search" placeholder="Szukaj miejsca lub kraju..." oninput="filterLocPicker(this.value)">
       </div>
-      <div id="loc-picker-list" style="max-height:45vh;overflow-y:auto">${buildLocPickerList(locs, travelId, travelStart, travelEnd)}</div>
+      <div id="loc-picker-list" class="modal-scroll-list">${buildLocPickerList(locs, travelId, travelStart, travelEnd)}</div>
     </div>
-    <div class="form-section" style="border-top:1px solid var(--border);padding-top:14px">
-      <button onclick="openNewLocationModal(${travelId}, '${travelStart}', '${travelEnd}')"
-        style="background:var(--green-light);color:var(--green);border:none;border-radius:10px;padding:12px;width:100%;font-size:14px;font-weight:600;cursor:pointer">
+    <div class="form-section form-section-divider">
+      <button class="form-secondary-btn" onclick="openNewLocationModal(${travelId}, '${travelStart}', '${travelEnd}')">
         ＋ Dodaj nowe miejsce do słownika
       </button>
     </div></div>`;
@@ -694,9 +689,9 @@ function openConfirmAddLocation(travelId, locationId, locationName, locationType
   document.getElementById('loc-confirm-overlay')?.remove();
   const alreadyAdded = parentId && [...document.querySelectorAll('#locations-list .loc-row')].some(r => parseInt(r.dataset.locationId) === parentId);
   const parentHint = parentId && !alreadyAdded ? `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:var(--blue-light);border-radius:8px">
-      <input type="checkbox" id="lc-add-parent" checked style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
-      <label for="lc-add-parent" style="font-size:13px;cursor:pointer;line-height:1.4">Dodaj też: <strong>${escapeHtml(parentName)}</strong> (miejsce nadrzędne)</label>
+    <div class="form-hint-card">
+      <input type="checkbox" id="lc-add-parent" checked>
+      <label for="lc-add-parent">Dodaj też: <strong>${escapeHtml(parentName)}</strong> (miejsce nadrzędne)</label>
     </div>` : '';
   const overlay2 = document.createElement('div'); overlay2.className = 'modal-overlay'; overlay2.id = 'loc-confirm-overlay';
   overlay2.innerHTML = `<div class="modal"><div class="modal-handle"></div>
@@ -710,8 +705,7 @@ function openConfirmAddLocation(travelId, locationId, locationName, locationType
       </div>
       <div class="form-label">Notatka (opcjonalnie)</div>
       <input class="form-input" id="lc-notes" placeholder="np. hotel nad morzem">
-      <button id="lc-save-btn" onclick="saveLocationToTravel(${travelId}, ${locationId}, '${jsStringArg(locationName)}', '${jsStringArg(locationType)}', ${parentId || 'null'}, '${jsStringArg(parentName || '')}' )"
-        style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">
+      <button class="form-primary-btn" id="lc-save-btn" onclick="saveLocationToTravel(${travelId}, ${locationId}, '${jsStringArg(locationName)}', '${jsStringArg(locationType)}', ${parentId || 'null'}, '${jsStringArg(parentName || '')}' )">
         Dodaj miejsce
       </button>
     </div></div>`;

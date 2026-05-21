@@ -200,14 +200,13 @@ async function openAddParticipant(travelId) {
             ${p.relation_type ? `<div style="font-size:12px;color:var(--text2)">${escapeHtml(p.relation_type)}</div>` : ''}</div>
           <div class="person-row-plus">＋</div></div>`).join('') : `<div style="color:var(--text3);font-size:13px;padding:8px 0">Wszystkie osoby już dodane</div>`}
     </div>
-    <div class="form-section" style="margin-top:4px;border-top:1px solid var(--border);padding-top:16px">
+    <div class="form-section form-section-divider">
       <div class="form-label">Lub dodaj nową osobę</div>
       <input class="form-input" id="new-person-name" placeholder="Imię i nazwisko">
       <div class="form-label">Typ relacji</div>
       <select class="form-input" id="new-person-reltype"><option value="">– brak –</option>
         ${relTypes.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}</select>
-      <button onclick="createAndAddPerson(${travelId})"
-        style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">Dodaj nową osobę</button>
+      <button class="form-primary-btn" onclick="createAndAddPerson(${travelId})">Dodaj nową osobę</button>
     </div></div>`;
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
