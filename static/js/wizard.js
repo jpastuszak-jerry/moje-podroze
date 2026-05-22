@@ -472,7 +472,7 @@ async function wizardSaveNewLocation() {
       res = await apiPost('/api/locations', { ...body, force_duplicate: true });
     }
     if (res.error) {
-      toast('Błąd: ' + res.error, 'error');
+      toastApiError(res, 'Nie udało się zapisać miejsca');
       if (btn) { btn.disabled = false; btn.textContent = origLabel; }
       return;
     }
@@ -575,7 +575,7 @@ async function wizardCreatePerson() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
   if (res.error) {
-    toast('Błąd: ' + res.error, 'error');
+    toastApiError(res, 'Nie udało się dodać osoby');
     if (btn) { btn.disabled = false; btn.textContent = 'Dodaj osobę'; }
     return;
   }
@@ -685,10 +685,10 @@ async function wizardSave() {
       notes: s.notes || null, reflections: s.reflections || null,
     });
 
-    if (travelRes.error) { toast('Błąd zapisu podróży: ' + travelRes.error, 'error'); btn.disabled = false; btn.textContent = '✓ Zapisz podróż'; return; }
+    if (travelRes.error) { toastApiError(travelRes, 'Nie udało się zapisać podróży'); btn.disabled = false; btn.textContent = '✓ Zapisz podróż'; return; }
     const travelId = travelRes.id;
 
-    await Promise.all([
+    const attachResults = await Promise.all([
       ...wizardState.locations.map(l =>
         apiPost(`/api/travels/${travelId}/locations`, {
           location_id: l.id, arrival_date: l.arrival || null,
@@ -700,9 +700,11 @@ async function wizardSave() {
         apiPost(`/api/travels/${travelId}/participants`, { person_id: p.id })
       ),
     ]);
+    const failedAttach = attachResults.find(r => r && r.error);
 
     closeWizard();
-    toast('Podróż utworzona', 'success');
+    if (failedAttach) toastApiError(failedAttach, 'Podróż została utworzona, ale nie udało się dopiąć wszystkich miejsc lub uczestników');
+    else toast('Podróż utworzona', 'success');
     openTravel(travelId);
   } catch (err) {
     toast('Nieoczekiwany błąd: ' + err.message, 'error');

@@ -333,7 +333,7 @@ async function confirmDeleteLocation(id) {
   });
   if (!ok) return;
   const res = await apiDelete('/api/locations/' + id);
-  if (res.error) { toast(res.error, 'error'); return; }
+  if (res.error) { toastApiError(res, 'Nie udało się przenieść miejsca do kosza'); return; }
   toast('Miejsce w koszu', 'success');
   showTab('locations');
 }
@@ -472,7 +472,7 @@ async function saveEditLocation(id) {
       parent_location_id: parentId ? parseInt(parentId) : null,
       address: address || null, notes: notes || null, latitude: latVal, longitude: lngVal
     });
-    if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+    if (res.error) { toastApiError(res, 'Nie udało się zapisać miejsca'); return; }
     closeModal(document.getElementById('edit-loc-overlay'));
     toast('Zapisano', 'success');
     openLocation(id);
@@ -486,7 +486,8 @@ async function saveEditLocation(id) {
 async function removeLocationFromTravel(travelId, tlid) {
   const ok = await askConfirm({ title: 'Usunąć miejsce z podróży?', confirmText: 'Usuń', danger: true });
   if (!ok) return;
-  await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
+  const res = await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
+  if (res.error) { toastApiError(res, 'Nie udało się usunąć miejsca z podróży'); return; }
   const row = document.getElementById('tl-' + tlid);
   removeWithSlide(row, () => {
     const list = document.getElementById('locations-list');
@@ -548,7 +549,7 @@ async function saveEditTravelLocation(travelId, tlid) {
     }
   }
   if (res.error) {
-    toast('Błąd: ' + res.error, 'error');
+    toastApiError(res, 'Nie udało się zapisać pobytu');
     if (btn) { btn.disabled = false; btn.textContent = 'Zapisz zmiany'; }
     return;
   }
@@ -634,7 +635,7 @@ async function saveNewLocation() {
       if (!await confirmDuplicateLocation(res.existing, countryName)) return;
       res = await apiPost('/api/locations', { ...body, force_duplicate: true });
     }
-    if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+    if (res.error) { toastApiError(res, 'Nie udało się zapisać miejsca'); return; }
     const parentSel = document.getElementById('nl-parent');
     const parentName = parentId ? (parentSel.options[parentSel.selectedIndex]?.text || '').split(' (')[0] : null;
     closeModal(overlay);
@@ -749,13 +750,14 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
     }
   }
   if (res.error) {
-    toast('Błąd: ' + res.error, 'error');
+    toastApiError(res, 'Nie udało się dodać miejsca do podróży');
     if (btn) { btn.disabled = false; btn.textContent = 'Dodaj miejsce'; }
     return;
   }
   toast('Miejsce dodane', 'success');
   if (addParent) {
-    await apiPost(`/api/travels/${travelId}/locations`, { location_id: parentId, arrival_date: arrival, departure_date: departure, notes: null, force_outside_range: true });
+    const parentRes = await apiPost(`/api/travels/${travelId}/locations`, { location_id: parentId, arrival_date: arrival, departure_date: departure, notes: null, force_outside_range: true });
+    if (parentRes.error) toastApiError(parentRes, 'Miejsce dodane, ale nie udało się dodać miejsca nadrzędnego');
   }
   document.getElementById('loc-confirm-overlay')?.remove();
   document.getElementById('loc-picker-overlay')?.remove();
@@ -842,7 +844,7 @@ function renderTrashBody(data) {
 async function restoreFromTrash(kind, id) {
   const path = kind === 'travel' ? `/api/travels/${id}/restore` : `/api/locations/${id}/restore`;
   const res = await apiPost(path, {});
-  if (res.error) { toast(res.error, 'error'); return; }
+  if (res.error) { toastApiError(res, 'Nie udało się przywrócić elementu'); return; }
   const row = document.getElementById(`trash-${kind === 'travel' ? 't' : 'l'}-${id}`);
   removeWithSlide(row, async () => {
     toast('Przywrócono', 'success');
@@ -860,7 +862,7 @@ async function hardDeleteFromTrash(kind, id) {
   if (!ok) return;
   const path = (kind === 'travel' ? `/api/travels/${id}` : `/api/locations/${id}`) + '?hard=1';
   const res = await apiDelete(path);
-  if (res.error) { toast(res.error, 'error'); return; }
+  if (res.error) { toastApiError(res, 'Nie udało się trwale usunąć elementu'); return; }
   const row = document.getElementById(`trash-${kind === 'travel' ? 't' : 'l'}-${id}`);
   removeWithSlide(row, async () => {
     toast('Usunięto trwale', 'success');

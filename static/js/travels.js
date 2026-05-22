@@ -168,13 +168,15 @@ async function confirmDelete(id) {
     confirmText: 'Do Kosza', danger: true,
   });
   if (!ok) return;
-  await apiDelete('/api/travels/' + id);
+  const res = await apiDelete('/api/travels/' + id);
+  if (res.error) { toastApiError(res, 'Nie udało się przenieść podróży do kosza'); return; }
   toast('Podróż w koszu', 'success');
   showTab('travels');
 }
 
 async function removeParticipantFromTravel(travelId, personId) {
-  await apiDelete(`/api/travels/${travelId}/participants/${personId}`);
+  const res = await apiDelete(`/api/travels/${travelId}/participants/${personId}`);
+  if (res.error) { toastApiError(res, 'Nie udało się usunąć uczestnika z podróży'); return; }
   const chip = document.getElementById('chip-' + personId);
   removeWithSlide(chip, () => {
     const chips = document.getElementById('participants-chips');
@@ -214,7 +216,8 @@ async function openAddParticipant(travelId) {
 }
 
 async function addParticipantToTravel(travelId, personId, name, relType, rowEl) {
-  await apiPost(`/api/travels/${travelId}/participants`, { person_id: personId });
+  const res = await apiPost(`/api/travels/${travelId}/participants`, { person_id: personId });
+  if (res.error) { toastApiError(res, 'Nie udało się dodać uczestnika do podróży'); return; }
   rowEl.remove();
   const chips = document.getElementById('participants-chips');
   if (chips) {
@@ -231,6 +234,9 @@ async function createAndAddPerson(travelId) {
   if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('new-person-reltype').value;
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
+  if (res.error) { toastApiError(res, 'Nie udało się dodać osoby'); return; }
+  const addRes = await apiPost(`/api/travels/${travelId}/participants`, { person_id: res.id });
+  if (addRes.error) { toastApiError(addRes, 'Osoba została dodana, ale nie udało się dopiąć jej do podróży'); return; }
   closeModal(document.getElementById('participant-overlay'));
   const chips = document.getElementById('participants-chips');
   if (chips) {
@@ -240,7 +246,6 @@ async function createAndAddPerson(travelId) {
       <button class="row-icon-button danger" onclick="removeParticipantFromTravel(${travelId}, ${res.id})" title="Usuń uczestnika">✕</button>`;
     chips.appendChild(chip);
   }
-  await apiPost(`/api/travels/${travelId}/participants`, { person_id: res.id });
 }
 
 function openAddTravel() { openWizard(); }
@@ -303,7 +308,7 @@ async function saveTravel(id, isNew) {
   if (!body.start_date || !body.end_date) { toast('Podaj daty podróży', 'error'); return; }
   if (isNew) {
     const res = await apiPost('/api/travels', body);
-    if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+    if (res.error) { toastApiError(res, 'Nie udało się utworzyć podróży'); return; }
     closeModal(document.querySelector('.modal-overlay'));
     toast('Podróż utworzona', 'success');
     showTab('travels');
@@ -315,7 +320,7 @@ async function saveTravel(id, isNew) {
     if (!choice) return;
     res = await apiPut('/api/travels/' + id, { ...body, on_conflict: choice });
   }
-  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  if (res.error) { toastApiError(res, 'Nie udało się zapisać podróży'); return; }
   toast('Zapisano', 'success');
   closeModal(document.querySelector('.modal-overlay'));
   openTravel(id);

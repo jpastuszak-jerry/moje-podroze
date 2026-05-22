@@ -27,7 +27,7 @@ async function addPersonFromModal() {
   if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('new-person-modal-rel').value;
   const res = await apiPost('/api/persons', { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
-  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  if (res.error) { toastApiError(res, 'Nie udało się dodać osoby'); return; }
   toast('Dodano: ' + name, 'success');
   document.getElementById('new-person-modal-name').value = '';
   document.getElementById('new-person-modal-rel').value = '';
@@ -79,7 +79,7 @@ async function saveEditPerson(id) {
   if (!name) { toast('Podaj imię i nazwisko', 'error'); return; }
   const relTypeId = document.getElementById('person-rel-'+id).value;
   const res = await apiPut('/api/persons/'+id, { name, relation_type_id: relTypeId ? parseInt(relTypeId) : null });
-  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  if (res.error) { toastApiError(res, 'Nie udało się zapisać osoby'); return; }
   toast('Zapisano', 'success');
   const overlay = document.getElementById('persons-overlay');
   const relTypes = overlay._relTypes || [];
@@ -94,9 +94,8 @@ async function deletePersonFromModal(id) {
     confirmText: 'Usuń', danger: true,
   });
   if (!ok) return;
-  const res = await fetch(API + '/api/persons/' + id, { method: 'DELETE' });
-  const data = await res.json();
-  if (data.error) { toast(data.error, 'error'); return; }
+  const data = await apiDelete('/api/persons/' + id);
+  if (data.error) { toastApiError(data, 'Nie udało się usunąć osoby'); return; }
   document.getElementById('person-row-'+id)?.remove();
   toast('Usunięto', 'success');
 }

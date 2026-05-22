@@ -42,26 +42,46 @@ function isApiError(value) {
   return !!(value && !Array.isArray(value) && value.error);
 }
 
+function decorateApiError(body, status, fallback = 'Błąd serwera') {
+  const payload = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  return {
+    ...payload,
+    error: payload.error || `${fallback}: ${status}`,
+    status,
+  };
+}
+
+function apiErrorMessage(err, fallback = 'Nie udało się wykonać operacji') {
+  if (!err) return fallback;
+  if (typeof err === 'string') return err;
+  const raw = String(err.error || '').trim();
+  if (raw === 'offline') return 'Brak połączenia — spróbuj ponownie, gdy internet wróci.';
+  if (raw === 'Not found' || err.status === 404) return 'Nie znaleziono rekordu albo został już usunięty.';
+  if (raw) return raw;
+  if (err.status) return `${fallback} (HTTP ${err.status})`;
+  return fallback;
+}
+
+function toastApiError(err, fallback) {
+  toast(apiErrorMessage(err, fallback), 'error');
+}
+
 async function _mutationFetch(path, opts) {
   let r;
   try {
     r = await fetch(API + path, opts);
   } catch {
-    toast('Brak połączenia — zapis niemożliwy', 'error');
     return { error: 'offline' };
   }
   if (r.status === 503) {
     const body = await r.json().catch(() => ({ error: 'offline' }));
-    if (body && body.error === 'offline') {
-      toast('Brak połączenia — zapis niemożliwy', 'error');
-    }
     return body;
   }
   if (!r.ok) {
-    try { return await r.json(); }
-    catch { return { error: 'Błąd serwera: ' + r.status }; }
+    const body = await r.json().catch(() => ({}));
+    return decorateApiError(body, r.status);
   }
-  return r.json();
+  return r.json().catch(() => ({}));
 }
 
 async function apiPost(path, body) {
@@ -83,18 +103,15 @@ async function apiDelete(path) {
   try {
     r = await fetch(API + path, { method: 'DELETE' });
   } catch {
-    toast('Brak połączenia — usunięcie niemożliwe', 'error');
     return { error: 'offline' };
   }
   if (r.status === 503) {
     const body = await r.json().catch(() => ({ error: 'offline' }));
-    if (body && body.error === 'offline') {
-      toast('Brak połączenia — usunięcie niemożliwe', 'error');
-    }
     return body;
   }
   if (!r.ok) {
-    try { return await r.json(); } catch { return { error: 'Błąd serwera: ' + r.status }; }
+    const body = await r.json().catch(() => ({}));
+    return decorateApiError(body, r.status);
   }
   return {};
 }

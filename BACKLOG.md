@@ -67,17 +67,19 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** lista miejsc pozwala szybko znalezc np. wszystkie miasta w Finlandii bez wspolrzednych.
 
-### 7. Lepsze komunikaty bledow w UI
+### 7. Lepsze komunikaty bledow w UI - DONE
 
-**Problem:** API coraz czesciej zwraca sensowne 404/409, ale frontend nie wszedzie pokazuje precyzyjna informacje.
+**Status:** zrobione w `Improve UI error messages`.
 
-**Do poprawy:**
-- delete/restore dla podrozy i miejsc,
-- bledy walidacji Pydantic,
-- bledy offline/service worker,
-- komunikaty przy czesciowym lub nieudanym zapisie.
+**Zrobione:**
+- wspolny helper `toastApiError()` i formatowanie komunikatow API,
+- status HTTP dopinany do bledow mutacji,
+- czytelniejsze komunikaty dla 404/offline/walidacji/konfliktow,
+- obsluga bledow przy delete/restore dla podrozy, miejsc, osob i slownikow,
+- obsluga bledow przy dodawaniu/usuwaniu uczestnikow i miejsc z podrozy,
+- ostrzezenie, gdy kreator utworzy podroz, ale nie dopnie wszystkich miejsc/uczestnikow.
 
-**Weryfikacja:** wymuszone bledy API pokazuja uzytkownikowi zrozumialy toast albo stan pusty, a nie cichy brak reakcji.
+**Weryfikacja:** wymuszone bledy API pokazuja uzytkownikowi zrozumialy toast albo stan pusty, a nie cichy brak reakcji. Usuwanie/przywracanie nie powinno pokazywac sukcesu, jesli API zwrocilo blad.
 
 ### 8. Profesjonalizacja ekranu statystyk
 

@@ -43,7 +43,7 @@ async function saveEditDict(id) {
   const newName = await readInputValue('dict-edit-'+id);
   if (!newName) { toast('Podaj nazwę', 'error'); return; }
   const res = await apiPut(`${apiPath}/${id}`, { name: newName });
-  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  if (res.error) { toastApiError(res, 'Nie udało się zapisać pozycji'); return; }
   document.getElementById('dict-label-'+id).textContent = newName;
   document.getElementById('dict-label-'+id).classList.remove('hidden');
   document.getElementById('dict-edit-btn-'+id).classList.remove('hidden');
@@ -61,7 +61,7 @@ async function deleteDictItem(id) {
   });
   if (!ok) return;
   const data = await apiDelete(`${apiPath}/${id}`);
-  if (data && data.error) { toast(data.error, 'error'); return; }
+  if (data && data.error) { toastApiError(data, 'Nie udało się usunąć pozycji'); return; }
   document.getElementById('dict-row-'+id)?.remove();
   toast('Usunięto', 'success');
 }
@@ -71,7 +71,8 @@ async function exportDatabase() {
   try {
     const res = await fetch(API + '/api/export');
     if (!res.ok) {
-      toast(`Błąd serwera: ${res.status}`, 'error');
+      const body = await res.json().catch(() => ({}));
+      toastApiError(decorateApiError(body, res.status), 'Nie udało się pobrać backupu');
       return;
     }
     const ct = res.headers.get('content-type') || '';
@@ -98,7 +99,7 @@ async function addDictItem(apiPath) {
   const name = await readInputValue('dict-new-name');
   if (!name) { toast('Podaj nazwę', 'error'); return; }
   const res = await apiPost(apiPath, { name });
-  if (res.error) { toast('Błąd: ' + res.error, 'error'); return; }
+  if (res.error) { toastApiError(res, 'Nie udało się dodać pozycji'); return; }
   toast('Dodano: ' + name, 'success');
   document.getElementById('dict-new-name').value = '';
   const list = document.getElementById('dict-list');
