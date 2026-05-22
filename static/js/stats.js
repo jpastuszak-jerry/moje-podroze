@@ -90,20 +90,6 @@ function svgHeatmap(data) {
   </svg>`;
 }
 
-function svgGradientBars(data, { nameKey, valueKey, valueLabel = null, color = 'var(--blue)' }) {
-  if (!data || !data.length) return '';
-  const maxV = Math.max(...data.map(d => d[valueKey]), 1);
-  return data.map(d => {
-    const pct = Math.max(8, Math.round(((d[valueKey] || 0) / maxV) * 100));
-    const label = valueLabel ? valueLabel(d) : d[valueKey];
-    return `<div class="gbar-row">
-      <div class="gbar-name">${escapeHtml(d[nameKey] || '-')}</div>
-      <div class="gbar-track"><div class="gbar-fill" style="width:${pct}%;background:${color}"></div></div>
-      <div class="gbar-val">${label}</div>
-    </div>`;
-  }).join('');
-}
-
 let currentStatsYear = null;
 let currentStatsSection = 'overview';
 
@@ -124,16 +110,6 @@ function setStatsSection(sectionId) {
   if (!STATS_SECTIONS.some(section => section.id === sectionId)) return;
   currentStatsSection = sectionId;
   renderStats();
-}
-
-function renderStatsSectionTabs() {
-  return `<div class="stats-section-tabs" role="tablist" aria-label="Sekcje statystyk">
-    ${STATS_SECTIONS.map(section => `<button type="button"
-      class="stats-section-tab${currentStatsSection === section.id ? ' active' : ''}"
-      role="tab"
-      aria-selected="${currentStatsSection === section.id ? 'true' : 'false'}"
-      onclick="setStatsSection('${section.id}')">${escapeHtml(section.label)}</button>`).join('')}
-  </div>`;
 }
 
 function pluralTrips(n) {
@@ -343,13 +319,6 @@ function renderCountryHistory(history, year) {
   </div>`;
 }
 
-function renderStatsEmptyCard(title, message) {
-  return `<div class="chart-card stats-empty-card">
-    <div class="section-title">${escapeHtml(title)}</div>
-    <div class="stats-empty-text">${escapeHtml(message)}</div>
-  </div>`;
-}
-
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
@@ -368,7 +337,12 @@ async function renderStats() {
   </div>`;
 
   let html = `<div class="page-header"><div class="page-title">Statystyki</div>${filterBar}</div>`;
-  html += renderStatsSectionTabs();
+  html += renderTabs(STATS_SECTIONS, currentStatsSection, {
+    containerClass: 'stats-section-tabs',
+    buttonClass: 'stats-section-tab',
+    ariaLabel: 'Sekcje statystyk',
+    onClick: section => `setStatsSection('${section.id}')`,
+  });
   const heroLabel = currentStatsYear ? `Aktywność w ${currentStatsYear}` : 'Wszystkie podróże';
   const heroCurrencies = Object.entries(s.amount_by_currency || {});
   const heroAmount = heroCurrencies.length
@@ -513,7 +487,7 @@ async function renderStats() {
   }
   if (currentStatsSection === 'participants' && s.participants && s.participants.length) {
     html += '<div class="chart-card"><div class="section-title">👥 Uczestnicy</div>'
-      + svgGradientBars(s.participants, {
+      + renderRankingBars(s.participants, {
           nameKey: 'name',
           valueKey: 'trips',
           color: 'var(--blue)',
@@ -523,7 +497,7 @@ async function renderStats() {
   }
   if (currentStatsSection === 'countries' && s.top_countries && s.top_countries.length) {
     html += '<div class="chart-card"><div class="section-title">🌍 Top krajów</div>'
-      + svgGradientBars(s.top_countries, {
+      + renderRankingBars(s.top_countries, {
           nameKey: 'country',
           valueKey: 'visits',
           color: 'var(--green)',
@@ -533,7 +507,7 @@ async function renderStats() {
   }
   if (currentStatsSection === 'countries' && s.top_places && s.top_places.length) {
     html += '<div class="chart-card"><div class="section-title">📍 Top miast i wysp</div>'
-      + svgGradientBars(s.top_places.slice(0, 5), {
+      + renderRankingBars(s.top_places.slice(0, 5), {
           nameKey: 'location_name',
           valueKey: 'visit_count',
           color: 'var(--purple)',
@@ -585,9 +559,13 @@ async function renderStats() {
       participants: 'Brak uczestników przypisanych do podróży w tym zakresie.',
       quality: 'Brak podróży do oceny jakości danych w tym zakresie.',
     };
-    html += renderStatsEmptyCard(
+    html += renderEmptyCard(
       STATS_SECTIONS.find(section => section.id === currentStatsSection)?.label || 'Brak danych',
-      emptyMessages[currentStatsSection] || 'Brak danych dla wybranego zakresu.'
+      emptyMessages[currentStatsSection] || 'Brak danych dla wybranego zakresu.',
+      {
+        className: 'chart-card stats-empty-card',
+        messageClass: 'stats-empty-text',
+      }
     );
   }
   html += '</div><div style="height:16px"></div>';

@@ -203,7 +203,16 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Problem:** frontend coraz czesciej sklada podobne elementy recznie w template stringach. Powtarzaja sie karty, badge, paski filtrow, puste stany, metryki i rankingowe belki.
 
-**Propozycja:** dodac lekki `static/js/components.js` bez frameworka, np.:
+**Status:** pierwszy krok zrobiony w `Extract stats UI components`.
+
+**Zrobione:**
+- dodany lekki `static/js/components.js`,
+- wspolny renderer podzakladek,
+- wspolny renderer pustej karty,
+- wspolny renderer rankingowych belek,
+- podpiecie pierwszych helperow w `stats.js`.
+
+**Do rozwazenia dalej:** rozszerzac `static/js/components.js` bez frameworka o kolejne helpery, np.:
 - `renderCard`,
 - `renderFilterBar`,
 - `renderBadges`,

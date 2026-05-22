@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const utilsPath = path.join(repoRoot, 'static', 'js', 'utils.js');
+const componentsPath = path.join(repoRoot, 'static', 'js', 'components.js');
 const statsPath = path.join(repoRoot, 'static', 'js', 'stats.js');
 
 function elementStub() {
@@ -74,6 +75,7 @@ context.globalThis = context;
 
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(utilsPath, 'utf8'), context, { filename: utilsPath });
+vm.runInContext(fs.readFileSync(componentsPath, 'utf8'), context, { filename: componentsPath });
 
 function count(haystack, needle) {
   return (haystack.match(new RegExp(needle, 'g')) || []).length;
@@ -113,6 +115,28 @@ assert.equal(row.removed, true);
 const clippedVisit = context.clipVisitDatesToTravelRange('2025-07-10', '2025-07-15', '2025-07-11', '2025-07-12');
 assert.equal(clippedVisit.arrival, '2025-07-11');
 assert.equal(clippedVisit.departure, '2025-07-12');
+
+const tabsHtml = context.renderTabs(
+  [{ id: 'first', label: 'Pierwsza' }, { id: 'second', label: 'Druga' }],
+  'second',
+  { containerClass: 'test-tabs', buttonClass: 'test-tab', ariaLabel: 'Test', onClick: item => `choose('${item.id}')` },
+);
+assert.match(tabsHtml, /test-tabs/, 'renderTabs keeps custom container class');
+assert.match(tabsHtml, /aria-selected="true"[\s\S]*Druga/, 'renderTabs marks active tab');
+
+const emptyCardHtml = context.renderEmptyCard('Brak danych', 'Nie ma nic do pokazania', {
+  className: 'chart-card test-empty',
+  messageClass: 'test-empty-text',
+});
+assert.match(emptyCardHtml, /test-empty-text/, 'renderEmptyCard keeps custom message class');
+assert.match(emptyCardHtml, /Nie ma nic do pokazania/, 'renderEmptyCard renders message');
+
+const rankingHtml = context.renderRankingBars(
+  [{ name: 'Ala', score: 10 }, { name: 'Ola', score: 5 }],
+  { nameKey: 'name', valueKey: 'score', color: 'red' },
+);
+assert.match(rankingHtml, /gbar-row/, 'renderRankingBars renders rows');
+assert.match(rankingHtml, /width:100%/, 'renderRankingBars scales top value to full width');
 
 function statsPayload(overrides = {}) {
   return {
