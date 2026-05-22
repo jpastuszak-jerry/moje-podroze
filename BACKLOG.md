@@ -160,9 +160,10 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - wspolne renderowanie dodanych miejsc, listy wyboru miejsc i listy uczestnikow,
 - podpiecie wspolnych klas przyciskow formularzy w kreatorze,
 - usuniecie powtarzalnych inline styli z `wizard.js` poza dynamicznym kolorem ikony celu podrozy,
-- ujednolicenie modala konfliktu dat przy zmianie zakresu podrozy.
+- ujednolicenie modala konfliktu dat przy zmianie zakresu podrozy,
+- dodanie trzeciej opcji "Przytnij do zakresu podrozy" w ostrzezeniach o datach wizyty poza zakresem.
 
-**Weryfikacja:** w kreatorze przejsc kroki Podstawowe info -> Lokacje -> Uczestnicy -> Podsumowanie, dodac/zdjac miejsce i uczestnika, a przy edycji dat istniejacej podrozy sprawdzic modal konfliktu dat.
+**Weryfikacja:** w kreatorze przejsc kroki Podstawowe info -> Lokacje -> Uczestnicy -> Podsumowanie, dodac/zdjac miejsce i uczestnika, a przy edycji dat istniejacej podrozy sprawdzic modal konfliktu dat. Przy dodawaniu/edycji pobytu poza zakresem powinny byc trzy opcje: przytnij, zapisz mimo to, anuluj.
 
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 

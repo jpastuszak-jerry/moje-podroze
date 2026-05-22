@@ -327,6 +327,57 @@ function confirmDuplicateLocation(existing, countryName) {
   });
 }
 
+function clipVisitDatesToTravelRange(arrival, departure, travelStart, travelEnd) {
+  const clipOne = (value) => {
+    if (!value) return null;
+    if (value < travelStart) return travelStart;
+    if (value > travelEnd) return travelEnd;
+    return value;
+  };
+  let nextArrival = clipOne(arrival);
+  let nextDeparture = clipOne(departure);
+  if (nextArrival && nextDeparture && nextDeparture < nextArrival) {
+    nextArrival = travelStart;
+    nextDeparture = travelEnd;
+  }
+  return { arrival: nextArrival, departure: nextDeparture };
+}
+
+function askVisitDateRangeAction({ travelStart, travelEnd } = {}) {
+  return new Promise(resolve => {
+    document.getElementById('visit-range-overlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'visit-range-overlay';
+    overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
+      <div class="modal-header"><span class="modal-title">⚠️ Daty poza zakresem</span></div>
+      <div class="form-section">
+        <div class="travel-conflict-copy">
+          Daty wizyty są poza zakresem podróży (${escapeHtml(travelStart || '?')} – ${escapeHtml(travelEnd || '?')}).
+        </div>
+        <div class="form-action-stack">
+          <button class="form-primary-btn" data-choice="clip">Przytnij do zakresu podróży</button>
+          <button class="form-secondary-btn" data-choice="ignore">Zapisz mimo to</button>
+          <button class="form-tertiary-btn" data-choice="cancel">Anuluj</button>
+        </div>
+      </div></div>`;
+    let settled = false;
+    const finish = (choice) => {
+      if (settled) return;
+      settled = true;
+      closeModal(overlay);
+      resolve(choice === 'cancel' ? null : choice);
+    };
+    overlay.addEventListener('click', e => {
+      const btn = e.target.closest('[data-choice]');
+      if (btn) finish(btn.dataset.choice);
+      else if (e.target === overlay) finish(null);
+    });
+    document.body.appendChild(overlay);
+    attachDragToDismiss(overlay, '.modal', () => finish(null));
+  });
+}
+
 /* ── Location form (shared between locations.js + wizard.js) ─ */
 function locationFormHtml({ prefix, countries, locTypes, parentChangeHandler, includeNotes = true, saveBtnId, saveBtnOnclick, saveBtnLabel }) {
   return `

@@ -342,8 +342,8 @@ async function wizardConfirmLocation(locId, existingIdx) {
   const loc = (wizardState.allLocs || []).find(l => l.id === locId);
   if (!loc) return;
 
-  const arrival   = document.getElementById('wld-arrival').value || null;
-  const departure = document.getElementById('wld-departure').value || null;
+  let arrival   = document.getElementById('wld-arrival').value || null;
+  let departure = document.getElementById('wld-departure').value || null;
   const notes     = document.getElementById('wld-notes').value.trim() || null;
 
   const s = wizardState.info;
@@ -351,12 +351,15 @@ async function wizardConfirmLocation(locId, existingIdx) {
     (arrival   && (arrival   < s.start_date || arrival   > s.end_date)) ||
     (departure && (departure < s.start_date || departure > s.end_date));
   if (outOfRange) {
-    const ok = await askConfirm({
-      title: 'Daty poza zakresem',
-      message: `Daty wizyty są poza zakresem podróży (${s.start_date} – ${s.end_date}).\nZapisać mimo to?`,
-      confirmText: 'Zapisz mimo to',
-    });
-    if (!ok) return;
+    const choice = await askVisitDateRangeAction({ travelStart: s.start_date, travelEnd: s.end_date });
+    if (!choice) return;
+    if (choice === 'clip') {
+      const clipped = clipVisitDatesToTravelRange(arrival, departure, s.start_date, s.end_date);
+      arrival = clipped.arrival;
+      departure = clipped.departure;
+      document.getElementById('wld-arrival').value = arrival || '';
+      document.getElementById('wld-departure').value = departure || '';
+    }
   }
 
   if (btn) btn.disabled = true;

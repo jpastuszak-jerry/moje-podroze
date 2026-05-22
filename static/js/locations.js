@@ -524,22 +524,28 @@ async function saveEditTravelLocation(travelId, tlid) {
   const btn = document.getElementById('etl-save-btn');
   if (btn?.disabled) return;
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
-  const arrival = document.getElementById('etl-arrival').value || null;
-  const departure = document.getElementById('etl-departure').value || null;
+  let arrival = document.getElementById('etl-arrival').value || null;
+  let departure = document.getElementById('etl-departure').value || null;
   const notes = document.getElementById('etl-notes').value.trim() || null;
-  const basePayload = { arrival_date: arrival, departure_date: departure, notes };
+  let basePayload = { arrival_date: arrival, departure_date: departure, notes };
   let res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, basePayload);
   if (res.error && res.out_of_range) {
-    const ok = await askConfirm({
-      title: 'Daty poza zakresem',
-      message: `Daty wizyty są poza zakresem podróży (${res.travel_start} – ${res.travel_end}).\nZapisać mimo to?`,
-      confirmText: 'Zapisz mimo to',
-    });
-    if (!ok) {
+    const choice = await askVisitDateRangeAction({ travelStart: res.travel_start, travelEnd: res.travel_end });
+    if (!choice) {
       if (btn) { btn.disabled = false; btn.textContent = 'Zapisz zmiany'; }
       return;
     }
-    res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, { ...basePayload, force_outside_range: true });
+    if (choice === 'clip') {
+      const clipped = clipVisitDatesToTravelRange(arrival, departure, res.travel_start, res.travel_end);
+      arrival = clipped.arrival;
+      departure = clipped.departure;
+      document.getElementById('etl-arrival').value = arrival || '';
+      document.getElementById('etl-departure').value = departure || '';
+      basePayload = { arrival_date: arrival, departure_date: departure, notes };
+      res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, basePayload);
+    } else {
+      res = await apiPut(`/api/travels/${travelId}/locations/${tlid}`, { ...basePayload, force_outside_range: true });
+    }
   }
   if (res.error) {
     toast('Błąd: ' + res.error, 'error');
@@ -718,23 +724,29 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
   const btn = document.getElementById('lc-save-btn');
   if (btn?.disabled) return;
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Zapisuję…'; }
-  const arrival = document.getElementById('lc-arrival').value || null;
-  const departure = document.getElementById('lc-departure').value || null;
+  let arrival = document.getElementById('lc-arrival').value || null;
+  let departure = document.getElementById('lc-departure').value || null;
   const notes = document.getElementById('lc-notes').value.trim() || null;
   const addParent = parentId && document.getElementById('lc-add-parent')?.checked;
-  const basePayload = { location_id: locationId, arrival_date: arrival, departure_date: departure, notes };
+  let basePayload = { location_id: locationId, arrival_date: arrival, departure_date: departure, notes };
   let res = await apiPost(`/api/travels/${travelId}/locations`, basePayload);
   if (res.error && res.out_of_range) {
-    const ok = await askConfirm({
-      title: 'Daty poza zakresem',
-      message: `Daty wizyty są poza zakresem podróży (${res.travel_start} – ${res.travel_end}).\nZapisać mimo to?`,
-      confirmText: 'Zapisz mimo to',
-    });
-    if (!ok) {
+    const choice = await askVisitDateRangeAction({ travelStart: res.travel_start, travelEnd: res.travel_end });
+    if (!choice) {
       if (btn) { btn.disabled = false; btn.textContent = 'Dodaj miejsce'; }
       return;
     }
-    res = await apiPost(`/api/travels/${travelId}/locations`, { ...basePayload, force_outside_range: true });
+    if (choice === 'clip') {
+      const clipped = clipVisitDatesToTravelRange(arrival, departure, res.travel_start, res.travel_end);
+      arrival = clipped.arrival;
+      departure = clipped.departure;
+      document.getElementById('lc-arrival').value = arrival || '';
+      document.getElementById('lc-departure').value = departure || '';
+      basePayload = { location_id: locationId, arrival_date: arrival, departure_date: departure, notes };
+      res = await apiPost(`/api/travels/${travelId}/locations`, basePayload);
+    } else {
+      res = await apiPost(`/api/travels/${travelId}/locations`, { ...basePayload, force_outside_range: true });
+    }
   }
   if (res.error) {
     toast('Błąd: ' + res.error, 'error');
