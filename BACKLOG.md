@@ -89,7 +89,9 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ### 8. Profesjonalizacja ekranu statystyk
 
-**Do rozwazenia:** podzial statystyk na sekcje lub podzakladki:
+**Status:** zrobione w `Split stats into sections`.
+
+**Zrobione:** podzial ekranu Statystyki na podzakladki:
 - Podsumowanie,
 - Kraje i miejsca,
 - Koszty,

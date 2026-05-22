@@ -105,10 +105,35 @@ function svgGradientBars(data, { nameKey, valueKey, valueLabel = null, color = '
 }
 
 let currentStatsYear = null;
+let currentStatsSection = 'overview';
+
+const STATS_SECTIONS = [
+  { id: 'overview', label: 'Podsumowanie' },
+  { id: 'countries', label: 'Kraje i miejsca' },
+  { id: 'costs', label: 'Koszty' },
+  { id: 'participants', label: 'Uczestnicy' },
+  { id: 'quality', label: 'Jakość danych' },
+];
 
 function setStatsYear(y) {
   currentStatsYear = y;
   renderStats();
+}
+
+function setStatsSection(sectionId) {
+  if (!STATS_SECTIONS.some(section => section.id === sectionId)) return;
+  currentStatsSection = sectionId;
+  renderStats();
+}
+
+function renderStatsSectionTabs() {
+  return `<div class="stats-section-tabs" role="tablist" aria-label="Sekcje statystyk">
+    ${STATS_SECTIONS.map(section => `<button type="button"
+      class="stats-section-tab${currentStatsSection === section.id ? ' active' : ''}"
+      role="tab"
+      aria-selected="${currentStatsSection === section.id ? 'true' : 'false'}"
+      onclick="setStatsSection('${section.id}')">${escapeHtml(section.label)}</button>`).join('')}
+  </div>`;
 }
 
 function pluralTrips(n) {
@@ -318,6 +343,13 @@ function renderCountryHistory(history, year) {
   </div>`;
 }
 
+function renderStatsEmptyCard(title, message) {
+  return `<div class="chart-card stats-empty-card">
+    <div class="section-title">${escapeHtml(title)}</div>
+    <div class="stats-empty-text">${escapeHtml(message)}</div>
+  </div>`;
+}
+
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
@@ -336,6 +368,7 @@ async function renderStats() {
   </div>`;
 
   let html = `<div class="page-header"><div class="page-title">Statystyki</div>${filterBar}</div>`;
+  html += renderStatsSectionTabs();
   const heroLabel = currentStatsYear ? `Aktywność w ${currentStatsYear}` : 'Wszystkie podróże';
   const heroCurrencies = Object.entries(s.amount_by_currency || {});
   const heroAmount = heroCurrencies.length
@@ -343,6 +376,7 @@ async function renderStats() {
     : '';
   const prev = s.prev_period;
 
+  if (currentStatsSection === 'overview') {
   html += `<div class="hero-card">
     <div class="hero-label">${escapeHtml(heroLabel)}${prev ? ` &nbsp;·&nbsp; <span style="opacity:0.6">vs ${prev.year}</span>` : ''}</div>
     <div class="hero-numbers">
@@ -442,17 +476,42 @@ async function renderStats() {
   if (s.progress) html += '<div class="stat-card sc-purple"><div class="stat-icon">✍️</div><div class="stat-value">'+s.progress.described+'/'+s.progress.total+'</div><div class="stat-label">Opisanych</div></div>';
   if (!currentStatsYear) html += '<div class="stat-card sc-teal"><div class="stat-icon">🗂</div><div class="stat-value">'+s.locations+'</div><div class="stat-label">Miejsc w bazie</div></div>';
   html += '</div>';
+  }
 
   html += '<div class="stats-2col">';
-  html += renderCostSummary(s.cost_summary);
-  html += renderDataQuality(s.data_quality);
-  html += renderCountryMilestones(s.country_milestones, currentStatsYear);
-  html += renderCountryHistory(s.country_history, currentStatsYear);
-  if (s.purposes && s.purposes.length) {
+  let sectionItems = 0;
+  if (currentStatsSection === 'costs') {
+    const costSummaryHtml = renderCostSummary(s.cost_summary);
+    if (costSummaryHtml) {
+      html += costSummaryHtml;
+      sectionItems++;
+    }
+  }
+  if (currentStatsSection === 'quality') {
+    const dataQualityHtml = renderDataQuality(s.data_quality);
+    if (dataQualityHtml) {
+      html += dataQualityHtml;
+      sectionItems++;
+    }
+  }
+  if (currentStatsSection === 'countries') {
+    const countryMilestonesHtml = renderCountryMilestones(s.country_milestones, currentStatsYear);
+    const countryHistoryHtml = renderCountryHistory(s.country_history, currentStatsYear);
+    if (countryMilestonesHtml) {
+      html += countryMilestonesHtml;
+      sectionItems++;
+    }
+    if (countryHistoryHtml) {
+      html += countryHistoryHtml;
+      sectionItems++;
+    }
+  }
+  if (currentStatsSection === 'overview' && s.purposes && s.purposes.length) {
     html += '<div class="chart-card"><div class="section-title">🎯 Cel podróży</div>'
       + svgDonut(s.purposes.map(p => ({ name: p.name || 'Inne', count: p.count }))) + '</div>';
+    sectionItems++;
   }
-  if (s.participants && s.participants.length) {
+  if (currentStatsSection === 'participants' && s.participants && s.participants.length) {
     html += '<div class="chart-card"><div class="section-title">👥 Uczestnicy</div>'
       + svgGradientBars(s.participants, {
           nameKey: 'name',
@@ -460,8 +519,9 @@ async function renderStats() {
           color: 'var(--blue)',
           valueLabel: p => `${p.trips} ${pluralTrips(p.trips)} · ${p.days || 0} dni`,
         }) + '</div>';
+    sectionItems++;
   }
-  if (s.top_countries && s.top_countries.length) {
+  if (currentStatsSection === 'countries' && s.top_countries && s.top_countries.length) {
     html += '<div class="chart-card"><div class="section-title">🌍 Top krajów</div>'
       + svgGradientBars(s.top_countries, {
           nameKey: 'country',
@@ -469,8 +529,9 @@ async function renderStats() {
           color: 'var(--green)',
           valueLabel: c => `${c.visits}× · ${c.days_spent || 0} dni`,
         }) + '</div>';
+    sectionItems++;
   }
-  if (s.top_places && s.top_places.length) {
+  if (currentStatsSection === 'countries' && s.top_places && s.top_places.length) {
     html += '<div class="chart-card"><div class="section-title">📍 Top miast i wysp</div>'
       + svgGradientBars(s.top_places.slice(0, 5), {
           nameKey: 'location_name',
@@ -478,38 +539,56 @@ async function renderStats() {
           color: 'var(--purple)',
           valueLabel: p => `${p.visit_count}× · ${p.days_spent || 0} dni`,
         }) + '</div>';
+    sectionItems++;
     const mapped = s.top_places.filter(p => p.lat != null && p.lon != null);
     if (mapped.length) {
       html += `<div class="chart-card stats-map-card">
         <div class="section-title">🗺 Top miejsca na mapie</div>
         <div id="stats-mini-map" class="stats-mini-map"></div>
       </div>`;
+      sectionItems++;
     }
   }
-  if (!currentStatsYear && s.heatmap && s.heatmap.length) {
+  if (currentStatsSection === 'overview' && !currentStatsYear && s.heatmap && s.heatmap.length) {
     html += '<div class="chart-card heatmap-card"><div class="section-title">🗓 Kalendarz podróży</div>'
       + svgHeatmap(s.heatmap) + '</div>';
-  } else if (currentStatsYear && s.by_month && s.by_month.length) {
+    sectionItems++;
+  } else if (currentStatsSection === 'overview' && currentStatsYear && s.by_month && s.by_month.length) {
     const maxM = Math.max(...s.by_month.map(m => m.days), 1);
     html += '<div class="purpose-bar"><div class="section-title">🗓 Dni w trasie wg miesięcy</div>';
     s.by_month.forEach(m => {
       html += '<div class="purpose-row"><div class="purpose-name">'+months[m.month]+'</div>'+simpleBar(m.days,maxM,'var(--orange)')+'<div class="purpose-count">'+m.days+'</div></div>';
     });
     html += '</div>';
+    sectionItems++;
   }
-  if (s.top_expensive && s.top_expensive.length) {
+  if (currentStatsSection === 'costs' && s.top_expensive && s.top_expensive.length) {
     html += '<div class="purpose-bar"><div class="section-title">💰 Top 10 najdroższych wyjazdów</div>';
     s.top_expensive.forEach((t, i) => {
       html += '<div class="purpose-row"><div class="purpose-name" style="font-size:11px;line-height:1.4">'+(i+1)+'. '+escapeHtml(t.name)+'</div><div style="min-width:100px;text-align:right;font-size:11px;font-weight:500;color:var(--text)">'+parseFloat(t.amount).toLocaleString('pl-PL')+' '+escapeHtml(t.currency || 'PLN')+'</div></div>';
     });
     html += '</div>';
+    sectionItems++;
   }
-  if (s.cost_per_day && s.cost_per_day.length) {
+  if (currentStatsSection === 'costs' && s.cost_per_day && s.cost_per_day.length) {
     html += '<div class="purpose-bar"><div class="section-title">💸 Najdroższe wyjazdy per dzień</div>';
     s.cost_per_day.forEach(t => {
       html += '<div class="purpose-row"><div class="purpose-name" style="font-size:11px">'+escapeHtml(t.name)+'</div><div style="min-width:110px;text-align:right;font-size:11px;font-weight:500;color:var(--text)">'+parseFloat(t.cost_per_day).toLocaleString('pl-PL')+' '+escapeHtml(t.currency || 'PLN')+'/d</div></div>';
     });
     html += '</div>';
+    sectionItems++;
+  }
+  if (sectionItems === 0 && currentStatsSection !== 'overview') {
+    const emptyMessages = {
+      countries: 'Brak danych o krajach i miejscach dla wybranego zakresu.',
+      costs: 'Brak wpisanych kosztów dla wybranego zakresu.',
+      participants: 'Brak uczestników przypisanych do podróży w tym zakresie.',
+      quality: 'Brak podróży do oceny jakości danych w tym zakresie.',
+    };
+    html += renderStatsEmptyCard(
+      STATS_SECTIONS.find(section => section.id === currentStatsSection)?.label || 'Brak danych',
+      emptyMessages[currentStatsSection] || 'Brak danych dla wybranego zakresu.'
+    );
   }
   html += '</div><div style="height:16px"></div>';
   view.innerHTML = html;

@@ -204,6 +204,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   border: 1px solid var(--border); background: var(--card); color: var(--text2);
   cursor: pointer; white-space: nowrap; transition: all .15s; }
 .sort-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+.stats-section-tabs {
+  display: flex; gap: 8px; padding: 10px 16px 4px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.stats-section-tabs::-webkit-scrollbar { display: none; }
+.stats-section-tab {
+  flex: 0 0 auto; min-height: 34px; padding: 7px 12px;
+  border: 1px solid var(--border); border-radius: 18px;
+  background: var(--card); color: var(--text2);
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: background .15s, color .15s, border-color .15s, transform .12s;
+}
+.stats-section-tab.active {
+  background: var(--text); border-color: var(--text); color: var(--card);
+}
+.stats-section-tab:active { transform: scale(0.96); }
 .page-header .loc-quality-bar { padding: 8px 0 0; }
 .fab { position: fixed; bottom: calc(72px + var(--safe-bottom)); right: 20px;
   width: 52px; height: 52px; border-radius: 50%; background: var(--blue);
@@ -930,6 +946,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   max-width: 560px;
 }
 .chart-card .section-title { margin-bottom: 12px; }
+.stats-empty-card { max-width: none; }
+.stats-empty-text {
+  color: var(--text2); font-size: 13px; line-height: 1.45;
+}
 .chart-svg { display: block; }
 .sparkline-svg { max-width: 520px; margin: 0 auto; }
 .heatmap-card { max-width: none; }
@@ -947,7 +967,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .stats-2col { display: contents; }
 @media (min-width: 900px) {
   .stats-grid { grid-template-columns: repeat(4, 1fr); max-width: 1100px; margin-left: auto; margin-right: auto; }
-  .hero-card, .streak-strip, .hof-section { max-width: 1100px; margin-left: auto; margin-right: auto; }
+  .stats-section-tabs, .hero-card, .streak-strip, .hof-section { max-width: 1100px; margin-left: auto; margin-right: auto; }
   .hero-card, .streak-strip { margin-top: 12px; margin-bottom: 12px; }
   .stats-2col {
     display: grid; grid-template-columns: 1fr 1fr;
