@@ -1200,3 +1200,212 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 @media (prefers-reduced-motion: reduce) {
   .card-list > * { animation: none !important; }
 }
+
+@media (min-width: 900px) {
+  :root {
+    --desktop-content: 1120px;
+    --desktop-gutter: 32px;
+  }
+
+  #app {
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  #view {
+    min-width: 0;
+    padding-bottom: 0;
+  }
+
+  #tabs {
+    order: -1;
+    width: 108px;
+    min-height: 100dvh;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 10px;
+    border-top: 0;
+    border-right: 1px solid var(--border);
+    box-shadow: 1px 0 0 rgba(255,255,255,0.04);
+    z-index: 20;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 72px;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .tab:hover {
+    color: var(--text);
+    background: var(--bg);
+  }
+
+  .tab.active {
+    background: var(--blue-light);
+    color: var(--blue);
+  }
+
+  .tab.active::before {
+    top: 50%;
+    left: -10px;
+    width: 3px;
+    height: 32px;
+    transform: translateY(-50%);
+    border-radius: 0 4px 4px 0;
+  }
+
+  .page-header {
+    padding: 28px var(--desktop-gutter) 14px;
+  }
+
+  .page-header > .page-title,
+  .page-header > .search-box,
+  .page-header > .filter-grid,
+  .page-header > .loc-quality-bar,
+  .page-header > .action-strip {
+    width: min(var(--desktop-content), 100%);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .page-title {
+    font-size: 30px;
+    letter-spacing: 0;
+  }
+
+  .filter-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .filter-wide {
+    grid-column: auto;
+  }
+
+  .action-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .action-button {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 8px 11px;
+  }
+
+  .sort-bar,
+  .stats-section-tabs,
+  .card-list,
+  .detail-body,
+  .stats-grid,
+  .hero-card,
+  .streak-strip,
+  .hof-section,
+  .stats-2col,
+  .purpose-bar {
+    width: min(var(--desktop-content), calc(100% - (var(--desktop-gutter) * 2)));
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .sort-bar,
+  .stats-section-tabs {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .card-list {
+    padding: 16px 0 28px;
+    gap: 12px;
+  }
+
+  .card-inner {
+    align-items: center;
+    padding: 16px;
+  }
+
+  .country-header {
+    width: min(var(--desktop-content), calc(100% - (var(--desktop-gutter) * 2)));
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .detail-header,
+  .detail-header-gradient {
+    padding-left: var(--desktop-gutter);
+    padding-right: var(--desktop-gutter);
+  }
+
+  .detail-body {
+    padding: 16px 0 32px;
+  }
+
+  .section {
+    border-radius: 10px;
+  }
+
+  .stats-grid {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .stats-2col {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .hero-card,
+  .streak-strip {
+    margin-top: 12px;
+    margin-bottom: 12px;
+  }
+
+  .hof-title-row,
+  .hof-scroll {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .hof-title-row {
+    margin-left: auto;
+    margin-right: auto;
+    width: min(var(--desktop-content), calc(100% - (var(--desktop-gutter) * 2)));
+  }
+
+  .hof-nav-prev {
+    left: 2px;
+  }
+
+  .hof-nav-next {
+    right: 2px;
+  }
+
+  .fab {
+    right: var(--desktop-gutter);
+    bottom: var(--desktop-gutter);
+  }
+
+  #theme-toggle {
+    right: var(--desktop-gutter);
+  }
+
+  #map-toolbar,
+  #map-legend {
+    padding-left: var(--desktop-gutter);
+    padding-right: var(--desktop-gutter);
+  }
+
+  #map-container {
+    height: calc(100dvh - 132px);
+  }
+}

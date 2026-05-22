@@ -175,6 +175,18 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** w kreatorze przejsc kroki Podstawowe info -> Lokacje -> Uczestnicy -> Podsumowanie, dodac/zdjac miejsce i uczestnika, a przy edycji dat istniejacej podrozy sprawdzic modal konfliktu dat. Przy dodawaniu/edycji pobytu poza zakresem powinny byc trzy opcje: przytnij, zapisz mimo to, anuluj.
 
+### 8f. Profesjonalizacja UI - desktop shell - DONE
+
+**Status:** zrobione w `Professionalize desktop app shell`.
+
+**Zrobione:**
+- desktopowa nawigacja boczna zamiast dolnego paska na szerokich ekranach,
+- ograniczenie szerokosci list, statystyk, filtracji i szczegolow do wspolnego rytmu,
+- czytelniejszy uklad filtrow i akcji w widoku Miejsca na desktopie,
+- dopasowanie mapy i przycisku dodawania do ukladu bez dolnej nawigacji.
+
+**Weryfikacja:** na desktopie sprawdzic Podroze, Miejsca, Mape, Statystyki i szczegoly podrozy/miejsca; na telefonie dolna nawigacja nadal powinna zostac na dole.
+
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
 ### 9. Testy automatyczne dla logiki dat i statystyk - PARTIAL
