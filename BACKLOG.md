@@ -254,15 +254,16 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Problem:** `stats.py` zawiera coraz wiecej zapytan analitycznych. To nadal dziala, ale plik bedzie trudny do utrzymania, jesli statystyki dalej beda rosly.
 
-**Status:** pierwszy etap zrobiony w `Extract country stats helpers`.
+**Status:** dwa pierwsze etapy zrobione w `Extract country stats helpers` i `Extract stats quality helpers`.
 
 **Zrobione:**
 - wspolne helpery dat i zakresow przeniesione do `stats_common.py`,
 - agregaty krajow i powrotow przeniesione do `stats_countries.py`,
+- agregaty jakosci danych i listy brakow przeniesione do `stats_quality.py`,
 - `stats.py` pozostaje odpowiedzialny za glowny endpoint, Hall of Fame i pozostale agregaty.
 
 **Propozycja:**
-- wydzielic kolejne sekcje agregacji: koszty, jakosc danych, Hall of Fame,
+- wydzielic kolejne sekcje agregacji: koszty, Hall of Fame,
 - zachowac endpoint Flask w `stats.py` jako cienka warstwe HTTP.
 
 **Weryfikacja:** dodanie nowej statystyki nie wymaga edycji jednego bardzo duzego endpointu.

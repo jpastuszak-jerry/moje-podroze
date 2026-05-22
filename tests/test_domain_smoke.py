@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from schemas import LocationCreate, TravelCreate, TravelLocationCreate
 import stats_countries
+import stats_quality
 from stats_common import _clipped_trip_days, _period_bounds, _travel_period_clause
 
 
@@ -68,6 +69,49 @@ class DateLogicSmokeTests(unittest.TestCase):
         self.assertEqual(history['only_once'][0]['name'], 'Estonia')
         self.assertEqual(history['top_returns'][0]['period_trips'], 1)
         self.assertGreater(history['top_returns'][0]['longest_gap_days'], 0)
+
+
+class DataQualitySmokeTests(unittest.TestCase):
+    def test_data_quality_counts_missing_fields_and_respects_limit(self):
+        rows = [
+            {
+                'id': 1,
+                'name': 'Complete trip',
+                'start_date': date(2025, 7, 18),
+                'amount': 100,
+                'rating': 4.5,
+                'loc_count': 1,
+                'reflections': 'ok',
+                'has_photo_album': True,
+                'is_description_complete': True,
+            },
+            {
+                'id': 2,
+                'name': None,
+                'start_date': date(2025, 8, 1),
+                'amount': None,
+                'rating': None,
+                'loc_count': 0,
+                'reflections': '',
+                'has_photo_album': False,
+                'is_description_complete': False,
+            },
+        ]
+
+        with patch.object(stats_quality, 'query', return_value=rows):
+            quality = stats_quality._data_quality(2025, limit=1)
+
+        self.assertEqual(quality['total'], 2)
+        self.assertEqual(quality['counts']['missing_cost'], 1)
+        self.assertEqual(quality['counts']['missing_rating'], 1)
+        self.assertEqual(quality['counts']['missing_locations'], 1)
+        self.assertEqual(quality['counts']['missing_reflections'], 1)
+        self.assertEqual(quality['counts']['missing_album'], 1)
+        self.assertEqual(quality['counts']['incomplete_description'], 1)
+        self.assertEqual(len(quality['needs_attention']), 1)
+        self.assertEqual(quality['needs_attention'][0]['id'], 2)
+        self.assertEqual(quality['needs_attention'][0]['name'], '(bez nazwy)')
+        self.assertEqual(quality['labels']['missing_reflections'], 'brak wspomnień')
 
 
 class SchemaValidationSmokeTests(unittest.TestCase):
