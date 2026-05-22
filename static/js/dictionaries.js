@@ -52,18 +52,22 @@ async function saveEditDict(id) {
 }
 
 async function deleteDictItem(id) {
-  const overlay = document.getElementById('dict-overlay'); const apiPath = overlay._apiPath;
-  const label = document.getElementById('dict-label-'+id)?.textContent || 'tę pozycję';
-  const ok = await askConfirm({
-    title: 'Usunąć pozycję?',
-    message: `"${label}" zostanie usunięta. Tej operacji nie można cofnąć.`,
-    confirmText: 'Usuń', danger: true,
+  return withActionLock(`dict-delete-${id}`, async () => {
+    const overlay = document.getElementById('dict-overlay'); const apiPath = overlay._apiPath;
+    const label = document.getElementById('dict-label-'+id)?.textContent || 'tę pozycję';
+    const ok = await askConfirm({
+      title: 'Usunąć pozycję?',
+      message: `"${label}" zostanie usunięta. Tej operacji nie można cofnąć.`,
+      confirmText: 'Usuń', danger: true,
+    });
+    if (!ok) return;
+    const data = await apiDelete(`${apiPath}/${id}`);
+    if (data && data.error) { toastApiError(data, 'Nie udało się usunąć pozycji'); return; }
+    const row = document.getElementById('dict-row-'+id);
+    if (!row) return;
+    row.remove();
+    toast('Usunięto', 'success');
   });
-  if (!ok) return;
-  const data = await apiDelete(`${apiPath}/${id}`);
-  if (data && data.error) { toastApiError(data, 'Nie udało się usunąć pozycji'); return; }
-  document.getElementById('dict-row-'+id)?.remove();
-  toast('Usunięto', 'success');
 }
 
 async function exportDatabase() {

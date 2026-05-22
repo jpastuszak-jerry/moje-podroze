@@ -88,14 +88,18 @@ async function saveEditPerson(id) {
 }
 
 async function deletePersonFromModal(id) {
-  const ok = await askConfirm({
-    title: 'Usunąć osobę?',
-    message: 'Zostanie też usunięta ze wszystkich podróży. Tej operacji nie można cofnąć.',
-    confirmText: 'Usuń', danger: true,
+  return withActionLock(`person-delete-${id}`, async () => {
+    const ok = await askConfirm({
+      title: 'Usunąć osobę?',
+      message: 'Zostanie też usunięta ze wszystkich podróży. Tej operacji nie można cofnąć.',
+      confirmText: 'Usuń', danger: true,
+    });
+    if (!ok) return;
+    const data = await apiDelete('/api/persons/' + id);
+    if (data.error) { toastApiError(data, 'Nie udało się usunąć osoby'); return; }
+    const row = document.getElementById('person-row-'+id);
+    if (!row) return;
+    row.remove();
+    toast('Usunięto', 'success');
   });
-  if (!ok) return;
-  const data = await apiDelete('/api/persons/' + id);
-  if (data.error) { toastApiError(data, 'Nie udało się usunąć osoby'); return; }
-  document.getElementById('person-row-'+id)?.remove();
-  toast('Usunięto', 'success');
 }

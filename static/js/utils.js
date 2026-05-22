@@ -66,6 +66,18 @@ function toastApiError(err, fallback) {
   toast(apiErrorMessage(err, fallback), 'error');
 }
 
+const UI_ACTION_LOCKS = new Set();
+
+async function withActionLock(key, action) {
+  if (UI_ACTION_LOCKS.has(key)) return null;
+  UI_ACTION_LOCKS.add(key);
+  try {
+    return await action();
+  } finally {
+    UI_ACTION_LOCKS.delete(key);
+  }
+}
+
 async function _mutationFetch(path, opts) {
   let r;
   try {
@@ -465,14 +477,21 @@ function emptyState({ icon = '✨', title = 'Brak danych', message = '', ctaLabe
 
 /* ── Card list slide-out helper ───────────────────────────── */
 function removeWithSlide(el, after) {
-  if (!el) { if (after) after(); return; }
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (!el || el.dataset.removing === '1') return false;
+  el.dataset.removing = '1';
+  const finish = () => {
+    if (el.dataset.removed === '1') return;
+    el.dataset.removed = '1';
     el.remove();
     if (after) after();
-    return;
+  };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    finish();
+    return true;
   }
   el.classList.add('card-leaving');
-  setTimeout(() => { el.remove(); if (after) after(); }, 240);
+  setTimeout(finish, 240);
+  return true;
 }
 
 /* ── Modal motion helpers ─────────────────────────────────── */

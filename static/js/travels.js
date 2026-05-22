@@ -162,26 +162,30 @@ async function openTravel(id) {
 }
 
 async function confirmDelete(id) {
-  const ok = await askConfirm({
-    title: 'Usunąć podróż?',
-    message: 'Trafi do Kosza — możesz przywrócić.',
-    confirmText: 'Do Kosza', danger: true,
+  return withActionLock(`travel-delete-${id}`, async () => {
+    const ok = await askConfirm({
+      title: 'Usunąć podróż?',
+      message: 'Trafi do Kosza — możesz przywrócić.',
+      confirmText: 'Do Kosza', danger: true,
+    });
+    if (!ok) return;
+    const res = await apiDelete('/api/travels/' + id);
+    if (res.error) { toastApiError(res, 'Nie udało się przenieść podróży do kosza'); return; }
+    toast('Podróż w koszu', 'success');
+    showTab('travels');
   });
-  if (!ok) return;
-  const res = await apiDelete('/api/travels/' + id);
-  if (res.error) { toastApiError(res, 'Nie udało się przenieść podróży do kosza'); return; }
-  toast('Podróż w koszu', 'success');
-  showTab('travels');
 }
 
 async function removeParticipantFromTravel(travelId, personId) {
-  const res = await apiDelete(`/api/travels/${travelId}/participants/${personId}`);
-  if (res.error) { toastApiError(res, 'Nie udało się usunąć uczestnika z podróży'); return; }
-  const chip = document.getElementById('chip-' + personId);
-  removeWithSlide(chip, () => {
-    const chips = document.getElementById('participants-chips');
-    if (chips && !chips.querySelector('.person-chip'))
-      chips.innerHTML = `<div class="empty-chips inline-empty">Brak uczestników</div>`;
+  return withActionLock(`travel-${travelId}-participant-delete-${personId}`, async () => {
+    const res = await apiDelete(`/api/travels/${travelId}/participants/${personId}`);
+    if (res.error) { toastApiError(res, 'Nie udało się usunąć uczestnika z podróży'); return; }
+    const chip = document.getElementById('chip-' + personId);
+    removeWithSlide(chip, () => {
+      const chips = document.getElementById('participants-chips');
+      if (chips && !chips.querySelector('.person-chip'))
+        chips.innerHTML = `<div class="empty-chips inline-empty">Brak uczestników</div>`;
+    });
   });
 }
 

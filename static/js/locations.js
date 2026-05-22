@@ -326,16 +326,18 @@ async function openLocation(id) {
 }
 
 async function confirmDeleteLocation(id) {
-  const ok = await askConfirm({
-    title: 'Usunąć miejsce?',
-    message: 'Trafi do Kosza — możesz przywrócić.',
-    confirmText: 'Do Kosza', danger: true,
+  return withActionLock(`location-delete-${id}`, async () => {
+    const ok = await askConfirm({
+      title: 'Usunąć miejsce?',
+      message: 'Trafi do Kosza — możesz przywrócić.',
+      confirmText: 'Do Kosza', danger: true,
+    });
+    if (!ok) return;
+    const res = await apiDelete('/api/locations/' + id);
+    if (res.error) { toastApiError(res, 'Nie udało się przenieść miejsca do kosza'); return; }
+    toast('Miejsce w koszu', 'success');
+    showTab('locations');
   });
-  if (!ok) return;
-  const res = await apiDelete('/api/locations/' + id);
-  if (res.error) { toastApiError(res, 'Nie udało się przenieść miejsca do kosza'); return; }
-  toast('Miejsce w koszu', 'success');
-  showTab('locations');
 }
 
 async function openEditLocationModal(id) {
@@ -484,14 +486,16 @@ async function saveEditLocation(id) {
 }
 
 async function removeLocationFromTravel(travelId, tlid) {
-  const ok = await askConfirm({ title: 'Usunąć miejsce z podróży?', confirmText: 'Usuń', danger: true });
-  if (!ok) return;
-  const res = await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
-  if (res.error) { toastApiError(res, 'Nie udało się usunąć miejsca z podróży'); return; }
-  const row = document.getElementById('tl-' + tlid);
-  removeWithSlide(row, () => {
-    const list = document.getElementById('locations-list');
-    if (list && !list.querySelector('.loc-row')) list.innerHTML = `<div class="empty-locs inline-empty">Brak miejsc</div>`;
+  return withActionLock(`travel-location-delete-${tlid}`, async () => {
+    const ok = await askConfirm({ title: 'Usunąć miejsce z podróży?', confirmText: 'Usuń', danger: true });
+    if (!ok) return;
+    const res = await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
+    if (res.error) { toastApiError(res, 'Nie udało się usunąć miejsca z podróży'); return; }
+    const row = document.getElementById('tl-' + tlid);
+    removeWithSlide(row, () => {
+      const list = document.getElementById('locations-list');
+      if (list && !list.querySelector('.loc-row')) list.innerHTML = `<div class="empty-locs inline-empty">Brak miejsc</div>`;
+    });
   });
 }
 
@@ -842,31 +846,35 @@ function renderTrashBody(data) {
 }
 
 async function restoreFromTrash(kind, id) {
-  const path = kind === 'travel' ? `/api/travels/${id}/restore` : `/api/locations/${id}/restore`;
-  const res = await apiPost(path, {});
-  if (res.error) { toastApiError(res, 'Nie udało się przywrócić elementu'); return; }
-  const row = document.getElementById(`trash-${kind === 'travel' ? 't' : 'l'}-${id}`);
-  removeWithSlide(row, async () => {
-    toast('Przywrócono', 'success');
-    const data = await api('/api/trash');
-    renderTrashBody(data);
+  return withActionLock(`trash-restore-${kind}-${id}`, async () => {
+    const path = kind === 'travel' ? `/api/travels/${id}/restore` : `/api/locations/${id}/restore`;
+    const res = await apiPost(path, {});
+    if (res.error) { toastApiError(res, 'Nie udało się przywrócić elementu'); return; }
+    const row = document.getElementById(`trash-${kind === 'travel' ? 't' : 'l'}-${id}`);
+    removeWithSlide(row, async () => {
+      toast('Przywrócono', 'success');
+      const data = await api('/api/trash');
+      renderTrashBody(data);
+    });
   });
 }
 
 async function hardDeleteFromTrash(kind, id) {
-  const ok = await askConfirm({
-    title: 'Usunąć trwale?',
-    message: 'Tej operacji NIE można cofnąć.',
-    confirmText: 'Usuń trwale', danger: true,
-  });
-  if (!ok) return;
-  const path = (kind === 'travel' ? `/api/travels/${id}` : `/api/locations/${id}`) + '?hard=1';
-  const res = await apiDelete(path);
-  if (res.error) { toastApiError(res, 'Nie udało się trwale usunąć elementu'); return; }
-  const row = document.getElementById(`trash-${kind === 'travel' ? 't' : 'l'}-${id}`);
-  removeWithSlide(row, async () => {
-    toast('Usunięto trwale', 'success');
-    const data = await api('/api/trash');
-    renderTrashBody(data);
+  return withActionLock(`trash-hard-delete-${kind}-${id}`, async () => {
+    const ok = await askConfirm({
+      title: 'Usunąć trwale?',
+      message: 'Tej operacji NIE można cofnąć.',
+      confirmText: 'Usuń trwale', danger: true,
+    });
+    if (!ok) return;
+    const path = (kind === 'travel' ? `/api/travels/${id}` : `/api/locations/${id}`) + '?hard=1';
+    const res = await apiDelete(path);
+    if (res.error) { toastApiError(res, 'Nie udało się trwale usunąć elementu'); return; }
+    const row = document.getElementById(`trash-${kind === 'travel' ? 't' : 'l'}-${id}`);
+    removeWithSlide(row, async () => {
+      toast('Usunięto trwale', 'success');
+      const data = await api('/api/trash');
+      renderTrashBody(data);
+    });
   });
 }
