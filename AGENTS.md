@@ -34,6 +34,7 @@ Przed commitem, zaleznnie od zakresu zmiany:
 ```powershell
 python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py
 python -m ruff check .
+python -m unittest discover -s tests
 git diff --check
 ```
 
@@ -51,7 +52,13 @@ node --check static/js/dictionaries.js
 node --check static/js/persons.js
 ```
 
-Pelnych testow automatycznych jeszcze nie ma. Dla zmian UI konieczna jest krotka weryfikacja reczna w przegladarce po deployu.
+Przy zmianach wspolnych helperow frontendu uruchomic:
+
+```powershell
+node tools/smoke_js.mjs
+```
+
+Pelnych testow automatycznych jeszcze nie ma, ale repo ma pierwszy pakiet smoke testow Python/JS. Dla zmian UI nadal konieczna jest krotka weryfikacja reczna w przegladarce po deployu.
 
 Przy kazdej zmianie typu refactoring agent musi:
 - jasno opisac korzysci: co bedzie prostsze, stabilniejsze, szybsze albo latwiejsze w utrzymaniu,

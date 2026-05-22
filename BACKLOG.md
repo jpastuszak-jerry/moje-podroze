@@ -169,17 +169,23 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
-### 9. Testy automatyczne dla logiki dat i statystyk
+### 9. Testy automatyczne dla logiki dat i statystyk - PARTIAL
 
 **Problem:** najwazniejsza logika domenowa jest obecnie weryfikowana glownie recznie. Dotyczy to szczegolnie statystyk, dat i jakosci danych.
 
-**Do dodania:**
-- testy liczenia dni inkluzywnie,
-- testy podrozy przechodzacej przez granice roku,
+**Status:** pierwszy pakiet smoke testow dodany w `Add automated smoke tests`.
+
+**Zrobione:**
+- Python `unittest` dla inkluzywnego liczenia dni, przycinania podrozy do roku i walidacji Pydantic,
+- JS smoke testy dla `daysCount`, polgwiazdek, komunikatow API, blokady podwojnych akcji, `removeWithSlide` i przycinania dat pobytu,
+- GitHub Actions uruchamiaja testy Python i JS przy pushu.
+
+**Do dodania dalej:**
 - testy jakosci danych podrozy,
 - testy jakosci danych miejsc,
 - testy nowych/powrotnych krajow,
-- testy kontraktu `/api/stats`, `/api/stats/todo`, `/api/locations/todo`.
+- testy kontraktu `/api/stats`, `/api/stats/todo`, `/api/locations/todo`,
+- docelowo testy z mala baza testowa albo mockiem warstwy `query()`.
 
 **Weryfikacja:** GitHub Actions uruchamia testy przy pushu i lapie regresje w statystykach.
 
