@@ -238,6 +238,42 @@ class ApiContractSmokeTests(unittest.TestCase):
         })
         self.assertEqual(data['hall_of_fame']['longest']['value'], 11)
         self.assertEqual(data['hall_of_fame']['top_country']['name'], 'Finland')
+        self.assertLessEqual(
+            {'currency', 'trip_count', 'days', 'total', 'avg_trip', 'median_trip', 'avg_per_day'},
+            set(data['cost_summary'][0]),
+        )
+        self.assertEqual(data['cost_summary'][0]['currency'], 'EUR')
+        self.assertLessEqual(
+            {'name', 'amount', 'currency', 'start_date', 'end_date', 'days'},
+            set(data['top_expensive'][0]),
+        )
+        self.assertLessEqual(
+            {'name', 'amount', 'currency', 'days', 'cost_per_day'},
+            set(data['cost_per_day'][0]),
+        )
+        self.assertLessEqual(
+            {'id', 'name', 'relation_type', 'trips', 'days'},
+            set(data['participants'][0]),
+        )
+        self.assertEqual(data['participants'][0]['name'], 'Anna')
+        self.assertLessEqual({'country', 'visits', 'days_spent'}, set(data['top_countries'][0]))
+        self.assertLessEqual(
+            {
+                'id', 'location_name', 'country', 'location_type',
+                'lat', 'lon', 'visit_count', 'days_spent',
+            },
+            set(data['top_places'][0]),
+        )
+        self.assertLessEqual({'total', 'counts', 'labels', 'needs_attention'}, set(data['data_quality']))
+        self.assertLessEqual(
+            {
+                'missing_cost', 'missing_rating', 'missing_locations',
+                'missing_reflections', 'missing_album', 'incomplete_description',
+            },
+            set(data['data_quality']['counts']),
+        )
+        self.assertLessEqual({'new', 'returning'}, set(data['country_milestones']))
+        self.assertLessEqual({'id', 'name', 'first_visit', 'trips'}, set(data['country_milestones']['new'][0]))
         self.assertEqual(data['country_history']['summary']['returning_countries'], 1)
         self.assertLessEqual(
             {
