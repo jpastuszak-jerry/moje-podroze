@@ -34,14 +34,20 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** statystyki kosztow nie sumuja roznych walut w jedna liczbe bez jasnej etykiety.
 
-### 4. Kraje i powroty - glebsza analityka
+### 4. Kraje i powroty - glebsza analityka - DONE
 
-**Do dodania:**
-- pierwsza wizyta w kazdym kraju,
-- ostatnia wizyta w kazdym kraju,
-- najdluzsza przerwa od ostatniej wizyty,
+**Status:** zrobione w `Add country history analytics`.
+
+**Zrobione:**
+- agregat `country_history` w `/api/stats`,
+- pierwsza i ostatnia wizyta w kazdym kraju,
+- kraje z najczestszymi powrotami,
 - kraje odwiedzane najregularniej,
-- kraje tylko raz odwiedzone.
+- kraje najdluzej niewidziane,
+- najdluzsze przerwy miedzy wizytami,
+- kraje odwiedzone tylko raz,
+- karta "Historia krajow" w ekranie Statystyki,
+- testy kontraktu API i test logiki agregacji kraju.
 
 **Weryfikacja:** po wyborze roku widac nie tylko nowe/powrotne kraje, ale tez kontekst historii wizyt.
 

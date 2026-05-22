@@ -8,7 +8,6 @@ UI phase 4 zostala zrealizowana w `Unify wizard UI controls`.
 
 Przy kolejnym uruchomieniu sprawdz najpierw `BACKLOG.md` i wybierz z uzytkownikiem kolejny praktyczny temat. Sensowne kandydaty:
 - automatyczne smoke testy kluczowych przeplywow,
-- glebsza analityka krajow i powrotow,
 - podzial ekranu statystyk na czytelniejsze sekcje,
 - dalsze porzadkowanie wspolnych komponentow frontendu.
 

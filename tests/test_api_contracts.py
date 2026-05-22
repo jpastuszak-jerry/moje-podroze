@@ -90,6 +90,55 @@ def _data_quality_payload():
     }
 
 
+def _country_history_payload():
+    return {
+        'summary': {
+            'countries': 2,
+            'active_countries': 2,
+            'returning_countries': 1,
+            'single_visit_countries': 1,
+            'avg_days_per_country': 8.0,
+        },
+        'countries': [
+            {
+                'id': 1,
+                'name': 'Finland',
+                'first_visit': '2022-07-01',
+                'last_visit': '2025-07-28',
+                'trips': 2,
+                'days_spent': 11,
+                'years_visited': 2,
+                'period_trips': 1,
+                'period_days': 5,
+                'days_since_last_visit': 300,
+                'longest_gap_days': 1100,
+                'longest_gap_from': '2022-07-03',
+                'longest_gap_to': '2025-07-18',
+            },
+            {
+                'id': 2,
+                'name': 'Estonia',
+                'first_visit': '2025-07-22',
+                'last_visit': '2025-07-28',
+                'trips': 1,
+                'days_spent': 5,
+                'years_visited': 1,
+                'period_trips': 1,
+                'period_days': 5,
+                'days_since_last_visit': 300,
+                'longest_gap_days': 0,
+                'longest_gap_from': None,
+                'longest_gap_to': None,
+            },
+        ],
+        'top_returns': [],
+        'only_once': [],
+        'longest_absences': [],
+        'most_regular': [],
+        'longest_gaps': [],
+    }
+
+
 def fake_stats_query(sql, params=(), one=False):
     normalized = ' '.join(sql.split())
     if not one:
@@ -131,6 +180,7 @@ class ApiContractSmokeTests(unittest.TestCase):
         with (
             patch.object(stats, '_period_stats', side_effect=lambda year=None: copy.deepcopy(period)),
             patch.object(stats, '_data_quality', return_value=copy.deepcopy(_data_quality_payload())),
+            patch.object(stats, '_country_history', return_value=copy.deepcopy(_country_history_payload())),
             patch.object(stats, '_country_milestones', return_value={
                 'new': [{'id': 1, 'name': 'Finland', 'first_visit': '2025-07-18', 'trips': 1}],
                 'returning': [],
@@ -157,7 +207,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             'purposes', 'participants', 'top_expensive', 'top_countries', 'top_places',
             'by_month', 'cost_per_day', 'progress', 'locations', 'by_year',
             'hall_of_fame', 'year', 'prev_period', 'current_trip', 'streak_months',
-            'heatmap', 'data_quality', 'country_milestones',
+            'heatmap', 'data_quality', 'country_milestones', 'country_history',
         }
         self.assertLessEqual(expected_keys, set(data))
         self.assertEqual(data['year'], 2025)
@@ -171,6 +221,15 @@ class ApiContractSmokeTests(unittest.TestCase):
         })
         self.assertEqual(data['hall_of_fame']['longest']['value'], 11)
         self.assertEqual(data['hall_of_fame']['top_country']['name'], 'Finland')
+        self.assertEqual(data['country_history']['summary']['returning_countries'], 1)
+        self.assertLessEqual(
+            {
+                'id', 'name', 'first_visit', 'last_visit', 'trips',
+                'days_spent', 'years_visited', 'period_trips', 'period_days',
+                'days_since_last_visit', 'longest_gap_days',
+            },
+            set(data['country_history']['countries'][0]),
+        )
 
     def test_stats_todo_endpoint_contract(self):
         payload = _data_quality_payload()

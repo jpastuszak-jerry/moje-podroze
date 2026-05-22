@@ -236,6 +236,81 @@ function renderCountryMilestones(milestones, year) {
   </div>`;
 }
 
+function countryDurationLabel(days) {
+  const n = Number(days || 0);
+  if (n < 31) return `${n} dni`;
+  if (n < 365) return `${Math.round(n / 30)} mies.`;
+  return `${(n / 365).toFixed(1).replace('.', ',')} lat`;
+}
+
+function countryHistoryRows(rows, { title, value, sub, empty }) {
+  const body = rows && rows.length
+    ? rows.slice(0, 5).map(c => `<div class="country-history-row">
+        <div class="country-history-main">
+          <div class="country-history-name">${escapeHtml(c.name)}</div>
+          <div class="country-history-sub">${escapeHtml(sub(c))}</div>
+        </div>
+        <div class="country-history-value">${value(c)}</div>
+      </div>`).join('')
+    : `<div class="country-history-empty">${escapeHtml(empty)}</div>`;
+  return `<div class="country-history-panel">
+    <div class="country-history-panel-title">${escapeHtml(title)}</div>
+    ${body}
+  </div>`;
+}
+
+function renderCountryHistory(history, year) {
+  if (!history || !history.summary || !history.summary.countries) return '';
+  const summary = history.summary;
+  const shownCountries = year ? summary.active_countries : summary.countries;
+  const scopeLabel = year ? `kraje aktywne w ${year}` : 'kraje w historii podróży';
+  const firstMetricLabel = year ? `W ${year}` : 'W historii';
+  const avgDays = Number(summary.avg_days_per_country || 0).toLocaleString('pl-PL', { maximumFractionDigits: 1 });
+
+  return `<div class="chart-card country-history-card">
+    <div class="section-title">🌍 Historia krajów</div>
+    <div class="country-history-subtitle">${escapeHtml(scopeLabel)}</div>
+    <div class="country-history-metrics">
+      <div><strong>${shownCountries || 0}</strong><span>${escapeHtml(firstMetricLabel)}</span></div>
+      <div><strong>${summary.returning_countries || 0}</strong><span>z powrotami</span></div>
+      <div><strong>${summary.single_visit_countries || 0}</strong><span>tylko raz</span></div>
+      <div><strong>${avgDays}</strong><span>śr. dni/kraj</span></div>
+    </div>
+    <div class="country-history-grid">
+      ${countryHistoryRows(history.top_returns || [], {
+        title: 'Najczęstsze powroty',
+        value: c => `${c.trips}×`,
+        sub: c => `${c.days_spent || 0} dni · ${c.years_visited || 0} ${c.years_visited === 1 ? 'rok' : 'lat'} · ostatnio ${fmtDate(c.last_visit)}`,
+        empty: 'Brak krajów z więcej niż jedną podróżą.',
+      })}
+      ${countryHistoryRows(history.most_regular || [], {
+        title: 'Najregularniej odwiedzane',
+        value: c => `${c.years_visited || 0} lat`,
+        sub: c => `${c.trips || 0} ${pluralTrips(c.trips || 0)} · ${c.days_spent || 0} dni`,
+        empty: 'Jeszcze brak krajów odwiedzanych w wielu latach.',
+      })}
+      ${countryHistoryRows(history.longest_absences || [], {
+        title: 'Najdłużej niewidziane',
+        value: c => countryDurationLabel(c.days_since_last_visit),
+        sub: c => `ostatnia wizyta ${fmtDate(c.last_visit)} · ${c.trips || 0}×`,
+        empty: 'Brak zakończonych wizyt do policzenia przerwy.',
+      })}
+      ${countryHistoryRows(history.longest_gaps || [], {
+        title: 'Najdłuższe przerwy między wizytami',
+        value: c => countryDurationLabel(c.longest_gap_days),
+        sub: c => `${fmtDate(c.longest_gap_from)} → ${fmtDate(c.longest_gap_to)}`,
+        empty: 'Brak powrotów z policzalną przerwą.',
+      })}
+      ${countryHistoryRows(history.only_once || [], {
+        title: 'Kraje odwiedzone tylko raz',
+        value: c => fmtDate(c.first_visit),
+        sub: c => `${c.days_spent || 0} dni · ostatnio ${fmtDate(c.last_visit)}`,
+        empty: 'Każdy kraj z tego zakresu ma już powrót.',
+      })}
+    </div>
+  </div>`;
+}
+
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
@@ -365,6 +440,7 @@ async function renderStats() {
   html += renderCostSummary(s.cost_summary);
   html += renderDataQuality(s.data_quality);
   html += renderCountryMilestones(s.country_milestones, currentStatsYear);
+  html += renderCountryHistory(s.country_history, currentStatsYear);
   if (s.purposes && s.purposes.length) {
     html += '<div class="chart-card"><div class="section-title">🎯 Cel podróży</div>'
       + svgDonut(s.purposes.map(p => ({ name: p.name || 'Inne', count: p.count }))) + '</div>';

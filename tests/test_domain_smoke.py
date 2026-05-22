@@ -1,8 +1,10 @@
 import unittest
 from datetime import date
+from unittest.mock import patch
 
 from pydantic import ValidationError
 
+import stats
 from schemas import LocationCreate, TravelCreate, TravelLocationCreate
 from stats import _clipped_trip_days, _period_bounds, _travel_period_clause
 
@@ -43,6 +45,29 @@ class DateLogicSmokeTests(unittest.TestCase):
         self.assertIn('t.start_date <= %s', clause)
         self.assertIn('t.end_date >= %s', clause)
         self.assertEqual(params, (date(2026, 12, 31), date(2026, 1, 1)))
+
+    def test_country_history_groups_returns_and_single_visit_countries(self):
+        rows = [
+            {'id': 1, 'name': 'Finland', 'travel_id': 10, 'visit_start': date(2022, 7, 1), 'visit_end': date(2022, 7, 3)},
+            {'id': 1, 'name': 'Finland', 'travel_id': 11, 'visit_start': date(2025, 7, 18), 'visit_end': date(2025, 7, 20)},
+            {'id': 1, 'name': 'Finland', 'travel_id': 11, 'visit_start': date(2025, 7, 25), 'visit_end': date(2025, 7, 26)},
+            {'id': 2, 'name': 'Estonia', 'travel_id': 11, 'visit_start': date(2025, 7, 22), 'visit_end': date(2025, 7, 24)},
+        ]
+        with patch.object(stats, 'query', return_value=rows):
+            history = stats._country_history(2025)
+
+        self.assertEqual(history['summary']['countries'], 2)
+        self.assertEqual(history['summary']['active_countries'], 2)
+        self.assertEqual(history['summary']['returning_countries'], 1)
+        self.assertEqual(history['summary']['single_visit_countries'], 1)
+        self.assertEqual(history['summary']['avg_days_per_country'], 4.0)
+        self.assertEqual(history['top_returns'][0]['name'], 'Finland')
+        self.assertEqual(history['top_returns'][0]['trips'], 2)
+        self.assertEqual(history['top_returns'][0]['days_spent'], 8)
+        self.assertEqual(history['top_returns'][0]['period_days'], 5)
+        self.assertEqual(history['only_once'][0]['name'], 'Estonia')
+        self.assertEqual(history['top_returns'][0]['period_trips'], 1)
+        self.assertGreater(history['top_returns'][0]['longest_gap_days'], 0)
 
 
 class SchemaValidationSmokeTests(unittest.TestCase):
