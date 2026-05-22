@@ -5,6 +5,7 @@ from unittest.mock import patch
 import app as app_module
 import locations
 import stats
+import stats_hall_of_fame
 
 
 def _period_payload():
@@ -139,6 +140,21 @@ def _country_history_payload():
     }
 
 
+def _hall_of_fame_payload():
+    return {
+        'longest': {'id': 1, 'name': 'Longest trip', 'value': 11},
+        'priciest': {'id': 1, 'name': 'Priciest trip', 'value': 1000.0, 'currency': 'EUR'},
+        'best_rated': {'id': 1, 'name': 'Best trip', 'value': 4.5},
+        'most_places': {'id': 1, 'name': 'Most places', 'value': 7},
+        'most_flights': {'id': 1, 'name': 'Most flights', 'value': 4},
+        'most_countries': {'id': 1, 'name': 'Most countries', 'value': 3},
+        'top_country': {'name': 'Finland', 'visits': 2, 'days': 5},
+        'longest_gap': {'id': 2, 'name': 'After break', 'value': 120},
+        'longest_streak': {'start_date': '2025-07-18', 'end_date': '2025-07-28', 'value': 11},
+        'best_month': {'year': 2025, 'month': 7, 'value': 11},
+    }
+
+
 def fake_stats_query(sql, params=(), one=False):
     normalized = ' '.join(sql.split())
     if not one:
@@ -185,6 +201,7 @@ class ApiContractSmokeTests(unittest.TestCase):
                 'new': [{'id': 1, 'name': 'Finland', 'first_visit': '2025-07-18', 'trips': 1}],
                 'returning': [],
             }),
+            patch.object(stats, '_hall_of_fame', return_value=copy.deepcopy(_hall_of_fame_payload())),
             patch.object(stats, '_current_trip', return_value={
                 'id': 1,
                 'name': 'Helsinki',
@@ -230,6 +247,20 @@ class ApiContractSmokeTests(unittest.TestCase):
             },
             set(data['country_history']['countries'][0]),
         )
+
+    def test_hall_of_fame_contract(self):
+        with patch.object(stats_hall_of_fame, 'query', side_effect=fake_stats_query):
+            hall_of_fame = stats_hall_of_fame._hall_of_fame()
+
+        self.assertEqual(set(hall_of_fame), {
+            'longest', 'priciest', 'best_rated', 'most_places', 'most_flights',
+            'most_countries', 'top_country', 'longest_gap', 'longest_streak', 'best_month',
+        })
+        self.assertEqual(hall_of_fame['longest']['value'], 11)
+        self.assertEqual(hall_of_fame['priciest']['currency'], 'EUR')
+        self.assertEqual(hall_of_fame['top_country']['name'], 'Finland')
+        self.assertEqual(hall_of_fame['longest_streak']['start_date'], '2025-07-18')
+        self.assertEqual(hall_of_fame['best_month'], {'year': 2025, 'month': 7, 'value': 11})
 
     def test_stats_todo_endpoint_contract(self):
         payload = _data_quality_payload()

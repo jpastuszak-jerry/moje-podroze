@@ -19,6 +19,6 @@ jobs:
           node-version: "22"
       - run: pip install -r requirements.txt ruff
       - run: ruff check .
-      - run: python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py stats_common.py stats_countries.py stats_quality.py schemas.py migrate.py
+      - run: python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py stats_common.py stats_countries.py stats_quality.py stats_hall_of_fame.py schemas.py migrate.py
       - run: python -m unittest discover -s tests
       - run: node tools/smoke_js.mjs

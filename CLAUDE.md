@@ -35,10 +35,11 @@ Backend is Flask + PostgreSQL split into modules:
 | `travels.py` | travel CRUD, travel locations, travel participants |
 | `locations.py` | location CRUD, location detail, map data, location completion worklist |
 | `dicts.py` | countries, location types, relation types, persons |
-| `stats.py` | stats dashboard routes, Hall of Fame and main stats endpoint |
+| `stats.py` | stats dashboard routes and main stats response assembly |
 | `stats_common.py` | shared date/range helpers for stats |
 | `stats_countries.py` | country history, new countries and returning countries aggregations |
 | `stats_quality.py` | travel data-quality and completion worklist aggregations |
+| `stats_hall_of_fame.py` | Hall of Fame aggregations |
 | `schemas.py` | Pydantic request validation |
 | `migrate.py` | destructive SQLite -> PostgreSQL migration, requires `--force` |
 
@@ -101,7 +102,7 @@ Current checks used during development:
 
 ```bash
 python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py
-python -m py_compile stats_common.py stats_countries.py stats_quality.py
+python -m py_compile stats_common.py stats_countries.py stats_quality.py stats_hall_of_fame.py
 python -m ruff check .
 python -m unittest discover -s tests
 ```
