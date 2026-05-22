@@ -179,7 +179,6 @@ def _country_history(year=None):
         JOIN countries c ON c.id = l.country_id
         JOIN travels t ON t.id = tl.travel_id
         WHERE t.deleted_at IS NULL AND l.deleted_at IS NULL
-        ORDER BY c.name, visit_start, visit_end, t.id
     """)]
 
     countries = {}
@@ -259,7 +258,9 @@ def _country_history(year=None):
         items.append(item)
 
     items.sort(key=lambda c: c['name'])
-    scoped_items = [c for c in items if c['period_trips'] > 0] if year else items
+    scoped_items = items
+    if year:
+        scoped_items = [c for c in items if c['period_trips'] > 0]
     summary_source = scoped_items if year else items
 
     def top(rows, sort_key, limit=8):

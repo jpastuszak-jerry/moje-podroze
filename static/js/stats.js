@@ -118,6 +118,13 @@ function pluralTrips(n) {
   return [2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100) ? 'podróże' : 'podróży';
 }
 
+function pluralYears(n) {
+  if (n === 1) return 'rok';
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  return [2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100) ? 'lata' : 'lat';
+}
+
 function formatCost(value, currency, digits = 0) {
   if (value == null || Number.isNaN(Number(value))) return '–';
   return Number(value).toLocaleString('pl-PL', {
@@ -280,12 +287,12 @@ function renderCountryHistory(history, year) {
       ${countryHistoryRows(history.top_returns || [], {
         title: 'Najczęstsze powroty',
         value: c => `${c.trips}×`,
-        sub: c => `${c.days_spent || 0} dni · ${c.years_visited || 0} ${c.years_visited === 1 ? 'rok' : 'lat'} · ostatnio ${fmtDate(c.last_visit)}`,
+        sub: c => `${c.days_spent || 0} dni · ${c.years_visited || 0} ${pluralYears(c.years_visited || 0)} · ostatnio ${fmtDate(c.last_visit)}`,
         empty: 'Brak krajów z więcej niż jedną podróżą.',
       })}
       ${countryHistoryRows(history.most_regular || [], {
         title: 'Najregularniej odwiedzane',
-        value: c => `${c.years_visited || 0} lat`,
+        value: c => `${c.years_visited || 0} ${pluralYears(c.years_visited || 0)}`,
         sub: c => `${c.trips || 0} ${pluralTrips(c.trips || 0)} · ${c.days_spent || 0} dni`,
         empty: 'Jeszcze brak krajów odwiedzanych w wielu latach.',
       })}

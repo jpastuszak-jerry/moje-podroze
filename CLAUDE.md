@@ -35,7 +35,7 @@ Backend is Flask + PostgreSQL split into modules:
 | `travels.py` | travel CRUD, travel locations, travel participants |
 | `locations.py` | location CRUD, location detail, map data, location completion worklist |
 | `dicts.py` | countries, location types, relation types, persons |
-| `stats.py` | stats dashboard, Hall of Fame, data quality, travel completion worklist |
+| `stats.py` | stats dashboard routes, Hall of Fame, data quality, travel completion worklist |
 | `schemas.py` | Pydantic request validation |
 | `migrate.py` | destructive SQLite -> PostgreSQL migration, requires `--force` |
 
@@ -99,12 +99,18 @@ Current checks used during development:
 ```bash
 python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py
 python -m ruff check .
+python -m unittest discover -s tests
 ```
 
 For frontend syntax, use `node --check` when available, or parse changed JS files with the Node runtime.
+For shared frontend helpers, run:
+
+```bash
+node tools/smoke_js.mjs
+```
 
 ## Important Notes
 
-- Do not commit local untracked `AGENTS.md` unless explicitly requested.
+- `AGENTS.md` is intentionally tracked and is the current shared guidance for Codex and other agents.
 - `migrate.py` drops/recreates PostgreSQL tables and must be run with `--force`.
 - Static assets are loaded with `?v={{ asset_version }}` to avoid stale PWA/cache behavior after deploys.

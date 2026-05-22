@@ -209,15 +209,21 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** `stats.js`, `todo.js`, `locations.js` i `travels.js` maja mniej duplikacji, a wyglad kart/filtrow pozostaje spojny.
 
-### 11. Kontrakty API dla widokow
+### 11. Kontrakty API dla widokow - PARTIAL
 
 **Problem:** endpointy zwracaja coraz bogatsze struktury, ale ich kontrakty sa opisane tylko przez kod.
 
-**Do zrobienia:**
-- opisac odpowiedzi `/api/stats`,
-- opisac odpowiedzi `/api/stats/todo`,
-- opisac odpowiedzi `/api/locations/todo`,
-- najlepiej dodac testy sprawdzajace minimalny kontrakt.
+**Status:** minimalne smoke testy kontraktu dodane w `Add API contract smoke tests`.
+
+**Zrobione:**
+- test kontraktu `/api/stats`,
+- test kontraktu `/api/stats/todo`,
+- test kontraktu `/api/locations/todo`.
+
+**Do zrobienia dalej:**
+- opisac odpowiedzi w dokumentacji technicznej,
+- zastapic kruche mockowanie fragmentow SQL fixture'ami albo mala baza testowa,
+- rozszerzyc kontrakty o dane bardziej realistyczne dla statystyk krajow, kosztow i jakosci danych.
 
 **Weryfikacja:** nowy agent albo przyszly refaktor wie, ktore pola sa wymagane przez UI.
 
@@ -253,6 +259,20 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - zachowac endpoint Flask w `stats.py` jako cienka warstwe HTTP.
 
 **Weryfikacja:** dodanie nowej statystyki nie wymaga edycji jednego bardzo duzego endpointu.
+
+### 14a. Optymalizacja ciezszych agregatow i list
+
+**Problem:** po rozbudowie statystyk kilka miejsc moze stac sie kosztowne przy wiekszej bazie:
+- `country_history` i `country_milestones` dotykaja podobnych danych o krajach,
+- `/api/locations` liczy `visit_count` przez join z lokacjami podrzednymi i `COUNT(DISTINCT)`,
+- `_period_stats(year)` bywa liczony dwa razy przy porownaniu rok do roku.
+
+**Do rozwazenia pozniej:**
+- polaczyc albo wspoldzielic dane miedzy `country_history` i `country_milestones`,
+- uproscic `/api/locations` przez CTE albo osobny maly SELECT agregujacy wizyty,
+- dodac krotkotrwaly cache w request-scope dla `_period_stats(year)`, jesli pojawia sie realne lagi.
+
+**Weryfikacja:** widoki Statystyki i Miejsca zachowuja ten sam kontrakt JSON, ale liczba lub koszt zapytan spada.
 
 ### 15. Role uzytkownikow: admin i viewer
 
