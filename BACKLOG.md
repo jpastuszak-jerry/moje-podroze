@@ -173,18 +173,19 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Problem:** najwazniejsza logika domenowa jest obecnie weryfikowana glownie recznie. Dotyczy to szczegolnie statystyk, dat i jakosci danych.
 
-**Status:** pierwszy pakiet smoke testow dodany w `Add automated smoke tests`.
+**Status:** pierwszy pakiet smoke testow dodany w `Add automated smoke tests`, uzupelniony o kontrakty API w `Add API contract smoke tests`.
 
 **Zrobione:**
 - Python `unittest` dla inkluzywnego liczenia dni, przycinania podrozy do roku i walidacji Pydantic,
 - JS smoke testy dla `daysCount`, polgwiazdek, komunikatow API, blokady podwojnych akcji, `removeWithSlide` i przycinania dat pobytu,
+- minimalne testy kontraktu `/api/stats`, `/api/stats/todo` i `/api/locations/todo`,
 - GitHub Actions uruchamiaja testy Python i JS przy pushu.
 
 **Do dodania dalej:**
 - testy jakosci danych podrozy,
 - testy jakosci danych miejsc,
 - testy nowych/powrotnych krajow,
-- testy kontraktu `/api/stats`, `/api/stats/todo`, `/api/locations/todo`,
+- glebsze testy kontraktow z realistycznym zestawem danych statystyk,
 - docelowo testy z mala baza testowa albo mockiem warstwy `query()`.
 
 **Weryfikacja:** GitHub Actions uruchamia testy przy pushu i lapie regresje w statystykach.
