@@ -7,7 +7,7 @@ This file provides guidance to Codex, Claude, and other coding agents when worki
 UI phase 4 zostala zrealizowana w `Unify wizard UI controls`.
 
 Przy kolejnym uruchomieniu sprawdz najpierw `BACKLOG.md` i wybierz z uzytkownikiem kolejny praktyczny temat. Sensowne kandydaty:
-- lepsze komunikaty bledow w UI,
+- automatyczne smoke testy kluczowych przeplywow,
 - glebsza analityka krajow i powrotow,
 - podzial ekranu statystyk na czytelniejsze sekcje,
 - dalsze porzadkowanie wspolnych komponentow frontendu.
@@ -52,6 +52,11 @@ node --check static/js/persons.js
 ```
 
 Pelnych testow automatycznych jeszcze nie ma. Dla zmian UI konieczna jest krotka weryfikacja reczna w przegladarce po deployu.
+
+Przy kazdej zmianie typu refactoring agent musi:
+- jasno opisac korzysci: co bedzie prostsze, stabilniejsze, szybsze albo latwiejsze w utrzymaniu,
+- przygotowac smoke testy: minimalny zestaw recznych lub automatycznych krokow, ktore potwierdzaja, ze kluczowe zachowania po refaktoringu nadal dzialaja,
+- podac te smoke testy uzytkownikowi po commicie jako konkretna instrukcje weryfikacji.
 
 ## Architecture
 
