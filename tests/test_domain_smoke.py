@@ -4,9 +4,9 @@ from unittest.mock import patch
 
 from pydantic import ValidationError
 
-import stats
 from schemas import LocationCreate, TravelCreate, TravelLocationCreate
-from stats import _clipped_trip_days, _period_bounds, _travel_period_clause
+import stats_countries
+from stats_common import _clipped_trip_days, _period_bounds, _travel_period_clause
 
 
 def valid_travel_payload(**overrides):
@@ -53,8 +53,8 @@ class DateLogicSmokeTests(unittest.TestCase):
             {'id': 1, 'name': 'Finland', 'travel_id': 11, 'visit_start': date(2025, 7, 25), 'visit_end': date(2025, 7, 26)},
             {'id': 2, 'name': 'Estonia', 'travel_id': 11, 'visit_start': date(2025, 7, 22), 'visit_end': date(2025, 7, 24)},
         ]
-        with patch.object(stats, 'query', return_value=rows):
-            history = stats._country_history(2025)
+        with patch.object(stats_countries, 'query', return_value=rows):
+            history = stats_countries._country_history(2025)
 
         self.assertEqual(history['summary']['countries'], 2)
         self.assertEqual(history['summary']['active_countries'], 2)

@@ -32,6 +32,7 @@ Przed commitem, zaleznnie od zakresu zmiany:
 
 ```powershell
 python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py
+python -m py_compile stats_common.py stats_countries.py
 python -m ruff check .
 python -m unittest discover -s tests
 git diff --check
@@ -76,7 +77,9 @@ Przy kazdej zmianie typu refactoring agent musi:
 | `travels.py` | `/api/travels`, CRUD podrozy, miejsca w podrozy, uczestnicy |
 | `locations.py` | `/api/locations`, miejsca, hierarchia miejsc, GPS, restore, mapa |
 | `dicts.py` | slowniki (`countries`, `location_types`, `relation_types`) i `persons` |
-| `stats.py` | `/api/stats`, `/api/stats/todo`, agregaty, Hall of Fame, jakosc danych |
+| `stats.py` | `/api/stats`, `/api/stats/todo`, glowne agregaty, Hall of Fame, jakosc danych |
+| `stats_common.py` | wspolne helpery dat i zakresow statystyk |
+| `stats_countries.py` | agregaty historii krajow, nowych krajow i powrotow |
 | `migrate.py` | pomocnicze migracje/utrzymanie bazy |
 
 `ensure_schema()` w `core.py` uruchamia idempotentne migracje przy starcie procesu, zeby deploy na Render nie wymagal recznych krokow.

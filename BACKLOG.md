@@ -250,12 +250,19 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** zmiana schematu moze byc odpalona deterministycznie na lokalnym srodowisku i Renderze.
 
-### 14. Wydzielenie agregacji statystyk
+### 14. Wydzielenie agregacji statystyk - PARTIAL
 
 **Problem:** `stats.py` zawiera coraz wiecej zapytan analitycznych. To nadal dziala, ale plik bedzie trudny do utrzymania, jesli statystyki dalej beda rosly.
 
+**Status:** pierwszy etap zrobiony w `Extract country stats helpers`.
+
+**Zrobione:**
+- wspolne helpery dat i zakresow przeniesione do `stats_common.py`,
+- agregaty krajow i powrotow przeniesione do `stats_countries.py`,
+- `stats.py` pozostaje odpowiedzialny za glowny endpoint, Hall of Fame i pozostale agregaty.
+
 **Propozycja:**
-- wydzielic helpery/sekcje agregacji, np. `stats_queries.py` albo klasy/funkcje per obszar: koszty, kraje, jakosc danych, Hall of Fame,
+- wydzielic kolejne sekcje agregacji: koszty, jakosc danych, Hall of Fame,
 - zachowac endpoint Flask w `stats.py` jako cienka warstwe HTTP.
 
 **Weryfikacja:** dodanie nowej statystyki nie wymaga edycji jednego bardzo duzego endpointu.
