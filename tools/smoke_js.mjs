@@ -8,6 +8,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const utilsPath = path.join(repoRoot, 'static', 'js', 'utils.js');
 const componentsPath = path.join(repoRoot, 'static', 'js', 'components.js');
 const statsPath = path.join(repoRoot, 'static', 'js', 'stats.js');
+const wizardPath = path.join(repoRoot, 'static', 'js', 'wizard.js');
 
 function elementStub() {
   let textContent = '';
@@ -137,6 +138,58 @@ const rankingHtml = context.renderRankingBars(
 );
 assert.match(rankingHtml, /gbar-row/, 'renderRankingBars renders rows');
 assert.match(rankingHtml, /width:100%/, 'renderRankingBars scales top value to full width');
+
+vm.runInContext(fs.readFileSync(wizardPath, 'utf8'), context, { filename: wizardPath });
+
+const wizardSaveButton = elementStub();
+let wizardClosed = false;
+let wizardOpenedTravel = null;
+let wizardToast = null;
+const wizardApiCalls = [];
+context.document.getElementById = id => (id === 'wizard-next-btn' ? wizardSaveButton : null);
+context.apiPost = async (path, body) => {
+  wizardApiCalls.push({ path, body });
+  return { id: 77 };
+};
+context.closeWizard = () => { wizardClosed = true; };
+context.openTravel = id => { wizardOpenedTravel = id; };
+context.toast = (message, type) => { wizardToast = { message, type }; };
+
+vm.runInContext(`
+  wizardState = {
+    info: {
+      name: 'Wizard trip',
+      purpose: 'Test',
+      start_date: '2025-07-10',
+      end_date: '2025-07-12',
+      amount: 100,
+      currency: 'pln',
+      number_of_flights: 2,
+      rating: 4.5,
+      has_photo_album: 1,
+      is_description_complete: 0,
+      notes: 'Note',
+      reflections: '',
+    },
+    locations: [{
+      id: 10,
+      arrival: '2025-07-10',
+      departure: '2025-07-12',
+      notes: 'Stay',
+    }],
+    participants: [{ id: 3 }],
+  };
+`, context);
+await context.wizardSave();
+assert.equal(wizardApiCalls.length, 1, 'wizard final save uses one request');
+assert.equal(wizardApiCalls[0].path, '/api/travels/wizard', 'wizard uses transactional save endpoint');
+assert.equal(wizardApiCalls[0].body.travel.name, 'Wizard trip');
+assert.equal(wizardApiCalls[0].body.locations[0].location_id, 10);
+assert.equal(wizardApiCalls[0].body.locations[0].force_outside_range, true);
+assert.equal(wizardApiCalls[0].body.participants[0].person_id, 3);
+assert.equal(wizardClosed, true, 'wizard closes after successful transactional save');
+assert.equal(wizardOpenedTravel, 77, 'wizard opens created travel');
+assert.deepEqual(wizardToast, { message: 'Podróż utworzona', type: 'success' });
 
 function statsPayload(overrides = {}) {
   return {

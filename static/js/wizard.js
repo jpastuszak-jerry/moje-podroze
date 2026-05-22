@@ -674,37 +674,37 @@ async function wizardSave() {
 
   try {
     const s = wizardState.info;
-    const travelRes = await apiPost('/api/travels', {
-      name: s.name, purpose: s.purpose,
-      start_date: s.start_date, end_date: s.end_date,
-      amount: parseFloat(s.amount) || 0, currency: s.currency || 'PLN',
-      number_of_flights: parseInt(s.number_of_flights) || 0,
-      rating: s.rating || null,
-      has_photo_album: parseInt(s.has_photo_album) || 0,
-      is_description_complete: parseInt(s.is_description_complete) || 0,
-      notes: s.notes || null, reflections: s.reflections || null,
+    const saveRes = await apiPost('/api/travels/wizard', {
+      travel: {
+        name: s.name, purpose: s.purpose,
+        start_date: s.start_date, end_date: s.end_date,
+        amount: parseFloat(s.amount) || 0, currency: s.currency || 'PLN',
+        number_of_flights: parseInt(s.number_of_flights) || 0,
+        rating: s.rating || null,
+        has_photo_album: parseInt(s.has_photo_album) || 0,
+        is_description_complete: parseInt(s.is_description_complete) || 0,
+        notes: s.notes || null, reflections: s.reflections || null,
+      },
+      locations: wizardState.locations.map(l => ({
+        location_id: l.id,
+        arrival_date: l.arrival || null,
+        departure_date: l.departure || null,
+        notes: l.notes || null,
+        force_outside_range: true,  // user juz zaakceptowal w wizardConfirmLocation
+      })),
+      participants: wizardState.participants.map(p => ({ person_id: p.id })),
     });
 
-    if (travelRes.error) { toastApiError(travelRes, 'Nie udało się zapisać podróży'); btn.disabled = false; btn.textContent = '✓ Zapisz podróż'; return; }
-    const travelId = travelRes.id;
-
-    const attachResults = await Promise.all([
-      ...wizardState.locations.map(l =>
-        apiPost(`/api/travels/${travelId}/locations`, {
-          location_id: l.id, arrival_date: l.arrival || null,
-          departure_date: l.departure || null, notes: l.notes || null,
-          force_outside_range: true,  // user juz zaakceptowal w wizardConfirmLocation
-        })
-      ),
-      ...wizardState.participants.map(p =>
-        apiPost(`/api/travels/${travelId}/participants`, { person_id: p.id })
-      ),
-    ]);
-    const failedAttach = attachResults.find(r => r && r.error);
+    if (saveRes.error) {
+      toastApiError(saveRes, 'Nie udało się zapisać podróży');
+      btn.disabled = false;
+      btn.textContent = '✓ Zapisz podróż';
+      return;
+    }
+    const travelId = saveRes.id;
 
     closeWizard();
-    if (failedAttach) toastApiError(failedAttach, 'Podróż została utworzona, ale nie udało się dopiąć wszystkich miejsc lub uczestników');
-    else toast('Podróż utworzona', 'success');
+    toast('Podróż utworzona', 'success');
     openTravel(travelId);
   } catch (err) {
     toast('Nieoczekiwany błąd: ' + err.message, 'error');

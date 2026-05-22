@@ -4,7 +4,7 @@ import re
 from datetime import date
 from typing import Literal, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 def _blank_to_none(v):
@@ -159,6 +159,12 @@ class TravelLocationUpdate(_TravelLocationFields):
 
 class ParticipantAdd(BaseModel):
     person_id: int
+
+
+class TravelWizardCreate(BaseModel):
+    travel: TravelCreate
+    locations: list[TravelLocationCreate] = Field(default_factory=list)
+    participants: list[ParticipantAdd] = Field(default_factory=list)
 
 
 class PersonInput(BaseModel):

@@ -10,6 +10,7 @@ from schemas import (
     TravelLocationCreate,
     TravelLocationUpdate,
     TravelUpdate,
+    TravelWizardCreate,
 )
 
 
@@ -91,6 +92,68 @@ def create_travel():
         t.rating, t.reflections, t.notes, t.number_of_flights,
     ))
     return jsonify({'id': new_id}), 201
+
+
+@bp.route('/api/travels/wizard', methods=['POST'])
+def create_travel_from_wizard():
+    try:
+        payload = TravelWizardCreate.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
+
+    t = payload.travel
+    for loc in payload.locations:
+        if not loc.force_outside_range:
+            oor = _visit_outside_range(t.start_date, t.end_date, loc.arrival_date, loc.departure_date)
+            if oor:
+                return _out_of_range_response(oor)
+
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("""
+                INSERT INTO travels (name, start_date, end_date, purpose, has_photo_album,
+                       amount, currency, is_description_complete, rating, reflections, notes, number_of_flights)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            """, (
+                t.name, t.start_date, t.end_date, t.purpose, t.has_photo_album,
+                t.amount, t.currency, t.is_description_complete,
+                t.rating, t.reflections, t.notes, t.number_of_flights,
+            ))
+            new_id = cur.fetchone()[0]
+
+            for loc in payload.locations:
+                cur.execute("""
+                    INSERT INTO travel_locations
+                        (travel_id, location_id, arrival_date, departure_date, notes)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (new_id, loc.location_id, loc.arrival_date, loc.departure_date, loc.notes))
+
+            for participant in payload.participants:
+                cur.execute("""
+                    INSERT INTO travel_participants (travel_id, person_id)
+                    VALUES (%s, %s) ON CONFLICT DO NOTHING
+                """, (new_id, participant.person_id))
+
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        return _wizard_save_error_response(e)
+
+    return jsonify({
+        'id': new_id,
+        'locations': len(payload.locations),
+        'participants': len(payload.participants),
+    }), 201
+
+
+def _wizard_save_error_response(e):
+    msg = str(e).lower()
+    if 'foreign key' in msg:
+        return jsonify({
+            'error': 'Nie udało się zapisać podróży — wybrane miejsce lub uczestnik nie istnieje już w bazie',
+        }), 409
+    return db_error_response(e, 'Nie udało się zapisać podróży')
 
 
 @bp.route('/api/travels/<int:tid>', methods=['PUT'])
@@ -192,6 +255,17 @@ def restore_travel(tid):
 
 # ── Powiązania: miejsca w podróży, uczestnicy ──
 
+
+def _visit_outside_range(start, end, arrival, departure):
+    if not arrival and not departure:
+        return None
+    bad = (arrival   is not None and (arrival   < start or arrival   > end)) or \
+          (departure is not None and (departure < start or departure > end))
+    if not bad:
+        return None
+    return {'travel_start': str(start), 'travel_end': str(end)}
+
+
 def _visit_out_of_travel_range(tid, arrival, departure):
     """Zwraca dict z zakresem podróży jeśli daty wizyty są poza zakresem; inaczej None."""
     if not arrival and not departure:
@@ -199,12 +273,7 @@ def _visit_out_of_travel_range(tid, arrival, departure):
     travel = query("SELECT start_date, end_date FROM travels WHERE id=%s", (tid,), one=True)
     if not travel:
         return None
-    s, e = travel['start_date'], travel['end_date']
-    bad = (arrival   is not None and (arrival   < s or arrival   > e)) or \
-          (departure is not None and (departure < s or departure > e))
-    if not bad:
-        return None
-    return {'travel_start': str(s), 'travel_end': str(e)}
+    return _visit_outside_range(travel['start_date'], travel['end_date'], arrival, departure)
 
 
 def _out_of_range_response(info):

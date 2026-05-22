@@ -326,13 +326,19 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - viewer nie moze zapisac/usunac przez API,
 - po przelogowaniu admin -> viewer stare dane z cache nie pokazuja kosztow.
 
-### 16. Kreator podrozy - bezpieczny zapis koncowy
+### 16. Kreator podrozy - bezpieczny zapis koncowy - DONE
 
 **Kontekst:** nie zmieniac zasady, ze mozna swiadomie zapisac niepelna podroz. Problemem jest tylko sytuacja, gdy klik "Zapisz podroz" technicznie utworzy podroz, ale nie dopnie wszystkich miejsc/uczestnikow.
 
-**Propozycja:** dodac endpoint transakcyjny dla finalnego zapisu kreatora albo wykrywac nieudane dopiecia i jasno informowac uzytkownika.
+**Status:** zrobione w `Add transactional wizard save`.
 
-**Weryfikacja:** przy bledzie dopinania miejsca/uczestnika aplikacja nie udaje pelnego sukcesu.
+**Zrobione:**
+- dodany endpoint `POST /api/travels/wizard` zapisujacy podroz, miejsca i uczestnikow w jednej transakcji,
+- kreator wysyla jeden finalny payload zamiast tworzyc podroz i dopinac relacje osobnymi requestami,
+- bledy dopinania miejsc/uczestnikow powoduja rollback calego zapisu,
+- dodane testy sukcesu, rollbacku oraz odrzucenia wizyty poza zakresem bez zapisu do bazy.
+
+**Weryfikacja:** w kreatorze utworzyc podroz z miejscem i uczestnikiem; po zapisie szczegoly podrozy powinny pokazac oba powiazania. Przy technicznym bledzie dopiecia relacji podroz nie powinna zostac czesciowo utworzona.
 
 ### 17. Aktualizacja dokumentacji technicznej - DONE
 
