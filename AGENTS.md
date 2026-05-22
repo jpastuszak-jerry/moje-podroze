@@ -4,12 +4,13 @@ This file provides guidance to Codex, Claude, and other coding agents when worki
 
 ## Next Start
 
-Przy kolejnym uruchomieniu zacznij od: **UI phase 4**.
+UI phase 4 zostala zrealizowana w `Unify wizard UI controls`.
 
-Zakres UI phase 4:
-- uporzadkowac formularze w kreatorze podrozy (`static/js/wizard.js`),
-- ujednolicic widok konfliktu dat podrozy,
-- dalej redukowac inline style tam, gdzie sa czescia wspolnych kontrolek UI.
+Przy kolejnym uruchomieniu sprawdz najpierw `BACKLOG.md` i wybierz z uzytkownikiem kolejny praktyczny temat. Sensowne kandydaty:
+- lepsze komunikaty bledow w UI,
+- glebsza analityka krajow i powrotow,
+- podzial ekranu statystyk na czytelniejsze sekcje,
+- dalsze porzadkowanie wspolnych komponentow frontendu.
 
 ## Local Run
 

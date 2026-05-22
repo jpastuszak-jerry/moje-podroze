@@ -245,18 +245,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .form-spaced { margin-bottom: 14px; }
 .compact-input { margin-bottom: 0; padding: 6px 10px; }
 .form-section-divider { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 14px; }
+.form-action-stack { display: flex; flex-direction: column; gap: 8px; }
 .form-primary-btn,
-.form-secondary-btn {
+.form-secondary-btn,
+.form-tertiary-btn {
   width: 100%; border-radius: 10px; padding: 12px;
   font-size: 15px; font-weight: 600; cursor: pointer;
   transition: transform .1s, opacity .15s, background .15s;
 }
 .form-primary-btn { background: var(--blue); color: white; border: none; }
 .form-secondary-btn { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
+.form-tertiary-btn { background: transparent; color: var(--text2); border: none; }
 .form-primary-btn:active,
-.form-secondary-btn:active { transform: scale(0.985); }
+.form-secondary-btn:active,
+.form-tertiary-btn:active { transform: scale(0.985); }
 .form-primary-btn:disabled,
-.form-secondary-btn:disabled { opacity: 0.65; cursor: default; }
+.form-secondary-btn:disabled,
+.form-tertiary-btn:disabled { opacity: 0.65; cursor: default; }
 .form-icon-btn {
   border: none; border-radius: 10px; padding: 10px 12px;
   background: var(--blue); color: white;
@@ -282,6 +287,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 }
 .form-hint-card input { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; }
 .form-hint-card label { font-size: 13px; cursor: pointer; line-height: 1.4; }
+.form-notice {
+  border-radius: 10px; padding: 10px 12px;
+  font-size: 13px; line-height: 1.45; margin-bottom: 12px;
+}
+.form-notice.warning { background: var(--orange-light); color: var(--orange); }
 .modal-list-empty { color: var(--text3); font-size: 13px; text-align: center; padding: 12px; }
 .modal-list-row { padding: 10px 0; border-bottom: 1px solid var(--border); }
 .modal-list-row:last-child { border-bottom: none; }
@@ -559,6 +569,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 }
 .wizard-btn-next:active { opacity: 0.85; }
 .wizard-btn-next.green { background: var(--green); }
+.wizard-section { margin-bottom: 16px; }
+.wizard-section-label { margin-bottom: 8px; }
+.wizard-panel {
+  background: var(--bg); border-radius: 14px;
+  padding: 12px; margin-bottom: 12px;
+}
+.wizard-panel-tight { margin-bottom: 8px; }
+.wizard-panel .search-box input {
+  background: var(--card); border: 1px solid var(--border);
+}
+.wizard-scroll-list { max-height: 35vh; overflow-y: auto; }
+.wizard-tail-spacer { height: 8px; }
+.wizard-list-empty {
+  color: var(--text3); font-size: 13px;
+  padding: 8px 0 16px; line-height: 1.45;
+}
+.wizard-list-empty.compact { padding: 8px 0; }
+.wizard-picker-group {
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 10px 0 4px;
+}
 
 /* Sekcja lokacji w wizardzie */
 .wiz-loc-item {
@@ -604,6 +636,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 }
 .wiz-summary-key { color: var(--text2); }
 .wiz-summary-val { font-weight: 600; text-align: right; max-width: 60%; }
+.wiz-summary-hero {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.wiz-summary-icon {
+  width: 46px; height: 46px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; background: var(--purpose-bg); flex-shrink: 0;
+}
+.wiz-summary-title { font-size: 17px; font-weight: 700; }
+.wiz-summary-sub { font-size: 13px; color: var(--text2); }
+.wiz-summary-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.wiz-summary-item:last-child { border-bottom: none; }
+.wiz-summary-item-icon { font-size: 18px; flex-shrink: 0; }
+.wiz-summary-item-main { flex: 1; min-width: 0; }
+.wiz-summary-item-title { font-size: 14px; font-weight: 500; }
+.wiz-summary-item-sub { font-size: 12px; color: var(--text2); }
+.wiz-summary-note { font-size: 14px; line-height: 1.6; }
 
 /* Picker lokacji w wizardzie */
 .wiz-picker-item {
@@ -616,6 +668,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .wiz-picker-info { flex: 1; }
 .wiz-picker-name { font-size: 14px; font-weight: 500; }
 .wiz-picker-sub { font-size: 12px; color: var(--text2); }
+.travel-conflict-copy {
+  font-size: 14px; line-height: 1.5; margin-bottom: 10px;
+}
+.travel-conflict-list {
+  background: var(--bg); border-radius: 10px;
+  padding: 6px 12px; margin-bottom: 14px;
+  max-height: 30vh; overflow-y: auto;
+}
 
 /* ── Toast / snackbar ───────────────────────────────────── */
 .toast-container {

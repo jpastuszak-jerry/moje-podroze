@@ -327,31 +327,24 @@ function askTravelDateConflict(conflicts) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay'; overlay.id = 'travel-conflict-overlay';
     const list = conflicts.map(c => `
-      <div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">
-        <strong>${escapeHtml(c.location_name)}</strong>
-        <div style="color:var(--text2);font-size:12px">${fmtDate(c.arrival_date) || '?'} – ${fmtDate(c.departure_date) || '?'}</div>
+      <div class="modal-list-row">
+        <div class="modal-row-title">${escapeHtml(c.location_name)}</div>
+        <div class="modal-row-sub">${fmtDate(c.arrival_date) || '?'} – ${fmtDate(c.departure_date) || '?'}</div>
       </div>`).join('');
     overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
       <div class="modal-header"><span class="modal-title">⚠️ Konflikt dat</span></div>
       <div class="form-section">
-        <div style="font-size:14px;line-height:1.5;margin-bottom:10px">
+        <div class="travel-conflict-copy">
           Po zmianie dat podróży <strong>${conflicts.length}</strong> ${conflicts.length === 1 ? 'wizyta wypada' : (conflicts.length < 5 ? 'wizyty wypadają' : 'wizyt wypada')} poza nowy zakres:
         </div>
-        <div style="background:var(--bg);border-radius:10px;padding:6px 12px;margin-bottom:14px;max-height:30vh;overflow-y:auto">
+        <div class="travel-conflict-list">
           ${list}
         </div>
-        <button data-choice="clip"
-          style="background:var(--blue);color:white;border:none;border-radius:10px;padding:12px;width:100%;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px">
-          Przytnij daty wizyt do nowego zakresu
-        </button>
-        <button data-choice="ignore"
-          style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px;width:100%;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:8px">
-          Zapisz mimo to (zostaw daty wizyt)
-        </button>
-        <button data-choice="cancel"
-          style="background:none;color:var(--text2);border:none;border-radius:10px;padding:12px;width:100%;font-size:14px;cursor:pointer">
-          Anuluj
-        </button>
+        <div class="form-action-stack">
+          <button class="form-primary-btn" data-choice="clip">Przytnij daty wizyt do nowego zakresu</button>
+          <button class="form-secondary-btn" data-choice="ignore">Zapisz mimo to (zostaw daty wizyt)</button>
+          <button class="form-tertiary-btn" data-choice="cancel">Anuluj</button>
+        </div>
       </div></div>`;
     overlay.addEventListener('click', e => {
       const btn = e.target.closest('[data-choice]');

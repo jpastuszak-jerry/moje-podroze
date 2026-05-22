@@ -147,10 +147,22 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - przeniesienie styli list i edycji inline w modalach Osoby i Slowniki do wspolnych klas.
 
 **Do zrobienia dalej:**
-- ujednolicic widok konfliktu dat podrozy,
-- uporzadkowac formularze w kreatorze podrozy.
+- zrealizowane w fazie 4.
 
 **Weryfikacja:** modale dodawania/edycji miejsca, dodawania miejsca do podrozy, edycji pobytu, dodawania uczestnika, Osoby i Slowniki maja spojniejsze przyciski oraz rzedy formularzy.
+
+### 8e. Ujednolicenie UI - faza 4 - DONE
+
+**Status:** zrobione w `Unify wizard UI controls`.
+
+**Zrobione:**
+- uporzadkowanie paneli i pustych stanow w kreatorze podrozy,
+- wspolne renderowanie dodanych miejsc, listy wyboru miejsc i listy uczestnikow,
+- podpiecie wspolnych klas przyciskow formularzy w kreatorze,
+- usuniecie powtarzalnych inline styli z `wizard.js` poza dynamicznym kolorem ikony celu podrozy,
+- ujednolicenie modala konfliktu dat przy zmianie zakresu podrozy.
+
+**Weryfikacja:** w kreatorze przejsc kroki Podstawowe info -> Lokacje -> Uczestnicy -> Podsumowanie, dodac/zdjac miejsce i uczestnika, a przy edycji dat istniejacej podrozy sprawdzic modal konfliktu dat.
 
 ## P3 - Stabilnosc, bezpieczenstwo, architektura
 
