@@ -17,6 +17,22 @@ const RUNTIME_CACHE = `travel-runtime-${CACHE_VERSION}`;
 
 const APP_SHELL = '__APP_SHELL__';
 
+const NO_STORE_API_EXACT_PATHS = new Set([
+  '/api/export',
+  '/api/trash',
+  '/api/locations/todo',
+]);
+
+const NO_STORE_API_PREFIXES = [
+  '/api/stats',
+  '/api/travels',
+];
+
+function isNoStoreApiPath(pathname) {
+  return NO_STORE_API_EXACT_PATHS.has(pathname) ||
+    NO_STORE_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 /* ── IndexedDB mirror ────────────────────────────────────────
  * DB 'travel-mirror', store 'responses' z keyPath: 'url'.
  * Wartość: { url, body (parsed JSON), savedAt (ms timestamp) }.
@@ -88,10 +104,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Tile mapy OSM, healthz, export bazy — bez cache, bez interceptu
+  // Tile mapy OSM i healthz — bez cache, bez interceptu
   if (url.hostname.endsWith('.tile.openstreetmap.org') ||
-      url.pathname === '/healthz' ||
-      url.pathname === '/api/export') {
+      url.pathname === '/healthz') {
     return;
   }
 
@@ -104,6 +119,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.method !== 'GET') return;
+
+  // Wrażliwe GET-y API: zawsze sieć, bez IDB/cache fallbacku.
+  if (isApi && isNoStoreApiPath(url.pathname)) {
+    event.respondWith(noStoreFetchOrOffline(request));
+    return;
+  }
 
   // Nawigacja (klik linka, reload) → network-first z fallback do cache /
   if (request.mode === 'navigate') {
@@ -194,12 +215,15 @@ async function networkFirstApi(request) {
     }
 
     if (response && response.ok) {
-      cache.put(request, response.clone());
-      const newEtag = response.headers.get('ETag');
-      // Mirror do IDB — body jako parsed JSON. Klon bo body strumienia jest jednorazowe.
-      response.clone().json().then((body) => {
-        idbPut(key, body, newEtag).catch((err) => console.warn('[SW] IDB put fail:', key, err));
-      }).catch(() => { /* nie-JSON, pomiń mirror */ });
+      const cacheControl = response.headers.get('Cache-Control') || '';
+      if (!/\bno-store\b/i.test(cacheControl)) {
+        cache.put(request, response.clone());
+        const newEtag = response.headers.get('ETag');
+        // Mirror do IDB — body jako parsed JSON. Klon bo body strumienia jest jednorazowe.
+        response.clone().json().then((body) => {
+          idbPut(key, body, newEtag).catch((err) => console.warn('[SW] IDB put fail:', key, err));
+        }).catch(() => { /* nie-JSON, pomiń mirror */ });
+      }
     }
     return response;
   } catch (err) {
@@ -223,6 +247,23 @@ async function networkFirstApi(request) {
     if (cached) return cached;
     return new Response(
       JSON.stringify({ error: 'offline', message: 'Brak danych w trybie offline' }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+async function noStoreFetchOrOffline(request) {
+  try {
+    const headers = new Headers(request.headers);
+    return await fetch(new Request(request.url, {
+      method: request.method,
+      headers,
+      credentials: request.credentials,
+      cache: 'no-store',
+    }));
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ error: 'offline', message: 'Te dane wymagają połączenia z internetem' }),
       { status: 503, headers: { 'Content-Type': 'application/json' } }
     );
   }

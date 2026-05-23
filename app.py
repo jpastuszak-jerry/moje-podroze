@@ -9,12 +9,11 @@ Logika domenowa siedzi w blueprintach (travels, locations, dicts, stats).
 Wspólne narzędzia w core.py, walidatory w schemas.py.
 """
 
-import datetime
 import json
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 
-from flask import Flask, Response, jsonify, render_template
+from flask import Flask, Response, jsonify, render_template, request
 from flask.json.provider import DefaultJSONProvider
 
 import dicts
@@ -27,7 +26,7 @@ from core import close_db, ensure_schema, query
 class CustomJSONProvider(DefaultJSONProvider):
     """Konwertuje daty PostgreSQL do formatu YYYY-MM-DD przy serializacji JSON."""
     def default(self, obj):
-        if isinstance(obj, (datetime.date, datetime.datetime)):
+        if isinstance(obj, (date, datetime)):
             return obj.isoformat()[:10]
         return super().default(obj)
 
@@ -45,9 +44,47 @@ app.register_blueprint(dicts.bp)
 app.register_blueprint(stats.bp)
 
 
+BACKUP_SCHEMA_VERSION = '2.0'
+
+EXPORT_TABLE_ORDERS = {
+    'countries':           'id',
+    'location_types':      'id',
+    'relation_types':      'id',
+    'persons':             'id',
+    'locations':           'id',
+    'travels':             'id',
+    'travel_locations':    'id',
+    'travel_participants': 'travel_id, person_id',
+}
+
+NO_STORE_EXACT_API_PATHS = {
+    '/api/export',
+    '/api/trash',
+    '/api/locations/todo',
+}
+
+NO_STORE_API_PREFIXES = (
+    '/api/stats',
+    '/api/travels',
+)
+
+
 @app.route('/')
 def index():
     return render_template('index.html', asset_version=static_asset_version())
+
+
+def is_no_store_api_path(path):
+    return path in NO_STORE_EXACT_API_PATHS or any(path.startswith(prefix) for prefix in NO_STORE_API_PREFIXES)
+
+
+@app.after_request
+def add_sensitive_cache_headers(response):
+    if is_no_store_api_path(request.path):
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 
 def static_asset_version():
@@ -128,30 +165,47 @@ def get_trash():
     return jsonify({'travels': travels_rows, 'locations': locations_rows})
 
 
+def backup_filename(export_date):
+    return f'moje-podroze-backup-{export_date}.json'
+
+
+def build_backup_payload(now=None):
+    now = now or datetime.now(timezone.utc)
+    exported_at = now.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+    export_date = now.date().isoformat()
+    data = {
+        table: [dict(r) for r in query(f'SELECT * FROM {table} ORDER BY {order_by}')]
+        for table, order_by in EXPORT_TABLE_ORDERS.items()
+    }
+    table_counts = {table: len(rows) for table, rows in data.items()}
+    metadata = {
+        'app': 'moje-podroze',
+        'kind': 'full-database-backup',
+        'schema_version': BACKUP_SCHEMA_VERSION,
+        'exported_at': exported_at,
+        'export_date': export_date,
+        'table_order': list(EXPORT_TABLE_ORDERS.keys()),
+        'table_counts': table_counts,
+        'total_records': sum(table_counts.values()),
+    }
+    return {
+        'metadata': metadata,
+        'schema_version': BACKUP_SCHEMA_VERSION,
+        'exported_at': exported_at,
+        'version': BACKUP_SCHEMA_VERSION,
+        'tables': data,
+    }
+
+
 @app.route('/api/export')
 def export_database():
     """Pełny dump bazy do JSON — backup awaryjny niezależny od Neon snapshotów."""
-    # travel_participants ma composite PK (travel_id, person_id), bez kolumny id
-    table_orders = {
-        'countries':           'id',
-        'location_types':      'id',
-        'relation_types':      'id',
-        'persons':             'id',
-        'locations':           'id',
-        'travels':             'id',
-        'travel_locations':    'id',
-        'travel_participants': 'travel_id, person_id',
-    }
-    data = {t: [dict(r) for r in query(f'SELECT * FROM {t} ORDER BY {ord_col}')]
-            for t, ord_col in table_orders.items()}
+    payload = build_backup_payload()
+    export_date = payload['metadata']['export_date']
 
-    response = jsonify({
-        'exported_at': datetime.datetime.utcnow().isoformat() + 'Z',
-        'version':     '1.0',
-        'tables':      data,
-    })
+    response = jsonify(payload)
     response.headers['Content-Disposition'] = (
-        f'attachment; filename=podroze-backup-{date.today().isoformat()}.json'
+        f'attachment; filename={backup_filename(export_date)}'
     )
     return response
 

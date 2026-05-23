@@ -70,10 +70,26 @@ async function deleteDictItem(id) {
   });
 }
 
+function exportFilenameFromContentDisposition(header) {
+  if (!header) return null;
+  const utf8 = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8) return decodeURIComponent(utf8[1].replace(/"/g, '').trim());
+  const plain = header.match(/filename="?([^";]+)"?/i);
+  return plain ? plain[1].trim() : null;
+}
+
+function exportRecordCountLabel(data) {
+  const total = data && data.metadata && Number(data.metadata.total_records);
+  if (!Number.isFinite(total)) return '';
+  if (total === 1) return '1 rekord';
+  if ([2, 3, 4].includes(total % 10) && ![12, 13, 14].includes(total % 100)) return `${total} rekordy`;
+  return `${total} rekordów`;
+}
+
 async function exportDatabase() {
-  toast('Pobieram backup bazy...', 'success');
+  toast('Pobieram backup bazy...', 'info');
   try {
-    const res = await fetch(API + '/api/export');
+    const res = await fetch(API + '/api/export', { cache: 'no-store' });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       toastApiError(decorateApiError(body, res.status), 'Nie udało się pobrać backupu');
@@ -84,16 +100,25 @@ async function exportDatabase() {
       toast('Nieoczekiwana odpowiedź serwera (nie JSON)', 'error');
       return;
     }
-    const blob = await res.blob();
+    const data = await res.json().catch(() => null);
+    if (!data || !data.tables) {
+      toast('Backup ma nieoczekiwany format', 'error');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const today = new Date().toISOString().slice(0, 10);
+    const filename = exportFilenameFromContentDisposition(res.headers.get('content-disposition')) ||
+      `moje-podroze-backup-${today}.json`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `podroze-backup-${today}.json`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    const countLabel = exportRecordCountLabel(data);
+    toast(countLabel ? `Backup pobrany (${countLabel})` : 'Backup pobrany', 'success');
   } catch (e) {
     toast('Błąd sieci: ' + e.message, 'error');
   }

@@ -251,17 +251,35 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** nowy agent albo przyszly refaktor wie, ktore pola sa wymagane przez UI.
 
-### 12. Strategia cache/PWA pod dane wrazliwe
+### 12. Strategia cache/PWA pod dane wrazliwe - PARTIAL
 
 **Problem:** service worker i IndexedDB cache sa bardzo przydatne, ale przy rolach uzytkownikow moga pokazac viewerowi dane admina, jesli cache nie bedzie rozdzielony lub czyszczony.
 
-**Do zrobienia przed rolami viewer/admin:**
-- zdecydowac, ktore endpointy moga byc cache'owane,
-- dane z kosztami oznaczyc jako `no-store` albo cache'owac per rola,
+**Status:** pierwszy bezpieczny etap zrobiony w `Harden backup and sensitive cache`.
+
+**Zrobione:**
+- `no-store` dla endpointow z kosztami i danymi administracyjnymi: `/api/travels*`, `/api/stats*`, `/api/trash`, `/api/export`, `/api/locations/todo`,
+- service worker nie zapisuje tych endpointow do IndexedDB ani Cache API i nie zwraca ich offline z lokalnego mirroru,
+- service worker respektuje `Cache-Control: no-store`, jesli taki naglowek pojawi sie na innym API.
+
+**Do zrobienia przy rolach viewer/admin:**
 - czyscic cache/IndexedDB przy login/logout,
 - upewnic sie, ze viewer po przelogowaniu nie widzi kosztow z poprzedniej sesji admina.
 
 **Weryfikacja:** test reczny admin -> logout -> viewer nie pokazuje kosztow ani danych administracyjnych.
+
+### 12b. Profesjonalniejszy eksport/backup JSON - DONE
+
+**Status:** zrobione w `Harden backup and sensitive cache`.
+
+**Zrobione:**
+- backup ma metadane: nazwe aplikacji, typ eksportu, wersje schematu, date eksportu, kolejnosc tabel, liczbe rekordow per tabela i sume rekordow,
+- plik pobiera sie jako `moje-podroze-backup-YYYY-MM-DD.json`,
+- UI uzywa nazwy pliku z odpowiedzi serwera i pokazuje toast z liczba rekordow,
+- eksport ma `Cache-Control: no-store`,
+- dodany test kontraktu eksportu.
+
+**Weryfikacja:** klik `Miejsca -> Backup`; pobrany JSON powinien zawierac `metadata`, `schema_version` i `tables`, a nazwa pliku powinna zaczynac sie od `moje-podroze-backup-`.
 
 ### 13. Migracje bazy danych
 
@@ -350,7 +368,7 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ### 13. Import/eksport danych przyjazny dla czlowieka
 
-CSV/JSON dla podrozy, miejsc, uczestnikow i statystyk.
+CSV/JSON dla podrozy, miejsc, uczestnikow i statystyk. Pierwszy krok backupu JSON z metadanymi jest zrobiony w `Harden backup and sensitive cache`; import oraz przyjazne formaty czastkowe zostaja na pozniej.
 
 ### 14. Zdjecia i albumy
 

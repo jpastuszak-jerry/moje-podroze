@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime, timezone
 import unittest
 from unittest.mock import patch
 
@@ -6,6 +7,7 @@ import app as app_module
 import locations
 import stats
 import stats_hall_of_fame
+import travels
 
 
 def _period_payload():
@@ -187,9 +189,57 @@ def fake_stats_query(sql, params=(), one=False):
     raise AssertionError(f'Unexpected scalar query: {normalized}')
 
 
+def fake_export_query(sql, params=(), one=False):
+    if one:
+        raise AssertionError('Export should not use scalar query')
+    normalized = ' '.join(sql.split())
+    rows = {
+        'countries': [{'id': 1, 'name': 'Finland'}],
+        'travels': [{'id': 7, 'name': 'Helsinki', 'amount': 1000, 'currency': 'EUR'}],
+        'travel_participants': [{'travel_id': 7, 'person_id': 2}],
+    }
+    for table in app_module.EXPORT_TABLE_ORDERS:
+        if f'FROM {table} ' in normalized:
+            return rows.get(table, [])
+    raise AssertionError(f'Unexpected export query: {normalized}')
+
+
 class ApiContractSmokeTests(unittest.TestCase):
     def setUp(self):
         self.client = app_module.app.test_client()
+
+    def test_export_contract_has_metadata_filename_and_no_store(self):
+        now = datetime(2026, 5, 23, 7, 30, tzinfo=timezone.utc)
+        with patch.object(app_module, 'query', side_effect=fake_export_query):
+            payload = app_module.build_backup_payload(now)
+
+        self.assertEqual(payload['schema_version'], app_module.BACKUP_SCHEMA_VERSION)
+        self.assertEqual(payload['metadata']['exported_at'], '2026-05-23T07:30:00Z')
+        self.assertEqual(payload['metadata']['export_date'], '2026-05-23')
+        self.assertEqual(payload['metadata']['table_counts']['countries'], 1)
+        self.assertEqual(payload['metadata']['table_counts']['travels'], 1)
+        self.assertEqual(payload['metadata']['table_counts']['travel_participants'], 1)
+        self.assertEqual(payload['metadata']['total_records'], 3)
+        self.assertEqual(payload['tables']['travels'][0]['currency'], 'EUR')
+
+        with patch.object(app_module, 'query', side_effect=fake_export_query):
+            response = self.client.get('/api/export')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        self.assertIn('moje-podroze-backup-', response.headers['Content-Disposition'])
+        data = response.get_json()
+        self.assertLessEqual({'metadata', 'schema_version', 'tables'}, set(data))
+        self.assertEqual(data['metadata']['total_records'], 3)
+
+    def test_sensitive_endpoints_are_marked_no_store(self):
+        with patch.object(travels, 'query', return_value=[]):
+            travels_response = self.client.get('/api/travels')
+        self.assertEqual(travels_response.headers['Cache-Control'], 'no-store')
+
+        with patch.object(stats, '_data_quality', return_value=copy.deepcopy(_data_quality_payload())):
+            todo_response = self.client.get('/api/stats/todo')
+        self.assertEqual(todo_response.headers['Cache-Control'], 'no-store')
 
     def test_stats_endpoint_contract(self):
         period = _period_payload()
@@ -217,6 +267,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             response = self.client.get('/api/stats?year=2025')
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
         data = response.get_json()
         expected_keys = {
             'total_trips', 'total_days', 'countries', 'visited_locations', 'flights',
@@ -304,6 +355,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             response = self.client.get('/api/stats/todo?year=2025')
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
         data = response.get_json()
         self.assertEqual(data['year'], 2025)
         self.assertLessEqual({'total', 'counts', 'labels', 'needs_attention'}, set(data))
@@ -344,6 +396,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             response = self.client.get('/api/locations/todo')
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
         data = response.get_json()
         self.assertEqual(data['total'], 2)
         self.assertLessEqual({'counts', 'labels', 'needs_attention'}, set(data))

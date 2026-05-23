@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const utilsPath = path.join(repoRoot, 'static', 'js', 'utils.js');
 const componentsPath = path.join(repoRoot, 'static', 'js', 'components.js');
+const dictionariesPath = path.join(repoRoot, 'static', 'js', 'dictionaries.js');
 const statsPath = path.join(repoRoot, 'static', 'js', 'stats.js');
+const swPath = path.join(repoRoot, 'static', 'sw.js');
 const wizardPath = path.join(repoRoot, 'static', 'js', 'wizard.js');
 
 function elementStub() {
@@ -138,6 +140,24 @@ const rankingHtml = context.renderRankingBars(
 );
 assert.match(rankingHtml, /gbar-row/, 'renderRankingBars renders rows');
 assert.match(rankingHtml, /width:100%/, 'renderRankingBars scales top value to full width');
+
+vm.runInContext(fs.readFileSync(dictionariesPath, 'utf8'), context, { filename: dictionariesPath });
+assert.equal(
+  context.exportFilenameFromContentDisposition('attachment; filename=moje-podroze-backup-2026-05-23.json'),
+  'moje-podroze-backup-2026-05-23.json',
+  'export download uses filename from response header',
+);
+assert.equal(
+  context.exportRecordCountLabel({ metadata: { total_records: 22 } }),
+  '22 rekordy',
+  'export record count label is human-readable',
+);
+
+const swSource = fs.readFileSync(swPath, 'utf8');
+assert.match(swSource, /NO_STORE_API_PREFIXES/, 'service worker declares no-store API prefixes');
+assert.match(swSource, /\/api\/travels/, 'service worker treats travel cost data as no-store');
+assert.match(swSource, /\/api\/stats/, 'service worker treats stats cost and quality data as no-store');
+assert.match(swSource, /Cache-Control/, 'service worker respects no-store cache headers');
 
 vm.runInContext(fs.readFileSync(wizardPath, 'utf8'), context, { filename: wizardPath });
 
