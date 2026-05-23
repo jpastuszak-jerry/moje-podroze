@@ -17,6 +17,60 @@ function setTodoYear(year) {
   renderTodo();
 }
 
+function resetTodoControls() {
+  currentTodoYear = null;
+  currentTodoFilter = 'all';
+  renderTodo();
+}
+
+function renderTodoControls({ years, filters, totalItems, visibleItems }) {
+  const yearOptions = '<option value="">Wszystkie lata</option>' +
+    years.map(y => `<option value="${escapeAttr(y)}"${String(currentTodoYear || '') === String(y) ? ' selected' : ''}>${escapeHtml(y)}</option>`).join('');
+  const filterOptions = [{ key: 'all', label: 'Wszystkie braki', count: null }, ...filters]
+    .map(f => `<option value="${escapeAttr(f.key)}"${currentTodoFilter === f.key ? ' selected' : ''}>${escapeHtml(f.label)}${f.count != null ? ` (${f.count})` : ''}</option>`)
+    .join('');
+  const labels = [];
+  if (currentTodoYear) labels.push(String(currentTodoYear));
+  const activeFilter = filters.find(f => f.key === currentTodoFilter);
+  if (activeFilter) labels.push(activeFilter.label);
+  return `<div class="aux-filter-panel">
+    <div class="aux-filter-inner">
+      <div class="aux-filter-grid">
+        <label class="aux-control">
+          <span>Rok</span>
+          <select class="filter-select" id="todo-year-select" onchange="setTodoYear(this.value ? parseInt(this.value, 10) : null)">${yearOptions}</select>
+        </label>
+        <label class="aux-control">
+          <span>Typ braku</span>
+          <select class="filter-select" id="todo-filter-select" onchange="setTodoFilter(this.value)">${filterOptions}</select>
+        </label>
+      </div>
+      <div class="aux-filter-summary">
+        <div class="aux-filter-summary-text"><strong>${visibleItems} ${worklistCountLabel(visibleItems)}</strong><span>${labels.length ? labels.map(escapeHtml).join(' · ') : `${totalItems} podróży wymaga uwagi`}</span></div>
+        ${labels.length ? '<button class="filter-reset-btn" type="button" onclick="resetTodoControls()">Wyczyść</button>' : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function todoWorklistCardHtml(item) {
+  return `<div class="card" onclick="openTravel(${item.id})">
+    <div class="card-inner">
+      <div class="card-icon worklist-icon warn">✱</div>
+      <div class="card-body">
+        <div class="worklist-card-title-row">
+          <div class="card-title worklist-card-title">${escapeHtml(item.name || '(bez nazwy)')}</div>
+          <button class="btn-add-small" onclick="event.stopPropagation(); openTodoEdit(${item.id})">Edytuj</button>
+        </div>
+        <div class="card-subtitle">${fmtDate(item.start_date)} · ${item.missing_count} ${item.missing_count === 1 ? 'brak' : 'braki'}</div>
+        <div class="card-meta">
+          ${(item.missing || []).map(label => `<span class="badge badge-orange">${escapeHtml(label)}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 async function renderTodo() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Do uzupełnienia</div></div>` + skeletonCards(3);
@@ -43,17 +97,14 @@ async function renderTodo() {
     </div>
   </div>`;
 
-  html += `<div class="sort-bar">
-    <button class="sort-btn${!currentTodoYear ? ' active' : ''}" onclick="setTodoYear(null)">Wszystkie</button>
-    ${years.map(y => `<button class="sort-btn${String(currentTodoYear) === String(y) ? ' active' : ''}" onclick="setTodoYear(${y})">${y}</button>`).join('')}
-  </div>`;
+  html += renderTodoControls({
+    years,
+    filters,
+    totalItems: data.needs_attention?.length || 0,
+    visibleItems: items.length,
+  });
 
-  html += `<div class="sort-bar">
-    <button class="sort-btn${currentTodoFilter === 'all' ? ' active' : ''}" onclick="setTodoFilter('all')">Wszystkie (${data.needs_attention?.length || 0})</button>
-    ${filters.map(f => `<button class="sort-btn${currentTodoFilter === f.key ? ' active' : ''}" onclick="setTodoFilter('${f.key}')">${escapeHtml(f.label)} (${f.count})</button>`).join('')}
-  </div>`;
-
-  html += `<div class="hero-card" style="margin-top:10px">
+  html += `<div class="hero-card">
     <div class="hero-label">${escapeHtml(yearLabel)}</div>
     <div class="hero-numbers">
       <div class="hero-number"><div class="hero-val">${data.total || 0}</div><div class="hero-key">podróży w zakresie</div></div>
@@ -75,23 +126,8 @@ async function renderTodo() {
     return;
   }
 
-  html += '<div class="card-list" style="padding:12px 16px 24px">';
-  html += items.map(item => `
-    <div class="card" onclick="openTravel(${item.id})">
-      <div class="card-inner">
-        <div class="card-icon" style="background:var(--orange-light);color:var(--orange)">✍️</div>
-        <div class="card-body">
-          <div style="display:flex;align-items:flex-start;gap:8px">
-            <div class="card-title" style="flex:1">${escapeHtml(item.name || '(bez nazwy)')}</div>
-            <button class="btn-add-small" onclick="event.stopPropagation(); openTodoEdit(${item.id})">Edytuj</button>
-          </div>
-          <div class="card-subtitle">${fmtDate(item.start_date)} · ${item.missing_count} ${item.missing_count === 1 ? 'brak' : 'braki'}</div>
-          <div class="card-meta">
-            ${(item.missing || []).map(label => `<span class="badge badge-orange">${escapeHtml(label)}</span>`).join('')}
-          </div>
-        </div>
-      </div>
-    </div>`).join('');
+  html += '<div class="card-list worklist-list">';
+  html += items.map(todoWorklistCardHtml).join('');
   html += '</div>';
   view.innerHTML = html;
 }

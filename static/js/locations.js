@@ -415,6 +415,50 @@ function setLocationTodoFilter(filter) {
   renderLocationTodo();
 }
 
+function resetLocationTodoControls() {
+  currentLocationTodoFilter = 'all';
+  renderLocationTodo();
+}
+
+function renderLocationTodoControls({ filters, totalItems, visibleItems }) {
+  const filterOptions = [{ key: 'all', label: 'Wszystkie braki', count: null }, ...filters]
+    .map(f => `<option value="${escapeAttr(f.key)}"${currentLocationTodoFilter === f.key ? ' selected' : ''}>${escapeHtml(f.label)}${f.count != null ? ` (${f.count})` : ''}</option>`)
+    .join('');
+  const activeFilter = filters.find(f => f.key === currentLocationTodoFilter);
+  return `<div class="aux-filter-panel">
+    <div class="aux-filter-inner">
+      <div class="aux-filter-grid single">
+        <label class="aux-control">
+          <span>Typ braku</span>
+          <select class="filter-select" id="location-todo-filter-select" onchange="setLocationTodoFilter(this.value)">${filterOptions}</select>
+        </label>
+      </div>
+      <div class="aux-filter-summary">
+        <div class="aux-filter-summary-text"><strong>${visibleItems} ${worklistCountLabel(visibleItems)}</strong><span>${activeFilter ? escapeHtml(activeFilter.label) : `${totalItems} miejsc wymaga uwagi`}</span></div>
+        ${activeFilter ? '<button class="filter-reset-btn" type="button" onclick="resetLocationTodoControls()">Wyczyść</button>' : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function locationTodoCardHtml(item) {
+  return `<div class="card" onclick="openLocation(${item.id})">
+    <div class="card-inner">
+      <div class="card-icon worklist-icon">${locationIcon(item.location_type)}</div>
+      <div class="card-body">
+        <div class="worklist-card-title-row">
+          <div class="card-title worklist-card-title">${escapeHtml(item.name || '(bez nazwy)')}</div>
+          <button class="btn-add-small" onclick="event.stopPropagation(); openEditLocationModal(${item.id})">Edytuj</button>
+        </div>
+        <div class="card-subtitle">${escapeHtml(item.location_type)} · ${escapeHtml(item.country_name)} · ${item.visit_count || 0} wizyt</div>
+        <div class="card-meta">
+          ${(item.missing || []).map(label => `<span class="badge badge-orange">${escapeHtml(label)}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 async function renderLocationTodo() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Miejsca do uzupełnienia</div></div>` + skeletonCards(3);
@@ -438,11 +482,12 @@ async function renderLocationTodo() {
       <div class="page-title">Miejsca do uzupełnienia</div>
     </div>
   </div>`;
-  html += `<div class="sort-bar">
-    <button class="sort-btn${currentLocationTodoFilter === 'all' ? ' active' : ''}" onclick="setLocationTodoFilter('all')">Wszystkie (${data.needs_attention?.length || 0})</button>
-    ${filters.map(f => `<button class="sort-btn${currentLocationTodoFilter === f.key ? ' active' : ''}" onclick="setLocationTodoFilter('${f.key}')">${escapeHtml(f.label)} (${f.count})</button>`).join('')}
-  </div>`;
-  html += `<div class="hero-card" style="margin-top:10px">
+  html += renderLocationTodoControls({
+    filters,
+    totalItems: data.needs_attention?.length || 0,
+    visibleItems: items.length,
+  });
+  html += `<div class="hero-card">
     <div class="hero-label">Jakość miejsc</div>
     <div class="hero-numbers">
       <div class="hero-number"><div class="hero-val">${data.total || 0}</div><div class="hero-key">miejsc w bazie</div></div>
@@ -464,23 +509,8 @@ async function renderLocationTodo() {
     return;
   }
 
-  html += '<div class="card-list" style="padding:12px 16px 24px">';
-  html += items.map(item => `
-    <div class="card" onclick="openLocation(${item.id})">
-      <div class="card-inner">
-        <div class="card-icon" style="background:var(--blue-light)">${locationIcon(item.location_type)}</div>
-        <div class="card-body">
-          <div style="display:flex;align-items:flex-start;gap:8px">
-            <div class="card-title" style="flex:1">${escapeHtml(item.name || '(bez nazwy)')}</div>
-            <button class="btn-add-small" onclick="event.stopPropagation(); openEditLocationModal(${item.id})">Edytuj</button>
-          </div>
-          <div class="card-subtitle">${escapeHtml(item.location_type)} · ${escapeHtml(item.country_name)} · ${item.visit_count || 0} wizyt</div>
-          <div class="card-meta">
-            ${(item.missing || []).map(label => `<span class="badge badge-orange">${escapeHtml(label)}</span>`).join('')}
-          </div>
-        </div>
-      </div>
-    </div>`).join('');
+  html += '<div class="card-list worklist-list">';
+  html += items.map(locationTodoCardHtml).join('');
   html += '</div>';
   view.innerHTML = html;
 }
@@ -1015,38 +1045,38 @@ function renderTrashBody(data) {
   const travels = data.travels || [];
   const locations = data.locations || [];
   if (!travels.length && !locations.length) {
-    body.innerHTML = `<div style="text-align:center;color:var(--text3);padding:24px 8px;font-size:14px">Kosz jest pusty</div>`;
+    body.innerHTML = '<div class="trash-empty">Kosz jest pusty</div>';
     return;
   }
   const travelHtml = travels.length ? `
-    <div class="form-label" style="margin-top:0">Podróże (${travels.length})</div>
+    <div class="form-label trash-section-title">Podróże (${travels.length})</div>
     ${travels.map(t => `
-      <div class="loc-row" id="trash-t-${t.id}">
+      <div class="trash-row" id="trash-t-${t.id}">
         <div class="loc-icon">✈️</div>
-        <div style="flex:1">
+        <div class="trash-row-main">
           <div class="loc-name">${escapeHtml(t.name || '(bez nazwy)')}</div>
           <div class="loc-sub">${fmtDate(t.start_date)} – ${fmtDate(t.end_date)}</div>
-          <div class="loc-sub" style="color:var(--text3);font-size:11px">usunięto ${fmtDate(t.deleted_at)}</div>
+          <div class="loc-sub">usunięto ${fmtDate(t.deleted_at)}</div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <button onclick="restoreFromTrash('travel', ${t.id})" style="background:var(--green);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">Przywróć</button>
-          <button onclick="hardDeleteFromTrash('travel', ${t.id})" style="background:var(--red);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">Usuń trwale</button>
+        <div class="trash-actions">
+          <button class="trash-action restore" onclick="restoreFromTrash('travel', ${t.id})">Przywróć</button>
+          <button class="trash-action danger" onclick="hardDeleteFromTrash('travel', ${t.id})">Usuń trwale</button>
         </div>
       </div>`).join('')}
   ` : '';
   const locHtml = locations.length ? `
-    <div class="form-label" style="margin-top:${travels.length ? '14px' : '0'}">Miejsca (${locations.length})</div>
+    <div class="form-label trash-section-title">Miejsca (${locations.length})</div>
     ${locations.map(l => `
-      <div class="loc-row" id="trash-l-${l.id}">
+      <div class="trash-row" id="trash-l-${l.id}">
         <div class="loc-icon">${locationIcon(l.location_type)}</div>
-        <div style="flex:1">
+        <div class="trash-row-main">
           <div class="loc-name">${escapeHtml(l.name)}</div>
           <div class="loc-sub">${escapeHtml(l.location_type)} · ${escapeHtml(l.country_name)}</div>
-          <div class="loc-sub" style="color:var(--text3);font-size:11px">usunięto ${fmtDate(l.deleted_at)}</div>
+          <div class="loc-sub">usunięto ${fmtDate(l.deleted_at)}</div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <button onclick="restoreFromTrash('location', ${l.id})" style="background:var(--green);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">Przywróć</button>
-          <button onclick="hardDeleteFromTrash('location', ${l.id})" style="background:var(--red);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">Usuń trwale</button>
+        <div class="trash-actions">
+          <button class="trash-action restore" onclick="restoreFromTrash('location', ${l.id})">Przywróć</button>
+          <button class="trash-action danger" onclick="hardDeleteFromTrash('location', ${l.id})">Usuń trwale</button>
         </div>
       </div>`).join('')}
   ` : '';

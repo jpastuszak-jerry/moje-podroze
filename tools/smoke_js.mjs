@@ -12,6 +12,7 @@ const dictionariesPath = path.join(repoRoot, 'static', 'js', 'dictionaries.js');
 const locationsPath = path.join(repoRoot, 'static', 'js', 'locations.js');
 const mapPath = path.join(repoRoot, 'static', 'js', 'map.js');
 const travelsPath = path.join(repoRoot, 'static', 'js', 'travels.js');
+const todoPath = path.join(repoRoot, 'static', 'js', 'todo.js');
 const statsPath = path.join(repoRoot, 'static', 'js', 'stats.js');
 const swPath = path.join(repoRoot, 'static', 'sw.js');
 const wizardPath = path.join(repoRoot, 'static', 'js', 'wizard.js');
@@ -272,6 +273,8 @@ assert.equal(
 );
 assert.equal(context.locationResultLabel(1), 'wynik', 'location filter summary handles singular result label');
 assert.equal(context.locationResultLabel(3), 'wyniki', 'location filter summary handles plural result label');
+assert.equal(context.worklistCountLabel(1), 'pozycja', 'worklist count label handles singular rows');
+assert.equal(context.worklistCountLabel(3), 'pozycje', 'worklist count label handles plural rows');
 const locationProfileHtml = context.renderLocationDetailProfile({
   id: 10,
   name: 'Helsinki',
@@ -319,6 +322,43 @@ assert.equal(newLocationOverlays.length, 1, 'rapid repeated add-location taps op
 assert.equal(newLocationOverlays[0].id, 'new-loc-overlay', 'add-location smoke opens the expected sheet');
 assert.match(newLocationOverlays[0].innerHTML, /Nowe miejsce/, 'add-location modal renders the form title');
 
+const locationTodoView = elementStub();
+context.document.getElementById = id => (id === 'view' ? locationTodoView : null);
+context.api = async path => {
+  assert.equal(path, '/api/locations/todo', 'location todo fetches the expected endpoint');
+  return {
+    total: 2,
+    labels: { missing_gps: 'Bez GPS', missing_visit: 'Bez wizyt' },
+    counts: { missing_gps: 1, missing_visit: 1 },
+    needs_attention: [{
+      id: 10,
+      name: 'Helsinki',
+      location_type: 'miasto',
+      country_name: 'Finlandia',
+      visit_count: 1,
+      missing_keys: ['missing_gps'],
+      missing: ['Bez GPS'],
+    }],
+  };
+};
+vm.runInContext('currentLocationTodoFilter = "all"', context);
+await context.renderLocationTodo();
+assert.match(locationTodoView.innerHTML, /aux-filter-panel/, 'location todo uses compact filter panel');
+assert.match(locationTodoView.innerHTML, /location-todo-filter-select/, 'location todo filter is a select control');
+assert.doesNotMatch(locationTodoView.innerHTML, /sort-btn/, 'location todo avoids horizontal chip filters');
+assert.match(locationTodoView.innerHTML, /worklist-list/, 'location todo uses worklist card list');
+
+const trashBody = elementStub();
+context.document.getElementById = id => (id === 'trash-body' ? trashBody : null);
+context.renderTrashBody({
+  travels: [{ id: 1, name: 'Tallinn', start_date: '2025-07-01', end_date: '2025-07-03', deleted_at: '2025-08-01' }],
+  locations: [{ id: 2, name: 'Helsinki', location_type: 'miasto', country_name: 'Finlandia', deleted_at: '2025-08-02' }],
+});
+assert.match(trashBody.innerHTML, /trash-row/, 'trash renders dedicated rows');
+assert.match(trashBody.innerHTML, /trash-action restore/, 'trash restore action uses shared button class');
+assert.match(trashBody.innerHTML, /trash-action danger/, 'trash hard delete action uses shared button class');
+assert.doesNotMatch(trashBody.innerHTML, /style="/, 'trash rows avoid inline styles');
+
 vm.runInContext(fs.readFileSync(travelsPath, 'utf8'), context, { filename: travelsPath });
 const travelControlsHtml = vm.runInContext(`
   currentSearch = 'Helsinki';
@@ -333,6 +373,33 @@ assert.match(travelControlsHtml, /travel-filter-grid/, 'travel filters render as
 assert.match(travelControlsHtml, /Wyczyść/, 'travel filters expose reset action when active');
 assert.doesNotMatch(travelControlsHtml, /sort-btn/, 'travel filters avoid long horizontal chip bars');
 assert.equal(context.travelResultLabel(2), 'podróże', 'travel filter summary has human-readable count labels');
+
+vm.runInContext(fs.readFileSync(todoPath, 'utf8'), context, { filename: todoPath });
+const todoView = elementStub();
+context.document.getElementById = id => (id === 'view' ? todoView : null);
+context.api = async path => {
+  assert.equal(path, '/api/stats/todo', 'travel todo fetches the expected endpoint');
+  return {
+    total: 2,
+    labels: { missing_rating: 'Bez oceny', missing_album: 'Bez albumu' },
+    counts: { missing_rating: 1, missing_album: 1 },
+    needs_attention: [{
+      id: 1,
+      name: 'Helsinki',
+      start_date: '2025-07-18',
+      missing_count: 2,
+      missing_keys: ['missing_rating', 'missing_album'],
+      missing: ['Bez oceny', 'Bez albumu'],
+    }],
+  };
+};
+vm.runInContext('currentTodoYear = null; currentTodoFilter = "all"', context);
+await context.renderTodo();
+assert.match(todoView.innerHTML, /aux-filter-panel/, 'travel todo uses compact filter panel');
+assert.match(todoView.innerHTML, /todo-year-select/, 'travel todo year filter is a select control');
+assert.match(todoView.innerHTML, /todo-filter-select/, 'travel todo missing filter is a select control');
+assert.doesNotMatch(todoView.innerHTML, /sort-btn/, 'travel todo avoids horizontal chip filters');
+assert.match(todoView.innerHTML, /worklist-list/, 'travel todo uses worklist card list');
 
 const swSource = fs.readFileSync(swPath, 'utf8');
 assert.match(swSource, /NO_STORE_API_PREFIXES/, 'service worker declares no-store API prefixes');

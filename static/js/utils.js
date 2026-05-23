@@ -638,6 +638,13 @@ function resetViewScroll(view = document.getElementById('view')) {
   }
 }
 
+function worklistCountLabel(count) {
+  count = Number(count || 0);
+  if (count === 1) return 'pozycja';
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'pozycje';
+  return 'pozycji';
+}
+
 function showTab(tab) {
   currentTab = tab;
   const view = setMapViewMode(tab === 'map');

@@ -137,6 +137,44 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .travel-filter-summary-text span {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.aux-filter-panel {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px 12px;
+}
+.aux-filter-inner { display: flex; flex-direction: column; gap: 8px; }
+.aux-filter-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.aux-filter-grid.single { grid-template-columns: 1fr; }
+.aux-control {
+  min-width: 0; display: flex; flex-direction: column; gap: 4px;
+}
+.aux-control > span {
+  font-size: 10px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.aux-filter-summary {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 8px 10px; border-radius: 10px;
+  background: var(--bg); border: 1px solid var(--border);
+}
+.aux-filter-summary-text {
+  min-width: 0; display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text2);
+}
+.aux-filter-summary-text strong { color: var(--text); font-weight: 850; white-space: nowrap; }
+.aux-filter-summary-text span {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.worklist-list { padding-bottom: 24px; }
+.worklist-card-title-row {
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.worklist-card-title { flex: 1; min-width: 0; }
+.worklist-icon { background: var(--blue-light); color: var(--blue); }
+.worklist-icon.warn { background: var(--orange-light); color: var(--orange); }
 .loc-quality-bar { padding: 8px 0 0; }
 .action-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .action-button {
@@ -259,6 +297,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .loc-icon { font-size: 18px; flex-shrink: 0; width: 26px; text-align: center; }
 .loc-name { font-size: 14px; font-weight: 500; }
 .loc-sub { font-size: 12px; color: var(--text2); }
+.trash-empty {
+  text-align: center; color: var(--text3);
+  padding: 24px 8px; font-size: 14px;
+}
+.trash-section-title { margin-top: 14px; }
+.trash-section-title:first-child { margin-top: 0; }
+.trash-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.trash-row:last-child { border-bottom: none; }
+.trash-row-main { flex: 1; min-width: 0; }
+.trash-actions {
+  display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;
+}
+.trash-action {
+  min-height: 28px; padding: 6px 10px; border-radius: 8px;
+  border: none; color: white; font-size: 12px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: transform .1s, opacity .15s;
+}
+.trash-action.restore { background: var(--green); }
+.trash-action.danger { background: var(--red); }
+.trash-action:active { transform: scale(0.96); }
 .person-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .person-chip { display: flex; align-items: center; gap: 6px; padding: 6px 10px;
   background: var(--bg); border-radius: 20px; font-size: 13px; }
@@ -1354,11 +1415,22 @@ button.yearbook-highlight { cursor: pointer; }
   .travel-filter-summary { align-items: stretch; flex-direction: column; }
   .travel-filter-summary-text { align-items: flex-start; flex-direction: column; }
   .travel-filter-summary-text span { white-space: normal; }
+  .aux-filter-summary { align-items: stretch; flex-direction: column; }
+  .aux-filter-summary-text { align-items: flex-start; flex-direction: column; }
+  .aux-filter-summary-text span { white-space: normal; }
   .location-metrics-grid,
   .location-meta-list { grid-template-columns: 1fr; }
   .location-profile-title,
   .location-visit-name,
   .location-visit-sub { white-space: normal; }
+}
+
+@media (max-width: 430px) {
+  .trash-row { flex-wrap: wrap; }
+  .trash-actions {
+    width: 100%; flex-direction: row; padding-left: 36px;
+  }
+  .trash-action { flex: 1; }
 }
 
 .gbar-row {
@@ -1590,6 +1662,7 @@ button.yearbook-highlight { cursor: pointer; }
   .stats-section-tabs,
   .card-list,
   .travel-filter-inner,
+  .aux-filter-inner,
   .detail-body,
   .stats-grid,
   .hero-card,

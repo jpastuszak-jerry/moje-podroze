@@ -137,11 +137,12 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - uporzadkowanie przyciskow edycji/usuwania miejsc w podrozy,
 - uporzadkowanie chipow uczestnikow,
 - pierwsze wspolne klasy dla linkow i metadanych w szczegolach miejsc.
+- dopiete pozniej w `Tidy auxiliary views`: kompaktowe filtry w widokach "Do uzupelnienia" i "Miejsca do uzupelnienia" oraz wspolne klasy wierszy i akcji Kosza.
 
 **Do zrobienia dalej:**
 - przeniesc style formularzy i geokodowania z inline CSS do klas,
 - ujednolicic przyciski zapisu/anulowania w modalach,
-- uporzadkowac akcje kosza i slownikow.
+- uporzadkowac pozostale akcje slownikow.
 
 **Weryfikacja:** w szczegolach podrozy przyciski `Mapa`, `Dodaj`, edycja/usuwanie miejsc i usuwanie uczestnikow maja spojny wyglad.
 
