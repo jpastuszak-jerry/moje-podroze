@@ -1,4 +1,6 @@
 async function openDictionaryModal(apiPath, title) {
+  if (!beginOverlayOpen('dict-overlay')) return;
+  try {
   const items = await api(apiPath);
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'dict-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
@@ -16,6 +18,9 @@ async function openDictionaryModal(apiPath, title) {
   document.body.appendChild(overlay);
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
   document.getElementById('dict-add-btn').addEventListener('click', () => addDictItem(apiPath));
+  } finally {
+    finishOverlayOpen('dict-overlay');
+  }
 }
 
 function buildDictList(items) {

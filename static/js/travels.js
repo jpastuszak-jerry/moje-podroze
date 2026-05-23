@@ -135,7 +135,9 @@ function resetTravelFilters() {
 }
 
 async function openTravel(id) {
+  setMapViewMode(false);
   const view = document.getElementById('view');
+  resetViewScroll(view);
   view.innerHTML = skeletonCards(3);
   const t = await api('/api/travels/' + id);
   if (!t || !t.id) {
@@ -243,33 +245,38 @@ async function removeParticipantFromTravel(travelId, personId) {
 }
 
 async function openAddParticipant(travelId) {
-  const [persons, relTypes] = await Promise.all([api('/api/persons'), api('/api/relation_types')]);
-  const addedIds = new Set([...(document.querySelectorAll('#participants-chips .person-chip') || [])].map(el => parseInt(el.id.replace('chip-', ''))));
-  const available = persons.filter(p => !addedIds.has(p.id));
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay'; overlay.id = 'participant-overlay';
-  overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
-    <div class="modal-header"><span class="modal-title">Dodaj uczestnika</span>
-      <button class="modal-save" onclick="closeModal(document.getElementById('participant-overlay'))">Gotowe</button></div>
-    <div class="form-section"><div class="form-label">Wybierz z listy</div>
-      ${available.length ? available.map(p => `
-        <div class="person-row" onclick="addParticipantToTravel(${travelId}, ${p.id}, '${jsStringArg(p.name)}', '${jsStringArg(p.relation_type || '')}', this)">
-          <div class="avatar">${escapeHtml(initials(p.name))}</div>
-          <div class="person-row-info"><div style="font-size:14px;font-weight:500">${escapeHtml(p.name)}</div>
-            ${p.relation_type ? `<div style="font-size:12px;color:var(--text2)">${escapeHtml(p.relation_type)}</div>` : ''}</div>
-          <div class="person-row-plus">＋</div></div>`).join('') : `<div style="color:var(--text3);font-size:13px;padding:8px 0">Wszystkie osoby już dodane</div>`}
-    </div>
-    <div class="form-section form-section-divider">
-      <div class="form-label">Lub dodaj nową osobę</div>
-      <input class="form-input" id="new-person-name" placeholder="Imię i nazwisko">
-      <div class="form-label">Typ relacji</div>
-      <select class="form-input" id="new-person-reltype"><option value="">– brak –</option>
-        ${relTypes.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}</select>
-      <button class="form-primary-btn" onclick="createAndAddPerson(${travelId})">Dodaj nową osobę</button>
-    </div></div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
-  document.body.appendChild(overlay);
-  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  if (!beginOverlayOpen('participant-overlay')) return;
+  try {
+    const [persons, relTypes] = await Promise.all([api('/api/persons'), api('/api/relation_types')]);
+    const addedIds = new Set([...(document.querySelectorAll('#participants-chips .person-chip') || [])].map(el => parseInt(el.id.replace('chip-', ''))));
+    const available = persons.filter(p => !addedIds.has(p.id));
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay'; overlay.id = 'participant-overlay';
+    overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
+      <div class="modal-header"><span class="modal-title">Dodaj uczestnika</span>
+        <button class="modal-save" onclick="closeModal(document.getElementById('participant-overlay'))">Gotowe</button></div>
+      <div class="form-section"><div class="form-label">Wybierz z listy</div>
+        ${available.length ? available.map(p => `
+          <div class="person-row" onclick="addParticipantToTravel(${travelId}, ${p.id}, '${jsStringArg(p.name)}', '${jsStringArg(p.relation_type || '')}', this)">
+            <div class="avatar">${escapeHtml(initials(p.name))}</div>
+            <div class="person-row-info"><div style="font-size:14px;font-weight:500">${escapeHtml(p.name)}</div>
+              ${p.relation_type ? `<div style="font-size:12px;color:var(--text2)">${escapeHtml(p.relation_type)}</div>` : ''}</div>
+            <div class="person-row-plus">＋</div></div>`).join('') : `<div style="color:var(--text3);font-size:13px;padding:8px 0">Wszystkie osoby już dodane</div>`}
+      </div>
+      <div class="form-section form-section-divider">
+        <div class="form-label">Lub dodaj nową osobę</div>
+        <input class="form-input" id="new-person-name" placeholder="Imię i nazwisko">
+        <div class="form-label">Typ relacji</div>
+        <select class="form-input" id="new-person-reltype"><option value="">– brak –</option>
+          ${relTypes.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}</select>
+        <button class="form-primary-btn" onclick="createAndAddPerson(${travelId})">Dodaj nową osobę</button>
+      </div></div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
+    document.body.appendChild(overlay);
+    attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  } finally {
+    finishOverlayOpen('participant-overlay');
+  }
 }
 
 async function addParticipantToTravel(travelId, personId, name, relType, rowEl) {
@@ -313,7 +320,8 @@ function openEditTravel() {
 }
 
 function openTravelModal(t, isNew) {
-  const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
+  if (!beginOverlayOpen('travel-form-overlay')) return;
+  const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'travel-form-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">${isNew ? 'Nowa podróż' : 'Edytuj podróż'}</span>
       <button class="modal-save" onclick="saveTravel(${t.id || 0}, ${isNew})">Zapisz</button></div>
@@ -350,6 +358,7 @@ function openTravelModal(t, isNew) {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  finishOverlayOpen('travel-form-overlay');
 }
 
 async function saveTravel(id, isNew) {
@@ -366,7 +375,7 @@ async function saveTravel(id, isNew) {
   if (isNew) {
     const res = await apiPost('/api/travels', body);
     if (res.error) { toastApiError(res, 'Nie udało się utworzyć podróży'); return; }
-    closeModal(document.querySelector('.modal-overlay'));
+    closeModal(document.getElementById('travel-form-overlay'));
     toast('Podróż utworzona', 'success');
     showTab('travels');
     return;
@@ -379,7 +388,7 @@ async function saveTravel(id, isNew) {
   }
   if (res.error) { toastApiError(res, 'Nie udało się zapisać podróży'); return; }
   toast('Zapisano', 'success');
-  closeModal(document.querySelector('.modal-overlay'));
+  closeModal(document.getElementById('travel-form-overlay'));
   openTravel(id);
 }
 

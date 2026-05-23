@@ -78,6 +78,17 @@ async function withActionLock(key, action) {
   }
 }
 
+function beginOverlayOpen(id) {
+  const key = `overlay-open:${id}`;
+  if (document.getElementById(id) || UI_ACTION_LOCKS.has(key)) return false;
+  UI_ACTION_LOCKS.add(key);
+  return true;
+}
+
+function finishOverlayOpen(id) {
+  UI_ACTION_LOCKS.delete(`overlay-open:${id}`);
+}
+
 async function _mutationFetch(path, opts) {
   let r;
   try {
@@ -611,8 +622,26 @@ async function updateOfflineBanner() {
 window.addEventListener('online', updateOfflineBanner);
 window.addEventListener('offline', updateOfflineBanner);
 
+function setMapViewMode(enabled) {
+  const view = document.getElementById('view');
+  if (!view) return null;
+  view.classList.toggle('map-view-mode', Boolean(enabled));
+  return view;
+}
+
+function resetViewScroll(view = document.getElementById('view')) {
+  if (!view) return;
+  view.scrollTop = 0;
+  view.scrollLeft = 0;
+  if (typeof view.scrollTo === 'function') {
+    view.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }
+}
+
 function showTab(tab) {
   currentTab = tab;
+  const view = setMapViewMode(tab === 'map');
+  resetViewScroll(view);
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   const tabButton = document.getElementById('tab-'+tab);
   if (tabButton) tabButton.classList.add('active');
@@ -622,8 +651,8 @@ function showTab(tab) {
   else if (tab === 'stats') renderStats();
   else if (tab === 'todo') renderTodo();
   else if (tab === 'locationTodo') renderLocationTodo();
-  const view = document.getElementById('view');
   if (view) {
+    resetViewScroll(view);
     view.classList.remove('view-fade');
     void view.offsetWidth;
     view.classList.add('view-fade');

@@ -1,4 +1,6 @@
 async function openPersonsModal() {
+  if (!beginOverlayOpen('persons-overlay')) return;
+  try {
   const [persons, relTypes] = await Promise.all([api('/api/persons'), api('/api/relation_types')]);
   const relOpts = relTypes.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'persons-overlay';
@@ -20,6 +22,9 @@ async function openPersonsModal() {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  } finally {
+    finishOverlayOpen('persons-overlay');
+  }
 }
 
 async function addPersonFromModal() {

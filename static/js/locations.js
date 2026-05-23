@@ -486,7 +486,9 @@ async function renderLocationTodo() {
 }
 
 async function openLocation(id) {
+  setMapViewMode(false);
   const view = document.getElementById('view');
+  resetViewScroll(view);
   view.innerHTML = skeletonCards(3);
   const loc = await api('/api/locations/' + id);
   if (!loc || !loc.id || isApiError(loc)) {
@@ -528,7 +530,8 @@ async function confirmDeleteLocation(id) {
 }
 
 async function openEditLocationModal(id) {
-  document.getElementById('edit-loc-overlay')?.remove();
+  if (!beginOverlayOpen('edit-loc-overlay')) return;
+  try {
   const [loc, countries, locTypes, allLocs] = await Promise.all([
     api('/api/locations/' + id),
     api('/api/countries'),
@@ -580,6 +583,9 @@ async function openEditLocationModal(id) {
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
   document.getElementById('el-notes').value = loc.notes || '';
   updateParentLocListFor('edit-loc-overlay', 'el');
+  } finally {
+    finishOverlayOpen('edit-loc-overlay');
+  }
 }
 
 async function geocodeForLocModal(prefix) {
@@ -687,8 +693,9 @@ async function removeLocationFromTravel(travelId, tlid) {
 }
 
 function openEditTravelLocation(travelId, tlid) {
-  document.getElementById('edit-tl-overlay')?.remove();
+  if (!beginOverlayOpen('edit-tl-overlay')) return;
   const row = document.getElementById('tl-' + tlid);
+  if (!row) { finishOverlayOpen('edit-tl-overlay'); return; }
   const arrival = row.dataset.arrival || '';
   const departure = row.dataset.departure || '';
   const notes = row.dataset.notes || '';
@@ -710,6 +717,7 @@ function openEditTravelLocation(travelId, tlid) {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  finishOverlayOpen('edit-tl-overlay');
 }
 
 async function saveEditTravelLocation(travelId, tlid) {
@@ -757,7 +765,8 @@ async function saveEditTravelLocation(travelId, tlid) {
 }
 
 async function openNewLocationModal(travelId, travelStart, travelEnd) {
-  document.getElementById('new-loc-overlay')?.remove();
+  if (!beginOverlayOpen('new-loc-overlay')) return;
+  try {
   document.getElementById('loc-picker-overlay')?.remove();
   const [countries, locTypes, allLocs] = await Promise.all([api('/api/countries'), api('/api/location_types'), api('/api/locations')]);
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'new-loc-overlay';
@@ -778,6 +787,9 @@ async function openNewLocationModal(travelId, travelStart, travelEnd) {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  } finally {
+    finishOverlayOpen('new-loc-overlay');
+  }
 }
 
 async function saveNewLocation() {
@@ -841,6 +853,8 @@ async function saveNewLocation() {
 }
 
 async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
+  if (!beginOverlayOpen('loc-picker-overlay')) return;
+  try {
   const locs = await api('/api/locations');
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'loc-picker-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
@@ -861,6 +875,9 @@ async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
   document.body.appendChild(overlay);
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  } finally {
+    finishOverlayOpen('loc-picker-overlay');
+  }
 }
 
 function buildLocPickerList(locs, travelId, travelStart, travelEnd) {
@@ -974,7 +991,8 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
 
 /* ── Kosz (soft delete) ───────────────────────────────────── */
 async function openTrashModal() {
-  document.getElementById('trash-overlay')?.remove();
+  if (!beginOverlayOpen('trash-overlay')) return;
+  try {
   const data = await api('/api/trash');
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay'; overlay.id = 'trash-overlay';
@@ -986,6 +1004,9 @@ async function openTrashModal() {
   document.body.appendChild(overlay);
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
   renderTrashBody(data);
+  } finally {
+    finishOverlayOpen('trash-overlay');
+  }
 }
 
 function renderTrashBody(data) {

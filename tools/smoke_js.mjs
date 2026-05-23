@@ -22,6 +22,7 @@ function elementStub() {
       add() {},
       remove() {},
       contains() { return false; },
+      toggle() {},
     },
     style: {},
     innerHTML: '',
@@ -108,6 +109,11 @@ const lockedAction = () => context.withActionLock('same-record', async () => {
 const actionResults = await Promise.all([lockedAction(), lockedAction(), lockedAction()]);
 assert.equal(actionCalls, 1, 'concurrent duplicate actions run only once');
 assert.equal(actionResults.filter(Boolean).length, 1, 'only one duplicate action returns a result');
+assert.equal(context.beginOverlayOpen('same-modal'), true, 'modal opening can acquire a lock');
+assert.equal(context.beginOverlayOpen('same-modal'), false, 'modal opening lock blocks duplicate sheets');
+context.finishOverlayOpen('same-modal');
+assert.equal(context.beginOverlayOpen('same-modal'), true, 'modal opening lock releases after render');
+context.finishOverlayOpen('same-modal');
 
 context.matchMedia = () => ({ matches: true });
 const row = elementStub();

@@ -20,7 +20,10 @@ function createColorIcon(locationType) {
 
 function renderMap() {
   const view = document.getElementById('view');
+  setMapViewMode(true);
+  resetViewScroll(view);
   view.innerHTML = `
+    <div class="map-screen-shell">
     <div id="map-toolbar">
       <div class="map-toolbar-left">
         <h2>🗺️ Mapa</h2>
@@ -39,6 +42,7 @@ function renderMap() {
       <span class="legend-item"><span class="legend-dot" style="background:#3498db"></span>Wyspa</span>
       <span class="legend-item"><span class="legend-dot" style="background:#2ecc71"></span>Region</span>
       <span class="legend-item"><span class="legend-dot" style="background:#f39c12"></span>Inne</span>
+    </div>
     </div>`;
   initMap();
   loadMapLocations();
@@ -52,6 +56,7 @@ function initMap() {
   }).addTo(map);
   markerClusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true });
   map.addLayer(markerClusterGroup);
+  setTimeout(() => { if (map) map.invalidateSize(); }, 0);
 }
 
 async function loadMapLocations() {
