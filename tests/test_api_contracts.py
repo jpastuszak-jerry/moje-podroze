@@ -157,6 +157,29 @@ def _hall_of_fame_payload():
     }
 
 
+def _yearbook_payload():
+    return [{
+        'year': 2025,
+        'trips': 1,
+        'days': 11,
+        'countries': 2,
+        'top_month': {'month': 7, 'days': 11},
+        'new_countries': [{'id': 1, 'name': 'Finland', 'first_visit': '2025-07-18', 'trips': 1}],
+        'returning_countries': [],
+        'highlights': {
+            'longest': {'id': 1, 'name': 'Helsinki', 'days': 11},
+            'best_rated': {'id': 1, 'name': 'Helsinki', 'rating': 4.5},
+        },
+        'trips_list': [{
+            'id': 1,
+            'name': 'Helsinki',
+            'start_date': '2025-07-18',
+            'end_date': '2025-07-28',
+            'days': 11,
+        }],
+    }]
+
+
 def fake_stats_query(sql, params=(), one=False):
     normalized = ' '.join(sql.split())
     if not one:
@@ -262,6 +285,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             }),
             patch.object(stats, '_streak_months', return_value=3),
             patch.object(stats, '_heatmap_data', return_value=[{'year': 2025, 'month': 7, 'days': 11}]),
+            patch.object(stats, '_yearbook', return_value=copy.deepcopy(_yearbook_payload())),
             patch.object(stats, 'query', side_effect=fake_stats_query),
         ):
             response = self.client.get('/api/stats?year=2025')
@@ -275,7 +299,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             'purposes', 'participants', 'top_expensive', 'top_countries', 'top_places',
             'by_month', 'cost_per_day', 'progress', 'locations', 'by_year',
             'hall_of_fame', 'year', 'prev_period', 'current_trip', 'streak_months',
-            'heatmap', 'data_quality', 'country_milestones', 'country_history',
+            'heatmap', 'data_quality', 'country_milestones', 'country_history', 'yearbook',
         }
         self.assertLessEqual(expected_keys, set(data))
         self.assertEqual(data['year'], 2025)
@@ -289,6 +313,14 @@ class ApiContractSmokeTests(unittest.TestCase):
         })
         self.assertEqual(data['hall_of_fame']['longest']['value'], 11)
         self.assertEqual(data['hall_of_fame']['top_country']['name'], 'Finland')
+        self.assertEqual(data['yearbook'][0]['year'], 2025)
+        self.assertLessEqual(
+            {
+                'year', 'trips', 'days', 'countries', 'top_month',
+                'new_countries', 'returning_countries', 'highlights', 'trips_list',
+            },
+            set(data['yearbook'][0]),
+        )
         self.assertLessEqual(
             {'currency', 'trip_count', 'days', 'total', 'avg_trip', 'median_trip', 'avg_per_day'},
             set(data['cost_summary'][0]),

@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from schemas import LocationCreate, TravelCreate, TravelLocationCreate
 import stats_countries
 import stats_quality
+import stats_yearbook
 from stats_common import _clipped_trip_days, _period_bounds, _travel_period_clause
 
 
@@ -69,6 +70,74 @@ class DateLogicSmokeTests(unittest.TestCase):
         self.assertEqual(history['only_once'][0]['name'], 'Estonia')
         self.assertEqual(history['top_returns'][0]['period_trips'], 1)
         self.assertGreater(history['top_returns'][0]['longest_gap_days'], 0)
+
+    def test_yearbook_builds_year_chapters_and_highlights(self):
+        summary_rows = [
+            {'year': 2025, 'trips': 2, 'days': 12, 'countries': 2},
+            {'year': 2024, 'trips': 1, 'days': 3, 'countries': 1},
+        ]
+        trip_rows = [
+            {
+                'year': 2025,
+                'id': 1,
+                'name': 'Helsinki',
+                'start_date': date(2025, 7, 18),
+                'end_date': date(2025, 7, 28),
+                'purpose': 'Wakacje',
+                'rating': 4.5,
+                'amount': 1000,
+                'currency': 'EUR',
+                'days': 11,
+            },
+            {
+                'year': 2025,
+                'id': 2,
+                'name': 'Tallinn',
+                'start_date': date(2025, 9, 1),
+                'end_date': date(2025, 9, 1),
+                'purpose': 'Miasto',
+                'rating': 5,
+                'amount': 200,
+                'currency': 'EUR',
+                'days': 1,
+            },
+            {
+                'year': 2024,
+                'id': 3,
+                'name': 'Praga',
+                'start_date': date(2024, 5, 1),
+                'end_date': date(2024, 5, 3),
+                'purpose': 'Weekend',
+                'rating': None,
+                'amount': 0,
+                'currency': 'PLN',
+                'days': 3,
+            },
+        ]
+        month_rows = [
+            {'year': 2025, 'month': 7, 'days': 11},
+            {'year': 2025, 'month': 9, 'days': 1},
+            {'year': 2024, 'month': 5, 'days': 3},
+        ]
+        country_rows = [
+            {'year': 2025, 'id': 10, 'name': 'Finland', 'first_visit': date(2025, 7, 18), 'trips': 1},
+            {'year': 2025, 'id': 11, 'name': 'Estonia', 'first_visit': date(2023, 6, 1), 'trips': 2},
+            {'year': 2024, 'id': 12, 'name': 'Czechy', 'first_visit': date(2024, 5, 1), 'trips': 1},
+        ]
+
+        with patch.object(stats_yearbook, 'query', side_effect=[summary_rows, trip_rows, month_rows, country_rows]):
+            yearbook = stats_yearbook._yearbook()
+
+        self.assertEqual([chapter['year'] for chapter in yearbook], [2025, 2024])
+        chapter = yearbook[0]
+        self.assertEqual(chapter['days'], 12)
+        self.assertEqual(chapter['top_month'], {'month': 7, 'days': 11})
+        self.assertEqual(chapter['highlights']['longest']['name'], 'Helsinki')
+        self.assertEqual(chapter['highlights']['best_rated']['name'], 'Tallinn')
+        self.assertEqual(chapter['highlights']['priciest']['currency'], 'EUR')
+        self.assertEqual(chapter['new_countries'][0]['name'], 'Finland')
+        self.assertEqual(chapter['returning_countries'][0]['name'], 'Estonia')
+        self.assertEqual(chapter['trips_list'][0]['id'], 1)
 
 
 class DataQualitySmokeTests(unittest.TestCase):

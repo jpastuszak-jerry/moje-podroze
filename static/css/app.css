@@ -980,7 +980,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   }
   .stats-2col > .heatmap-card,
   .stats-2col > .stats-map-card,
-  .stats-2col > .country-history-card { grid-column: 1 / -1; }
+  .stats-2col > .country-history-card,
+  .stats-2col > .yearbook-card { grid-column: 1 / -1; }
 }
 
 .donut-wrap {
@@ -1068,6 +1069,93 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   padding: 6px 0; font-size: 12px; color: var(--text2);
 }
 
+.yearbook-card { max-width: none; }
+.yearbook-subtitle {
+  margin-top: -6px; margin-bottom: 4px;
+  font-size: 12px; color: var(--text2);
+}
+.yearbook-chapter {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+.yearbook-chapter:first-of-type { border-top: none; padding-top: 0; }
+.yearbook-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
+.yearbook-year {
+  font-size: 26px; line-height: 1; font-weight: 850; color: var(--text);
+}
+.yearbook-sub {
+  margin-top: 5px; font-size: 12px; color: var(--text2);
+}
+.yearbook-highlights {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px; margin-bottom: 12px;
+}
+.yearbook-highlight {
+  min-width: 0; padding: 10px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); cursor: default;
+  color: inherit; font: inherit; text-align: left; width: 100%;
+}
+button.yearbook-highlight { cursor: pointer; }
+.yearbook-highlight-label,
+.yearbook-mini-label {
+  font-size: 10px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.yearbook-highlight-value {
+  margin-top: 7px; font-size: 17px; font-weight: 850; color: var(--text);
+  line-height: 1.1;
+}
+.yearbook-highlight-name {
+  margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.yearbook-highlight-sub {
+  margin-top: 3px; font-size: 11px; color: var(--text2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.yearbook-countries {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; margin-bottom: 12px;
+}
+.yearbook-chip-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 7px;
+}
+.yearbook-chip {
+  display: inline-flex; align-items: center; min-height: 24px;
+  padding: 4px 8px; border-radius: 14px;
+  background: var(--blue-light); color: var(--blue);
+  font-size: 11px; font-weight: 700;
+}
+.yearbook-muted {
+  display: inline-block; margin-top: 5px;
+  font-size: 12px; color: var(--text2);
+}
+.yearbook-trips {
+  padding-top: 10px; border-top: 1px solid rgba(127,127,127,0.12);
+}
+.yearbook-trip {
+  width: 100%; min-height: 44px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 0; border: none; border-top: 1px solid rgba(127,127,127,0.10);
+  background: transparent; color: var(--text); text-align: left; cursor: pointer;
+}
+.yearbook-trip:first-of-type { border-top: none; }
+.yearbook-trip-name {
+  flex: 1; min-width: 0;
+  font-size: 13px; font-weight: 800;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.yearbook-trip-meta {
+  flex-shrink: 0; max-width: 58%;
+  font-size: 11px; color: var(--text2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 @media (max-width: 380px) {
   .donut-wrap { flex-direction: column; align-items: stretch; gap: 10px; }
   .donut-svg { width: 130px; height: 130px; align-self: center; }
@@ -1076,6 +1164,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 @media (max-width: 620px) {
   .country-history-metrics { grid-template-columns: repeat(2, 1fr); }
   .country-history-grid { grid-template-columns: 1fr; }
+  .yearbook-highlights,
+  .yearbook-countries { grid-template-columns: 1fr; }
+  .yearbook-head { flex-direction: column; }
+  .yearbook-trip { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .yearbook-trip-meta { max-width: 100%; }
 }
 
 .gbar-row {

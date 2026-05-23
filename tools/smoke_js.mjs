@@ -288,6 +288,61 @@ function statsPayload(overrides = {}) {
       longest_gaps: [{ name: 'Czechy', longest_gap_days: 500, longest_gap_from: '2023-05-01', longest_gap_to: '2024-09-12' }],
       only_once: [{ name: 'Norwegia', days_spent: 6, first_visit: '2024-08-01', last_visit: '2024-08-06' }],
     },
+    yearbook: [{
+      year: 2025,
+      trips: 2,
+      days: 8,
+      countries: 2,
+      top_month: { month: 7, days: 8 },
+      new_countries: [{ id: 3, name: 'Finlandia', first_visit: '2025-07-18', trips: 1 }],
+      returning_countries: [{ id: 4, name: 'Estonia', first_visit: '2024-04-10', trips: 2 }],
+      highlights: {
+        longest: {
+          id: 1,
+          name: 'Helsinki',
+          start_date: '2025-07-18',
+          end_date: '2025-07-21',
+          purpose: 'Miasto',
+          rating: 4.5,
+          amount: 1200,
+          currency: 'EUR',
+          days: 4,
+        },
+        best_rated: {
+          id: 1,
+          name: 'Helsinki',
+          start_date: '2025-07-18',
+          end_date: '2025-07-21',
+          purpose: 'Miasto',
+          rating: 4.5,
+          amount: 1200,
+          currency: 'EUR',
+          days: 4,
+        },
+        priciest: {
+          id: 1,
+          name: 'Helsinki',
+          start_date: '2025-07-18',
+          end_date: '2025-07-21',
+          purpose: 'Miasto',
+          rating: 4.5,
+          amount: 1200,
+          currency: 'EUR',
+          days: 4,
+        },
+      },
+      trips_list: [{
+        id: 1,
+        name: 'Helsinki',
+        start_date: '2025-07-18',
+        end_date: '2025-07-21',
+        purpose: 'Miasto',
+        rating: 4.5,
+        amount: 1200,
+        currency: 'EUR',
+        days: 4,
+      }],
+    }],
     prev_period: null,
     year: null,
     ...overrides,
@@ -346,6 +401,16 @@ assert.match(countriesStats, /Kraje w 2025/, 'country section keeps yearly count
 assert.match(countriesStats, /Historia kraj/, 'country section shows country history');
 assert.match(countriesStats, /Top kraj/, 'country section shows country ranking');
 assert.doesNotMatch(countriesStats, /Podr.*y w roku/, 'non-overview sections stay focused after year changes');
+
+const yearbookStats = await renderStatsSection('yearbook');
+assert.match(yearbookStats, /Rocznik/, 'yearbook section renders the travel yearbook');
+assert.match(yearbookStats, /Helsinki/, 'yearbook section renders highlighted trips');
+assert.match(yearbookStats, /Nowe kraje/, 'yearbook section renders country chapter details');
+assert.doesNotMatch(yearbookStats, /Koszty wed/, 'yearbook section stays focused on the yearbook');
+
+const filteredYearbookStats = await renderStatsSection('yearbook', { year: 2025 });
+assert.equal(apiCalls.at(-1), '/api/stats?year=2025', 'yearbook section keeps year filter requests');
+assert.match(filteredYearbookStats, /2025/, 'yearbook year filter keeps the selected chapter visible');
 
 const qualityStats = await renderStatsSection('quality');
 assert.match(qualityStats, /Jako/, 'quality section shows data quality card');

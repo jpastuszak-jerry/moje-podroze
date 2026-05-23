@@ -10,6 +10,7 @@ from stats_common import _day_series, _period_bounds, _series_params, _travel_pe
 from stats_countries import _country_history, _country_milestones
 from stats_hall_of_fame import _hall_of_fame
 from stats_quality import _data_quality
+from stats_yearbook import _yearbook
 
 
 bp = Blueprint('stats', __name__)
@@ -345,6 +346,7 @@ def get_stats():
         'data_quality': _data_quality(year),
         'country_milestones': _country_milestones(year),
         'country_history': _country_history(year),
+        'yearbook': _yearbook(),
     })
 
 

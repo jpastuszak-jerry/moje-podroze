@@ -382,6 +382,8 @@ Lepsze komunikaty, kiedy dane pochodza z cache, oraz reczne "odswiez dane".
 
 Wspolne komponenty dla kart, paskow filtrow, rankingow i pustych stanow, zeby zmniejszyc duplikacje w `travels.js`, `stats.js`, `todo.js` i `locations.js`.
 
-### 17. Historia / Rocznik podrozy
+### 17. Historia / Rocznik podrozy - PARTIAL
 
-Lepszy nastepca usunietej osi czasu: widok narracyjny w Statystykach, ktory pokazuje lata jako rozdzialy, najwazniejsze podroze roku, nowe kraje, powroty po latach, najdluzsze przerwy i miesiace najbardziej wypelnione podrozami.
+Pierwszy etap zrobiony w `Add stats yearbook`: backend zwraca `yearbook`, a Statystyki maja sekcje Rocznik z latami jako rozdzialami, najwazniejszymi podrozami roku, nowymi krajami, powrotami i najbardziej wypelnionym miesiacem.
+
+Do dopracowania pozniej: bardziej narracyjne opisy roczne, dluzsze przerwy miedzy powrotami oraz ewentualne porownania rok do roku w ramach rocznika.
