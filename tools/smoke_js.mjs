@@ -5,25 +5,38 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const appCssPath = path.join(repoRoot, 'static', 'css', 'app.css');
 const utilsPath = path.join(repoRoot, 'static', 'js', 'utils.js');
 const componentsPath = path.join(repoRoot, 'static', 'js', 'components.js');
 const dictionariesPath = path.join(repoRoot, 'static', 'js', 'dictionaries.js');
 const locationsPath = path.join(repoRoot, 'static', 'js', 'locations.js');
+const mapPath = path.join(repoRoot, 'static', 'js', 'map.js');
 const travelsPath = path.join(repoRoot, 'static', 'js', 'travels.js');
 const statsPath = path.join(repoRoot, 'static', 'js', 'stats.js');
 const swPath = path.join(repoRoot, 'static', 'sw.js');
 const wizardPath = path.join(repoRoot, 'static', 'js', 'wizard.js');
 
+function classListStub(initial = []) {
+  const classes = new Set(initial);
+  return {
+    add(...names) { names.forEach(name => classes.add(name)); },
+    remove(...names) { names.forEach(name => classes.delete(name)); },
+    contains(name) { return classes.has(name); },
+    toggle(name, force) {
+      const shouldAdd = force === undefined ? !classes.has(name) : Boolean(force);
+      if (shouldAdd) classes.add(name);
+      else classes.delete(name);
+      return shouldAdd;
+    },
+    toString() { return [...classes].join(' '); },
+  };
+}
+
 function elementStub() {
   let textContent = '';
   const el = {
     dataset: {},
-    classList: {
-      add() {},
-      remove() {},
-      contains() { return false; },
-      toggle() {},
-    },
+    classList: classListStub(),
     style: {},
     innerHTML: '',
     get textContent() {
@@ -62,7 +75,7 @@ const context = {
   document: {
     body: {
       appendChild() {},
-      classList: { add() {}, remove() {} },
+      classList: classListStub(),
     },
     documentElement: {
       setAttribute() {},
@@ -86,6 +99,12 @@ vm.runInContext(fs.readFileSync(componentsPath, 'utf8'), context, { filename: co
 function count(haystack, needle) {
   return (haystack.match(new RegExp(needle, 'g')) || []).length;
 }
+
+const appCssSource = fs.readFileSync(appCssPath, 'utf8');
+assert.match(appCssSource, /#view\.map-view-mode\s*\{\s*overflow:\s*hidden;/, 'mobile map view disables page scroll');
+assert.match(appCssSource, /\.map-screen-shell[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/, 'map screen uses a dedicated flex shell');
+assert.match(appCssSource, /@media\s*\(max-width:\s*899px\)[\s\S]*#theme-toggle[\s\S]*bottom:\s*calc\(72px \+ var\(--safe-bottom\)\)/, 'mobile theme toggle is anchored away from map toolbar controls');
+assert.match(appCssSource, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)\s*34px\s*34px/, 'mobile map toolbar keeps filters and buttons in a fixed grid');
 
 assert.equal(context.daysCount('2025-07-11', '2025-07-12'), 2, 'travel days are inclusive');
 assert.equal(context.daysCount('2025-07-11', '2025-07-11'), 1, 'same-day trip is one day');
@@ -149,6 +168,76 @@ const rankingHtml = context.renderRankingBars(
 assert.match(rankingHtml, /gbar-row/, 'renderRankingBars renders rows');
 assert.match(rankingHtml, /width:100%/, 'renderRankingBars scales top value to full width');
 
+vm.runInContext(fs.readFileSync(mapPath, 'utf8'), context, { filename: mapPath });
+const mapView = elementStub();
+mapView.scrollTop = 260;
+mapView.scrollLeft = 40;
+mapView.scrollTo = ({ top, left }) => {
+  mapView.scrollTop = top;
+  mapView.scrollLeft = left;
+};
+context.document.getElementById = id => (id === 'view' ? mapView : null);
+context.L = {
+  divIcon(options) { return options; },
+  map(id, options) {
+    context.__mapOptions = { id, options };
+    return {
+      remove() {},
+      addLayer() {},
+      setView() {},
+      fitBounds() {},
+      invalidateSize() { context.__mapInvalidated = true; },
+    };
+  },
+  tileLayer() { return { addTo() { context.__tileLayerAdded = true; return this; } }; },
+  markerClusterGroup() {
+    return {
+      clearLayers() {},
+      addLayer() {},
+      getBounds() { return { isValid() { return false; } }; },
+    };
+  },
+};
+context.__mapLoadCalled = false;
+vm.runInContext('loadMapLocations = () => { globalThis.__mapLoadCalled = true; }', context);
+context.renderMap();
+await new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(mapView.classList.contains('map-view-mode'), true, 'map render enables non-scrolling map mode');
+assert.equal(mapView.scrollTop, 0, 'map render resets previous view scroll');
+assert.match(mapView.innerHTML, /map-screen-shell/, 'map render uses full-height shell');
+assert.match(mapView.innerHTML, /id="map-toolbar"/, 'map render exposes toolbar controls before the map');
+assert.equal(context.__mapOptions.options.zoomControl, true, 'map render keeps Leaflet zoom controls enabled');
+assert.equal(context.__mapInvalidated, true, 'map render invalidates Leaflet size after layout changes');
+assert.equal(context.__mapLoadCalled, true, 'map render still loads map locations');
+
+const tabMap = elementStub();
+const tabTravels = elementStub();
+const switchView = elementStub();
+switchView.scrollTop = 400;
+switchView.scrollTo = ({ top, left }) => {
+  switchView.scrollTop = top;
+  switchView.scrollLeft = left;
+};
+const previousQuerySelectorAll = context.document.querySelectorAll;
+context.document.querySelectorAll = selector => (selector === '.tab' ? [tabMap, tabTravels] : []);
+context.document.getElementById = id => {
+  if (id === 'view') return switchView;
+  if (id === 'tab-map') return tabMap;
+  if (id === 'tab-travels') return tabTravels;
+  return null;
+};
+context.renderMap = () => { context.__shownTab = 'map'; };
+context.renderTravels = () => { context.__shownTab = 'travels'; };
+context.showTab('map');
+assert.equal(vm.runInContext('currentTab', context), 'map', 'showTab switches to map');
+assert.equal(context.__shownTab, 'map', 'showTab invokes map renderer');
+assert.equal(switchView.classList.contains('map-view-mode'), true, 'showTab enables map mode for map tab');
+assert.equal(switchView.scrollTop, 0, 'showTab resets stale scroll before map interactions');
+context.showTab('travels');
+assert.equal(vm.runInContext('currentTab', context), 'travels', 'showTab switches back to travels');
+assert.equal(switchView.classList.contains('map-view-mode'), false, 'showTab disables map mode outside map tab');
+context.document.querySelectorAll = previousQuerySelectorAll;
+
 vm.runInContext(fs.readFileSync(dictionariesPath, 'utf8'), context, { filename: dictionariesPath });
 assert.equal(
   context.exportFilenameFromContentDisposition('attachment; filename=moje-podroze-backup-2026-05-23.json'),
@@ -208,6 +297,27 @@ const locationVisitsHtml = context.renderLocationVisitSection('Wizyty', [{
   notes: 'Spacer',
 }], 'x');
 assert.match(locationVisitsHtml, /location-visit-row/, 'location detail renders visit rows as buttons');
+
+const newLocationOverlays = [];
+const previousNewLocationAppend = context.document.body.appendChild;
+context.document.body.appendChild = el => { newLocationOverlays.push(el); };
+context.document.getElementById = () => null;
+context.api = async path => {
+  await new Promise(resolve => setTimeout(resolve, 10));
+  if (path === '/api/countries') return [{ id: 1, name: 'Finlandia' }];
+  if (path === '/api/location_types') return [{ id: 1, name: 'miasto' }];
+  if (path === '/api/locations') return [{ id: 10, name: 'Helsinki', country_name: 'Finlandia', location_type: 'miasto' }];
+  return [];
+};
+await Promise.all([
+  context.openNewLocationModal(),
+  context.openNewLocationModal(),
+  context.openNewLocationModal(),
+]);
+context.document.body.appendChild = previousNewLocationAppend;
+assert.equal(newLocationOverlays.length, 1, 'rapid repeated add-location taps open one modal');
+assert.equal(newLocationOverlays[0].id, 'new-loc-overlay', 'add-location smoke opens the expected sheet');
+assert.match(newLocationOverlays[0].innerHTML, /Nowe miejsce/, 'add-location modal renders the form title');
 
 vm.runInContext(fs.readFileSync(travelsPath, 'utf8'), context, { filename: travelsPath });
 const travelControlsHtml = vm.runInContext(`

@@ -202,6 +202,7 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - minimalne testy kontraktu `/api/stats`, `/api/stats/todo` i `/api/locations/todo`,
 - GitHub Actions uruchamiaja testy Python i JS przy pushu.
 - uzupelnione w `Add stats section smoke tests`: JS smoke dla podzakladek Statystyk i glebszy kontrakt `/api/stats` dla sekcji kosztow, krajow/miejsc, uczestnikow i jakosci danych.
+- uzupelnione w `Add mobile UI smoke tests`: JS smoke dla mobilnego ukladu mapy, resetu scrolla przy zmianie zakladek oraz blokady dublowania modali.
 
 **Do dodania dalej:**
 - testy jakosci danych podrozy,
