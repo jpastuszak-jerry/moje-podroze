@@ -1,7 +1,23 @@
 let currentLocationQualityFilter = 'all';
 let currentLocationSort = 'country_name';
+let currentLocationSearch = '';
 
-async function renderLocations(q = '') {
+const LOCATION_QUALITY_LABELS = {
+  all: 'Wszystkie',
+  visited: 'Odwiedzone',
+  not_visited: 'Nieodwiedzone',
+  missing_gps: 'Bez GPS',
+};
+
+const LOCATION_SORT_LABELS = {
+  country_name: 'Kraj i nazwa',
+  name_asc: 'Nazwa A-Z',
+  visit_count_desc: 'Najwięcej wizyt',
+  last_visit_desc: 'Ostatnio odwiedzone',
+};
+
+async function renderLocations(q) {
+  if (q !== undefined) currentLocationSearch = q || '';
   const view = document.getElementById('view');
   if (!document.getElementById('loc-list')) {
     view.innerHTML = `
@@ -12,7 +28,7 @@ async function renderLocations(q = '') {
             <span class="action-button-icon">⚙️</span><span>Narzędzia</span>
           </button>
         </div>
-        <div class="search-box"><input type="search" placeholder="Szukaj miejsca lub kraju..." id="loc-search" oninput="onLocSearch(this.value)"></div>
+        <div class="search-box"><input type="search" placeholder="Szukaj miejsca lub kraju..." id="loc-search" value="${escapeAttr(currentLocationSearch || '')}" oninput="onLocSearch(this.value)"></div>
         <div class="filter-grid">
           <select class="filter-select" id="loc-country-filter" onchange="applyLocationFilters()">
             <option value="">Wszystkie kraje</option>
@@ -32,13 +48,18 @@ async function renderLocations(q = '') {
           <button class="sort-btn" data-loc-quality="visited" onclick="setLocQualityFilter('visited')">Odwiedzone</button>
           <button class="sort-btn" data-loc-quality="not_visited" onclick="setLocQualityFilter('not_visited')">Nieodwiedzone</button>
           <button class="sort-btn" data-loc-quality="missing_gps" onclick="setLocQualityFilter('missing_gps')">Bez GPS</button>
-        </div></div>
+        </div>
+        <div class="filter-summary hidden" id="loc-filter-summary"></div></div>
       <div id="loc-list">${skeletonCards(4)}</div>
       <button class="fab" onclick="openNewLocationModal()">＋</button>`;
   }
+  const searchInput = document.getElementById('loc-search');
+  if (searchInput && searchInput.value !== (currentLocationSearch || '')) {
+    searchInput.value = currentLocationSearch || '';
+  }
   const list = document.getElementById('loc-list');
   list.innerHTML = skeletonCards(4);
-  const locs = await api('/api/locations' + (q ? '?q='+encodeURIComponent(q) : ''));
+  const locs = await api('/api/locations' + (currentLocationSearch ? '?q='+encodeURIComponent(currentLocationSearch) : ''));
   if (isApiError(locs)) {
     list.innerHTML = emptyState({ icon: '📍', title: 'Nie udało się wczytać miejsc', message: locs.error });
     return;
@@ -143,6 +164,60 @@ function setLocSort(sort) {
   applyLocationFilters();
 }
 
+function locationResultLabel(count) {
+  count = Number(count || 0);
+  if (count === 1) return 'wynik';
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'wyniki';
+  return 'wyników';
+}
+
+function locationFilterActiveLabels() {
+  const search = (document.getElementById('loc-search')?.value || currentLocationSearch || '').trim();
+  const country = document.getElementById('loc-country-filter')?.value || '';
+  const type = document.getElementById('loc-type-filter')?.value || '';
+  const quality = currentLocationQualityFilter || 'all';
+  const labels = [];
+  if (search) labels.push(`Szukaj: ${search}`);
+  if (country) labels.push(country);
+  if (type) labels.push(type);
+  if (quality !== 'all') labels.push(LOCATION_QUALITY_LABELS[quality] || quality);
+  if (currentLocationSort !== 'country_name') labels.push(LOCATION_SORT_LABELS[currentLocationSort] || 'Inne sortowanie');
+  return labels;
+}
+
+function updateLocationFilterSummary(resultCount) {
+  const el = document.getElementById('loc-filter-summary');
+  if (!el) return;
+  const labels = locationFilterActiveLabels();
+  if (!labels.length) {
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    return;
+  }
+  el.classList.remove('hidden');
+  el.innerHTML = `<div class="filter-summary-text">
+      <strong>${resultCount} ${locationResultLabel(resultCount)}</strong>
+      <span>${labels.map(escapeHtml).join(' · ')}</span>
+    </div>
+    <button class="filter-reset-btn" type="button" onclick="resetLocationFilters()">Wyczyść filtry</button>`;
+}
+
+function resetLocationFilters() {
+  currentLocationSearch = '';
+  currentLocationQualityFilter = 'all';
+  currentLocationSort = 'country_name';
+  clearTimeout(searchTimeout);
+  const searchEl = document.getElementById('loc-search');
+  const countryEl = document.getElementById('loc-country-filter');
+  const typeEl = document.getElementById('loc-type-filter');
+  const sortEl = document.getElementById('loc-sort');
+  if (searchEl) searchEl.value = '';
+  if (countryEl) countryEl.value = '';
+  if (typeEl) typeEl.value = '';
+  if (sortEl) sortEl.value = 'country_name';
+  renderLocations('');
+}
+
 function updateLocQualityButtons() {
   document.querySelectorAll('[data-loc-quality]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.locQuality === currentLocationQualityFilter);
@@ -187,6 +262,7 @@ function applyLocationFilters() {
     locs.sort(compareLocCountryName);
   }
   updateLocQualityButtons();
+  updateLocationFilterSummary(locs.length);
   renderLocList(locs);
 }
 
@@ -201,6 +277,87 @@ function locVisitSummary(loc) {
   const count = locationVisitCount(loc);
   const last = loc.last_visit ? `ostatnio ${fmtDate(loc.last_visit)}` : 'brak wizyt';
   return `${locVisitCountLabel(count)} · ${last}`;
+}
+
+function locationVisitDates(visit) {
+  const start = fmtDate(visit.arrival_date);
+  const end = fmtDate(visit.departure_date);
+  if (start && end) return `${start} – ${end}`;
+  return start || end || 'brak dat';
+}
+
+function locationDetailMetric(label, value, sub = '') {
+  return `<div class="location-metric">
+    <div class="location-metric-value">${value}</div>
+    <div class="location-metric-label">${escapeHtml(label)}</div>
+    ${sub ? `<div class="location-metric-sub">${escapeHtml(sub)}</div>` : ''}
+  </div>`;
+}
+
+function renderLocationDetailProfile(loc, directVisits, childVisits) {
+  const hasGps = locationHasGps(loc);
+  const gpsText = hasGps
+    ? `${parseFloat(loc.latitude).toFixed(5)}, ${parseFloat(loc.longitude).toFixed(5)}`
+    : 'Brak współrzędnych';
+  const mapsHref = hasGps ? `https://maps.google.com/?q=${encodeURIComponent(`${loc.latitude},${loc.longitude}`)}` : '';
+  const totalVisits = locationVisitCount(loc);
+  return `<div class="section location-detail-card">
+    <div class="location-profile-top">
+      <div class="location-profile-icon">${locationIcon(loc.location_type)}</div>
+      <div class="location-profile-main">
+        <div class="location-profile-title">${escapeHtml(loc.name || '(bez nazwy)')}</div>
+        <div class="location-profile-sub">${escapeHtml(loc.location_type || 'typ nieznany')} · ${escapeHtml(loc.country_name || 'kraj nieznany')}</div>
+        <div class="location-detail-badges">
+          <span class="location-detail-badge">${escapeHtml(locVisitSummary(loc))}</span>
+          <span class="location-detail-badge ${hasGps ? 'ok' : 'warn'}">${hasGps ? 'GPS zapisany' : 'Bez GPS'}</span>
+        </div>
+      </div>
+    </div>
+    <div class="location-metrics-grid">
+      ${locationDetailMetric('Wizyty łącznie', totalVisits || 0)}
+      ${locationDetailMetric('Bezpośrednie', directVisits.length)}
+      ${locationDetailMetric('Przez podrzędne', childVisits.length)}
+    </div>
+    <div class="location-meta-list">
+      ${loc.parent_name ? `<div class="location-meta-item">
+        <span>Region / miasto</span>
+        <button type="button" class="location-meta-link" onclick="openLocation(${loc.parent_location_id})">${escapeHtml(loc.parent_name)}</button>
+      </div>` : ''}
+      ${loc.address ? `<div class="location-meta-item wide"><span>Adres</span><strong>${escapeHtml(loc.address)}</strong></div>` : ''}
+      <div class="location-meta-item wide">
+        <span>Współrzędne GPS</span>
+        <strong class="mono-detail">${escapeHtml(gpsText)}${hasGps ? ` <a class="text-link" href="${mapsHref}" target="_blank" rel="noopener">Google Maps</a>` : ''}</strong>
+      </div>
+      ${loc.notes ? `<div class="location-meta-item wide"><span>Notatki</span><strong class="notes-text">${escapeHtml(loc.notes)}</strong></div>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderLocationVisitSection(title, visits, icon, child = false) {
+  if (!visits.length) {
+    return `<div class="section location-visits-section">
+      <div class="section-title">${escapeHtml(title)}</div>
+      <div class="inline-empty">Brak wizyt w tej sekcji</div>
+    </div>`;
+  }
+  return `<div class="section location-visits-section">
+    <div class="section-header">
+      <div class="section-title">${escapeHtml(title)}</div>
+      <span class="location-section-count">${visits.length}</span>
+    </div>
+    <div class="location-visit-list">
+      ${visits.map(v => `<button class="location-visit-row" type="button" onclick="openTravel(${v.id})">
+        <span class="location-visit-icon">${icon}</span>
+        <span class="location-visit-main">
+          <span class="location-visit-name">${escapeHtml(v.travel_name || '(bez nazwy)')}</span>
+          ${child ? `<span class="location-visit-sub">${escapeHtml(v.child_location_name || '')}</span>` : ''}
+          <span class="location-visit-sub">${locationVisitDates(v)}</span>
+          ${v.notes ? `<span class="location-visit-note">${escapeHtml(v.notes)}</span>` : ''}
+        </span>
+        <span class="list-chevron">›</span>
+      </button>`).join('')}
+    </div>
+  </div>`;
 }
 
 function locCardHtml(l, showCountry = false) {
@@ -224,10 +381,7 @@ function locCardHtml(l, showCountry = false) {
 function renderLocList(locs) {
   const list = document.getElementById('loc-list');
   if (!locs.length) {
-    const search = document.getElementById('loc-search')?.value || '';
-    const type = document.getElementById('loc-type-filter')?.value || '';
-    const country = document.getElementById('loc-country-filter')?.value || '';
-    const hasFilter = search || type || country || currentLocationQualityFilter !== 'all';
+    const hasFilter = locationFilterActiveLabels().length > 0;
     list.innerHTML = hasFilter
       ? emptyState({ icon: '🔍', title: 'Brak wyników', message: 'Spróbuj innego zapytania albo wyczyść filtry.' })
       : emptyState({ icon: '📍', title: 'Brak miejsc', message: 'Dodaj pierwsze miejsce do swojej kolekcji podróży.', ctaLabel: '＋ Nowe miejsce', ctaOnclick: 'openNewLocationModal()' });
@@ -339,6 +493,8 @@ async function openLocation(id) {
     showTab('locations');
     return;
   }
+  const directVisits = Array.isArray(loc.visits) ? loc.visits : [];
+  const childVisits = Array.isArray(loc.child_visits) ? loc.child_visits : [];
   view.innerHTML = `
     <div class="detail-header">
       <button class="back-btn" onclick="showTab('locations')">‹ Miejsca</button>
@@ -346,39 +502,9 @@ async function openLocation(id) {
       <div class="detail-sub">${escapeHtml(loc.location_type)} · ${escapeHtml(loc.country_name)}</div>
     </div>
     <div class="detail-body">
-      <div class="section"><div class="section-title">Informacje</div>
-        <div class="info-grid">
-          <div class="info-item"><label>Typ miejsca</label><span>${escapeHtml(loc.location_type)}</span></div>
-          <div class="info-item"><label>Kraj</label><span>${escapeHtml(loc.country_name)}</span></div>
-          ${loc.parent_name ? `<div class="info-item"><label>Region / miasto</label><span class="item-link" onclick="openLocation(${loc.parent_location_id})">${escapeHtml(loc.parent_name)}</span></div>` : ''}
-          <div class="info-item"><label>Liczba wizyt</label><span>${loc.visit_count} ${loc.visit_count === 1 ? 'raz' : 'razy'}</span></div>
-          ${loc.address ? `<div class="info-item info-wide"><label>Adres</label><span>${escapeHtml(loc.address)}</span></div>` : ''}
-          ${(loc.latitude != null && loc.longitude != null) ? `
-          <div class="info-item info-wide">
-            <label>Współrzędne GPS</label>
-            <span class="mono-detail">
-              ${parseFloat(loc.latitude).toFixed(5)}, ${parseFloat(loc.longitude).toFixed(5)}
-              &nbsp;<a class="text-link" href="https://maps.google.com/?q=${loc.latitude},${loc.longitude}" target="_blank">📍 Google Maps</a>
-            </span>
-          </div>` : ''}
-        </div>
-        ${loc.notes ? `<div style="margin-top:10px"><div class="form-label">Notatki</div><div class="notes-text">${escapeHtml(loc.notes)}</div></div>` : ''}
-      </div>
-      ${loc.visits && loc.visits.length ? `<div class="section"><div class="section-title">Wizyty bezpośrednie (${loc.visits.length})</div>
-        ${loc.visits.map(v => `<div class="loc-row clickable-row" onclick="openTravel(${v.id})">
-          <div class="loc-icon">✈️</div><div style="flex:1"><div class="loc-name">${escapeHtml(v.travel_name || '(bez nazwy)')}</div>
-          <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div>
-          ${v.notes ? `<div class="loc-sub" style="font-style:italic">${escapeHtml(v.notes)}</div>` : ''}</div>
-          <div class="list-chevron">›</div></div>`).join('')}
-      </div>` : `<div class="section"><div class="empty inline-empty">Brak wizyt w bazie</div></div>`}
-      ${loc.child_visits && loc.child_visits.length ? `<div class="section"><div class="section-title">Wizyty przez lokalizacje podrzędne (${loc.child_visits.length})</div>
-        ${loc.child_visits.map(v => `<div class="loc-row clickable-row" onclick="openTravel(${v.id})">
-          <div class="loc-icon">📍</div><div style="flex:1">
-          <div class="loc-name">${escapeHtml(v.travel_name || '(bez nazwy)')}</div>
-          <div class="loc-sub">${escapeHtml(v.child_location_name)}</div>
-          <div class="loc-sub">${fmtDate(v.arrival_date)} – ${fmtDate(v.departure_date)}</div></div>
-          <div class="list-chevron">›</div></div>`).join('')}
-      </div>` : ''}
+      ${renderLocationDetailProfile(loc, directVisits, childVisits)}
+      ${renderLocationVisitSection('Wizyty bezpośrednie', directVisits, '✈️')}
+      ${childVisits.length ? renderLocationVisitSection('Wizyty przez miejsca podrzędne', childVisits, '📍', true) : ''}
       <button class="delete-btn" onclick="confirmDeleteLocation(${loc.id})">🗑 Usuń miejsce</button>
       <div style="height:12px"></div>
     </div>

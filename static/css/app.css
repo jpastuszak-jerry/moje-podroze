@@ -87,6 +87,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   border: 1px solid var(--border); background: var(--card); color: var(--text);
   font-size: 13px; cursor: pointer; }
 .filter-wide { grid-column: 1 / -1; }
+.filter-summary {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 8px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg);
+}
+.filter-summary-text {
+  min-width: 0; display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text2);
+}
+.filter-summary-text strong { color: var(--text); font-weight: 800; white-space: nowrap; }
+.filter-summary-text span {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.filter-reset-btn {
+  flex-shrink: 0; min-height: 28px; padding: 5px 10px;
+  border: none; border-radius: 15px; background: var(--blue-light); color: var(--blue);
+  font-size: 12px; font-weight: 800; cursor: pointer;
+}
+.filter-reset-btn:active { transform: scale(0.96); }
 .loc-quality-bar { padding: 8px 0 0; }
 .action-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .action-button {
@@ -453,6 +473,81 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .text-link { color: var(--blue); font-size: 12px; text-decoration: none; }
 .info-wide { grid-column: span 2; }
 .mono-detail { font-family: monospace; font-size: 13px; }
+.location-detail-card { display: flex; flex-direction: column; gap: 14px; }
+.location-profile-top { display: flex; gap: 12px; align-items: flex-start; }
+.location-profile-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--blue-light); color: var(--blue); font-size: 22px; flex-shrink: 0;
+}
+.location-profile-main { min-width: 0; flex: 1; }
+.location-profile-title {
+  font-size: 17px; font-weight: 850; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.location-profile-sub { margin-top: 2px; font-size: 12px; color: var(--text2); }
+.location-detail-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.location-detail-badge {
+  display: inline-flex; align-items: center; min-height: 24px;
+  padding: 4px 8px; border-radius: 13px;
+  background: var(--bg); color: var(--text2);
+  font-size: 11px; font-weight: 700;
+}
+.location-detail-badge.ok { background: var(--green-light); color: var(--green); }
+.location-detail-badge.warn { background: var(--orange-light); color: var(--orange); }
+.location-metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.location-metric {
+  min-width: 0; padding: 10px; border-radius: 10px;
+  background: var(--bg); border: 1px solid rgba(127,127,127,0.12);
+}
+.location-metric-value { font-size: 18px; line-height: 1; font-weight: 850; color: var(--text); }
+.location-metric-label { margin-top: 5px; font-size: 10px; font-weight: 800; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+.location-metric-sub { margin-top: 3px; font-size: 11px; color: var(--text2); }
+.location-meta-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.location-meta-item {
+  min-width: 0; padding-top: 9px; border-top: 1px solid rgba(127,127,127,0.12);
+}
+.location-meta-item.wide { grid-column: 1 / -1; }
+.location-meta-item span {
+  display: block; margin-bottom: 3px;
+  font-size: 10px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.location-meta-item strong {
+  display: block; min-width: 0;
+  font-size: 13px; color: var(--text); font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.location-meta-link {
+  border: none; background: transparent; padding: 0;
+  color: var(--blue); font: inherit; font-size: 13px; font-weight: 800;
+  text-align: left; cursor: pointer;
+}
+.location-section-count {
+  min-width: 24px; height: 24px; padding: 0 8px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg); color: var(--text2); font-size: 11px; font-weight: 800;
+}
+.location-visit-list { display: flex; flex-direction: column; }
+.location-visit-row {
+  width: 100%; min-height: 56px; display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border: none; border-top: 1px solid var(--border);
+  background: transparent; color: var(--text); text-align: left; cursor: pointer;
+}
+.location-visit-row:first-child { border-top: none; padding-top: 0; }
+.location-visit-row:last-child { padding-bottom: 0; }
+.location-visit-icon {
+  width: 32px; height: 32px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--blue-light); color: var(--blue); font-size: 16px; flex-shrink: 0;
+}
+.location-visit-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.location-visit-name {
+  font-size: 14px; font-weight: 800; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.location-visit-sub { font-size: 12px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.location-visit-note { font-size: 12px; color: var(--text2); font-style: italic; overflow-wrap: anywhere; }
 .person-row { display: flex; align-items: center; gap: 12px; padding: 10px 0;
   border-bottom: 1px solid var(--border); cursor: pointer; }
 .person-row:last-child { border-bottom: none; }
@@ -1203,6 +1298,15 @@ button.yearbook-highlight { cursor: pointer; }
   .yearbook-head { flex-direction: column; }
   .yearbook-trip { align-items: flex-start; flex-direction: column; gap: 3px; }
   .yearbook-trip-meta { max-width: 100%; }
+  .filter-summary { align-items: stretch; flex-direction: column; }
+  .filter-summary-text { align-items: flex-start; flex-direction: column; }
+  .filter-summary-text span { white-space: normal; }
+  .filter-reset-btn { width: 100%; }
+  .location-metrics-grid,
+  .location-meta-list { grid-template-columns: 1fr; }
+  .location-profile-title,
+  .location-visit-name,
+  .location-visit-sub { white-space: normal; }
 }
 
 .gbar-row {
@@ -1397,6 +1501,7 @@ button.yearbook-highlight { cursor: pointer; }
   .page-header > .search-box,
   .page-header > .filter-grid,
   .page-header > .loc-quality-bar,
+  .page-header > .filter-summary,
   .page-header > .action-strip {
     width: min(var(--desktop-content), 100%);
     margin-left: auto;

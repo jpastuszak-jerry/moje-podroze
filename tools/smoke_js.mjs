@@ -164,6 +164,33 @@ context.document.body.appendChild = previousAppendChild;
 assert.match(locationToolsOverlay.innerHTML, /Narzędzia miejsc/, 'locations view exposes admin actions via tools modal');
 assert.match(locationToolsOverlay.innerHTML, /Backup JSON/, 'tools modal keeps backup available');
 assert.match(locationToolsOverlay.innerHTML, /Kosz/, 'tools modal keeps trash available');
+assert.equal(context.locationResultLabel(1), 'wynik', 'location filter summary handles singular result label');
+assert.equal(context.locationResultLabel(3), 'wyniki', 'location filter summary handles plural result label');
+const locationProfileHtml = context.renderLocationDetailProfile({
+  id: 10,
+  name: 'Helsinki',
+  location_type: 'miasto',
+  country_name: 'Finlandia',
+  parent_name: 'Uusimaa',
+  parent_location_id: 11,
+  latitude: 60.1699,
+  longitude: 24.9384,
+  visit_count: 3,
+  last_visit: '2025-07-21',
+  address: 'Market Square',
+  notes: 'Port i centrum.',
+}, [{ id: 1 }], [{ id: 2 }]);
+assert.match(locationProfileHtml, /GPS zapisany/, 'location detail profile shows GPS status');
+assert.match(locationProfileHtml, /Wizyty łącznie/, 'location detail profile shows visit metrics');
+assert.match(locationProfileHtml, /Google Maps/, 'location detail profile keeps external map link');
+const locationVisitsHtml = context.renderLocationVisitSection('Wizyty', [{
+  id: 1,
+  travel_name: 'Finlandia',
+  arrival_date: '2025-07-18',
+  departure_date: '2025-07-21',
+  notes: 'Spacer',
+}], 'x');
+assert.match(locationVisitsHtml, /location-visit-row/, 'location detail renders visit rows as buttons');
 
 const swSource = fs.readFileSync(swPath, 'utf8');
 assert.match(swSource, /NO_STORE_API_PREFIXES/, 'service worker declares no-store API prefixes');

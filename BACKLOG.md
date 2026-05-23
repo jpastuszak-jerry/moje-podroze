@@ -69,7 +69,8 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - filtr "bez GPS",
 - filtr "odwiedzone / nieodwiedzone",
 - sortowanie po liczbie wizyt i ostatniej wizycie,
-- liczba wizyt i ostatnia wizyta na kafelkach miejsc.
+- liczba wizyt i ostatnia wizyta na kafelkach miejsc,
+- dopiete w `Improve location filters and detail card`: podsumowanie aktywnych filtrow, przycisk "Wyczysc filtry" i czytelniejsza karta szczegolow miejsca.
 
 **Weryfikacja:** lista miejsc pozwala szybko znalezc np. wszystkie miasta w Finlandii bez wspolrzednych.
 
