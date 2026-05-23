@@ -5,7 +5,13 @@ async function renderLocations(q = '') {
   const view = document.getElementById('view');
   if (!document.getElementById('loc-list')) {
     view.innerHTML = `
-      <div class="page-header"><div class="page-title">Miejsca</div>
+      <div class="page-header">
+        <div class="locations-title-row">
+          <div class="page-title">Miejsca</div>
+          <button class="location-tools-button" type="button" onclick="openLocationToolsModal()" title="Narzędzia miejsc" aria-label="Narzędzia miejsc">
+            <span class="action-button-icon">⚙️</span><span>Narzędzia</span>
+          </button>
+        </div>
         <div class="search-box"><input type="search" placeholder="Szukaj miejsca lub kraju..." id="loc-search" oninput="onLocSearch(this.value)"></div>
         <div class="filter-grid">
           <select class="filter-select" id="loc-country-filter" onchange="applyLocationFilters()">
@@ -26,14 +32,6 @@ async function renderLocations(q = '') {
           <button class="sort-btn" data-loc-quality="visited" onclick="setLocQualityFilter('visited')">Odwiedzone</button>
           <button class="sort-btn" data-loc-quality="not_visited" onclick="setLocQualityFilter('not_visited')">Nieodwiedzone</button>
           <button class="sort-btn" data-loc-quality="missing_gps" onclick="setLocQualityFilter('missing_gps')">Bez GPS</button>
-        </div>
-        <div class="action-strip">
-          <button class="action-button" onclick="openDictionaryModal('/api/countries','Kraje')"><span class="action-button-icon">🌍</span><span>Kraje</span></button>
-          <button class="action-button" onclick="openDictionaryModal('/api/location_types','Typy miejsc')"><span class="action-button-icon">📍</span><span>Typy</span></button>
-          <button class="action-button" onclick="openPersonsModal()"><span class="action-button-icon">👤</span><span>Osoby</span></button>
-          <button class="action-button" onclick="openLocationTodoView()"><span class="action-button-icon">✍️</span><span>Braki</span></button>
-          <button class="action-button" onclick="exportDatabase()"><span class="action-button-icon">💾</span><span>Backup</span></button>
-          <button class="action-button" onclick="openTrashModal()"><span class="action-button-icon">🗑</span><span>Kosz</span></button>
         </div></div>
       <div id="loc-list">${skeletonCards(4)}</div>
       <button class="fab" onclick="openNewLocationModal()">＋</button>`;
@@ -48,6 +46,68 @@ async function renderLocations(q = '') {
   allLocationsCache = Array.isArray(locs) ? locs : [];
   populateLocationFilters(allLocationsCache);
   applyLocationFilters();
+}
+
+function openLocationToolsModal() {
+  document.getElementById('location-tools-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'location-tools-overlay';
+  overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">Narzędzia miejsc</span>
+      <button class="modal-save" onclick="closeModal(document.getElementById('location-tools-overlay'))">Gotowe</button></div>
+    <div class="form-section">
+      <div class="location-tools-section">
+        <div class="form-label">Słowniki</div>
+        <div class="location-tools-grid">
+          <button class="location-tool-button" type="button" onclick="runLocationTool('countries')">
+            <span class="location-tool-icon">🌍</span>
+            <span class="location-tool-text"><span class="location-tool-label">Kraje</span><span class="location-tool-sub">Lista krajów używana przy miejscach.</span></span>
+          </button>
+          <button class="location-tool-button" type="button" onclick="runLocationTool('location_types')">
+            <span class="location-tool-icon">📍</span>
+            <span class="location-tool-text"><span class="location-tool-label">Typy miejsc</span><span class="location-tool-sub">Miasta, regiony, wyspy i inne typy.</span></span>
+          </button>
+          <button class="location-tool-button" type="button" onclick="runLocationTool('persons')">
+            <span class="location-tool-icon">👤</span>
+            <span class="location-tool-text"><span class="location-tool-label">Osoby</span><span class="location-tool-sub">Uczestnicy podróży i relacje.</span></span>
+          </button>
+        </div>
+      </div>
+      <div class="location-tools-section">
+        <div class="form-label">Utrzymanie danych</div>
+        <div class="location-tools-grid">
+          <button class="location-tool-button" type="button" onclick="runLocationTool('todo')">
+            <span class="location-tool-icon">✍️</span>
+            <span class="location-tool-text"><span class="location-tool-label">Braki w miejscach</span><span class="location-tool-sub">Miejsca wymagające uzupełnienia.</span></span>
+          </button>
+          <button class="location-tool-button" type="button" onclick="runLocationTool('backup')">
+            <span class="location-tool-icon">💾</span>
+            <span class="location-tool-text"><span class="location-tool-label">Backup JSON</span><span class="location-tool-sub">Pobierz kopię całej bazy.</span></span>
+          </button>
+          <button class="location-tool-button danger" type="button" onclick="runLocationTool('trash')">
+            <span class="location-tool-icon">🗑</span>
+            <span class="location-tool-text"><span class="location-tool-label">Kosz</span><span class="location-tool-sub">Przywracanie albo trwałe usuwanie.</span></span>
+          </button>
+        </div>
+      </div>
+    </div></div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
+  document.body.appendChild(overlay);
+  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+}
+
+function runLocationTool(action) {
+  const overlay = document.getElementById('location-tools-overlay');
+  closeModal(overlay);
+  setTimeout(() => {
+    if (action === 'countries') openDictionaryModal('/api/countries', 'Kraje');
+    else if (action === 'location_types') openDictionaryModal('/api/location_types', 'Typy miejsc');
+    else if (action === 'persons') openPersonsModal();
+    else if (action === 'todo') openLocationTodoView();
+    else if (action === 'backup') exportDatabase();
+    else if (action === 'trash') openTrashModal();
+  }, 180);
 }
 
 function populateLocationFilters(locs) {

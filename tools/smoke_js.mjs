@@ -8,6 +8,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const utilsPath = path.join(repoRoot, 'static', 'js', 'utils.js');
 const componentsPath = path.join(repoRoot, 'static', 'js', 'components.js');
 const dictionariesPath = path.join(repoRoot, 'static', 'js', 'dictionaries.js');
+const locationsPath = path.join(repoRoot, 'static', 'js', 'locations.js');
 const statsPath = path.join(repoRoot, 'static', 'js', 'stats.js');
 const swPath = path.join(repoRoot, 'static', 'sw.js');
 const wizardPath = path.join(repoRoot, 'static', 'js', 'wizard.js');
@@ -152,6 +153,17 @@ assert.equal(
   '22 rekordy',
   'export record count label is human-readable',
 );
+
+vm.runInContext(fs.readFileSync(locationsPath, 'utf8'), context, { filename: locationsPath });
+let locationToolsOverlay = null;
+const previousAppendChild = context.document.body.appendChild;
+context.document.body.appendChild = el => { locationToolsOverlay = el; };
+context.document.getElementById = id => (id === 'location-tools-overlay' ? null : null);
+context.openLocationToolsModal();
+context.document.body.appendChild = previousAppendChild;
+assert.match(locationToolsOverlay.innerHTML, /Narzędzia miejsc/, 'locations view exposes admin actions via tools modal');
+assert.match(locationToolsOverlay.innerHTML, /Backup JSON/, 'tools modal keeps backup available');
+assert.match(locationToolsOverlay.innerHTML, /Kosz/, 'tools modal keeps trash available');
 
 const swSource = fs.readFileSync(swPath, 'utf8');
 assert.match(swSource, /NO_STORE_API_PREFIXES/, 'service worker declares no-store API prefixes');
