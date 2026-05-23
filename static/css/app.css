@@ -107,6 +107,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   font-size: 12px; font-weight: 800; cursor: pointer;
 }
 .filter-reset-btn:active { transform: scale(0.96); }
+.travel-filter-panel {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px 12px;
+}
+.travel-filter-inner { display: flex; flex-direction: column; gap: 8px; }
+.travel-filter-grid {
+  display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 8px;
+}
+.travel-control {
+  min-width: 0; display: flex; flex-direction: column; gap: 4px;
+}
+.travel-control > span {
+  font-size: 10px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.travel-filter-summary {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 8px 10px; border-radius: 10px;
+  background: var(--bg); border: 1px solid var(--border);
+}
+.travel-filter-summary-text {
+  min-width: 0; display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text2);
+}
+.travel-filter-summary-text strong { color: var(--text); font-weight: 850; white-space: nowrap; }
+.travel-filter-summary-text span {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .loc-quality-bar { padding: 8px 0 0; }
 .action-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .action-button {
@@ -1302,6 +1332,9 @@ button.yearbook-highlight { cursor: pointer; }
   .filter-summary-text { align-items: flex-start; flex-direction: column; }
   .filter-summary-text span { white-space: normal; }
   .filter-reset-btn { width: 100%; }
+  .travel-filter-summary { align-items: stretch; flex-direction: column; }
+  .travel-filter-summary-text { align-items: flex-start; flex-direction: column; }
+  .travel-filter-summary-text span { white-space: normal; }
   .location-metrics-grid,
   .location-meta-list { grid-template-columns: 1fr; }
   .location-profile-title,
@@ -1537,6 +1570,7 @@ button.yearbook-highlight { cursor: pointer; }
   .sort-bar,
   .stats-section-tabs,
   .card-list,
+  .travel-filter-inner,
   .detail-body,
   .stats-grid,
   .hero-card,

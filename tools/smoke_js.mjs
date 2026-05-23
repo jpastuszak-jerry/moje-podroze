@@ -9,6 +9,7 @@ const utilsPath = path.join(repoRoot, 'static', 'js', 'utils.js');
 const componentsPath = path.join(repoRoot, 'static', 'js', 'components.js');
 const dictionariesPath = path.join(repoRoot, 'static', 'js', 'dictionaries.js');
 const locationsPath = path.join(repoRoot, 'static', 'js', 'locations.js');
+const travelsPath = path.join(repoRoot, 'static', 'js', 'travels.js');
 const statsPath = path.join(repoRoot, 'static', 'js', 'stats.js');
 const swPath = path.join(repoRoot, 'static', 'sw.js');
 const wizardPath = path.join(repoRoot, 'static', 'js', 'wizard.js');
@@ -201,6 +202,21 @@ const locationVisitsHtml = context.renderLocationVisitSection('Wizyty', [{
   notes: 'Spacer',
 }], 'x');
 assert.match(locationVisitsHtml, /location-visit-row/, 'location detail renders visit rows as buttons');
+
+vm.runInContext(fs.readFileSync(travelsPath, 'utf8'), context, { filename: travelsPath });
+const travelControlsHtml = vm.runInContext(`
+  currentSearch = 'Helsinki';
+  currentTravelYear = 2025;
+  currentSort = 'rating_desc';
+  const travelHost = document.createElement('div');
+  document.getElementById = id => (id === 'travel-controls' ? travelHost : null);
+  renderTravelControls(['2025', '2024'], 2);
+  travelHost.innerHTML;
+`, context);
+assert.match(travelControlsHtml, /travel-filter-grid/, 'travel filters render as compact select controls');
+assert.match(travelControlsHtml, /Wyczyść/, 'travel filters expose reset action when active');
+assert.doesNotMatch(travelControlsHtml, /sort-btn/, 'travel filters avoid long horizontal chip bars');
+assert.equal(context.travelResultLabel(2), 'podróże', 'travel filter summary has human-readable count labels');
 
 const swSource = fs.readFileSync(swPath, 'utf8');
 assert.match(swSource, /NO_STORE_API_PREFIXES/, 'service worker declares no-store API prefixes');

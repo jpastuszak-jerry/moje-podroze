@@ -1,3 +1,14 @@
+const TRAVEL_SORTS = [
+  { key: 'date_desc', label: 'Najnowsze' },
+  { key: 'date_asc', label: 'Najstarsze' },
+  { key: 'cost_desc', label: 'Najdroższe' },
+  { key: 'cost_asc', label: 'Najtańsze' },
+  { key: 'rating_desc', label: 'Najwyżej oceniane' },
+  { key: 'rating_asc', label: 'Najniżej oceniane' },
+  { key: 'name_asc', label: 'Nazwa A-Z' },
+  { key: 'todo', label: 'Do uzupełnienia' },
+];
+
 async function renderTravels(q) {
   if (q !== undefined) currentSearch = q;
   const view = document.getElementById('view');
@@ -5,8 +16,7 @@ async function renderTravels(q) {
     view.innerHTML =
       '<div class="page-header"><div class="page-title">Moje Podróże</div>' +
       '<div class="search-box"><input type="search" placeholder="Szukaj podróży..." id="travel-search" value="' + escapeHtml(currentSearch || '') + '" oninput="onTravelSearch(this.value)"></div></div>' +
-      '<div class="sort-bar" id="year-bar"></div>' +
-      '<div class="sort-bar" id="sort-bar"></div>' +
+      '<div class="travel-filter-panel" id="travel-controls"></div>' +
       '<div id="travel-list">' + skeletonCards(4) + '</div>' +
       '<button class="fab" onclick="openWizard()">＋</button>';
   }
@@ -14,41 +24,25 @@ async function renderTravels(q) {
   if (searchInput && searchInput.value !== (currentSearch || '')) {
     searchInput.value = currentSearch || '';
   }
-  const sortBar = document.getElementById('sort-bar');
-  if (sortBar) {
-    const sorts = [
-      {key:'date_desc', label:'📅 Najnowsze'},{key:'date_asc', label:'📅 Najstarsze'},
-      {key:'cost_desc', label:'💰 Najdroższe'},{key:'cost_asc', label:'💰 Najtańsze'},
-      {key:'rating_desc', label:'⭐ Najwyżej'},{key:'rating_asc', label:'⭐ Najniżej'},
-      {key:'name_asc', label:'🔤 Nazwa'},{key:'todo', label:'✍️ Do uzupełnienia'},
-    ];
-    sortBar.innerHTML = sorts.map(s => '<button class="sort-btn' + (currentSort === s.key ? ' active' : '') + '" onclick="setSort(\'' + s.key + '\')">' + s.label + '</button>').join('');
-  }
   const list = document.getElementById('travel-list');
   list.innerHTML = skeletonCards(4);
   let travels = await api('/api/travels' + (currentSearch ? '?q='+encodeURIComponent(currentSearch) : ''));
-  const yearBar = document.getElementById('year-bar');
-  if (yearBar) {
-    const years = [...new Set(travels.map(t => t.start_date && String(t.start_date).slice(0,4)).filter(Boolean))]
-      .sort((a,b) => b.localeCompare(a));
-    if (currentTravelYear && !years.includes(String(currentTravelYear))) currentTravelYear = null;
-    yearBar.innerHTML = years.length
-      ? '<button class="sort-btn' + (!currentTravelYear ? ' active' : '') + '" onclick="setTravelYear(null)">Wszystkie</button>'
-        + years.map(y => '<button class="sort-btn' + (String(currentTravelYear) === y ? ' active' : '') + '" onclick="setTravelYear(' + y + ')">' + y + '</button>').join('')
-      : '';
-  }
+  const years = [...new Set(travels.map(t => t.start_date && String(t.start_date).slice(0,4)).filter(Boolean))]
+    .sort((a,b) => b.localeCompare(a));
+  if (currentTravelYear && !years.includes(String(currentTravelYear))) currentTravelYear = null;
   if (currentTravelYear) {
     travels = travels.filter(t => t.start_date && String(t.start_date).startsWith(String(currentTravelYear)));
   }
+  travels = sortTravels(travels, currentSort);
+  renderTravelControls(years, travels.length);
   if (!travels.length) {
-    list.innerHTML = (currentSearch || currentTravelYear)
+    list.innerHTML = hasActiveTravelFilters()
       ? emptyState({ icon: '🔍', title: 'Brak wyników', message: currentSearch
           ? `Żadna podróż nie pasuje do "${currentSearch}".`
-          : `Brak podróży w ${currentTravelYear}.` })
+          : `Brak podróży dla wybranych filtrów.`, ctaLabel: 'Wyczyść filtry', ctaOnclick: 'resetTravelFilters()' })
       : emptyState({ icon: '✈️', title: 'Brak podróży', message: 'Dodaj pierwszą podróż, żeby zacząć kolekcjonować wspomnienia.', ctaLabel: '＋ Nowa podróż', ctaOnclick: 'openWizard()' });
     return;
   }
-  travels = sortTravels(travels, currentSort);
   list.innerHTML = '<div class="card-list">' + travels.map(t => {
     const done = t.is_description_complete;
     return '<div class="card' + (done ? ' completed' : '') + '" onclick="openTravel(' + t.id + ')">' +
@@ -62,6 +56,56 @@ async function renderTravels(q) {
       (t.amount > 0 ? '<span class="badge badge-purple">' + parseFloat(t.amount).toLocaleString('pl-PL') + ' ' + t.currency + '</span>' : '') +
       '</div></div></div></div>';
   }).join('') + '</div>';
+}
+
+function travelSortLabel(sort) {
+  return (TRAVEL_SORTS.find(s => s.key === sort) || TRAVEL_SORTS[0]).label;
+}
+
+function travelResultLabel(count) {
+  count = Number(count || 0);
+  if (count === 1) return 'podróż';
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'podróże';
+  return 'podróży';
+}
+
+function hasActiveTravelFilters() {
+  return Boolean((currentSearch || '').trim()) || Boolean(currentTravelYear) || currentSort !== 'date_desc';
+}
+
+function travelFilterLabels() {
+  const labels = [];
+  if ((currentSearch || '').trim()) labels.push(`Szukaj: ${currentSearch.trim()}`);
+  if (currentTravelYear) labels.push(String(currentTravelYear));
+  if (currentSort !== 'date_desc') labels.push(travelSortLabel(currentSort));
+  return labels;
+}
+
+function renderTravelControls(years, resultCount) {
+  const controls = document.getElementById('travel-controls');
+  if (!controls) return;
+  const yearOptions = '<option value="">Wszystkie lata</option>' +
+    years.map(y => `<option value="${escapeAttr(y)}"${String(currentTravelYear || '') === String(y) ? ' selected' : ''}>${escapeHtml(y)}</option>`).join('');
+  const sortOptions = TRAVEL_SORTS
+    .map(s => `<option value="${escapeAttr(s.key)}"${currentSort === s.key ? ' selected' : ''}>${escapeHtml(s.label)}</option>`)
+    .join('');
+  const labels = travelFilterLabels();
+  controls.innerHTML = `<div class="travel-filter-inner">
+    <div class="travel-filter-grid">
+      <label class="travel-control">
+        <span>Rok</span>
+        <select class="filter-select" id="travel-year-select" onchange="setTravelYear(this.value ? parseInt(this.value, 10) : null)">${yearOptions}</select>
+      </label>
+      <label class="travel-control">
+        <span>Sortowanie</span>
+        <select class="filter-select" id="travel-sort-select" onchange="setSort(this.value)">${sortOptions}</select>
+      </label>
+    </div>
+    ${labels.length ? `<div class="travel-filter-summary">
+      <div class="travel-filter-summary-text"><strong>${resultCount} ${travelResultLabel(resultCount)}</strong><span>${labels.map(escapeHtml).join(' · ')}</span></div>
+      <button class="filter-reset-btn" type="button" onclick="resetTravelFilters()">Wyczyść</button>
+    </div>` : ''}
+  </div>`;
 }
 
 function sortTravels(travels, sort) {
@@ -80,6 +124,15 @@ function sortTravels(travels, sort) {
 function setSort(sort) { currentSort = sort; renderTravels(); }
 function setTravelYear(y) { currentTravelYear = y; renderTravels(); }
 function onTravelSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderTravels(val), 400); }
+function resetTravelFilters() {
+  currentSearch = '';
+  currentTravelYear = null;
+  currentSort = 'date_desc';
+  clearTimeout(searchTimeout);
+  const searchInput = document.getElementById('travel-search');
+  if (searchInput) searchInput.value = '';
+  renderTravels('');
+}
 
 async function openTravel(id) {
   const view = document.getElementById('view');
