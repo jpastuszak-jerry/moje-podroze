@@ -164,6 +164,16 @@ context.document.body.appendChild = previousAppendChild;
 assert.match(locationToolsOverlay.innerHTML, /Narzędzia miejsc/, 'locations view exposes admin actions via tools modal');
 assert.match(locationToolsOverlay.innerHTML, /Backup JSON/, 'tools modal keeps backup available');
 assert.match(locationToolsOverlay.innerHTML, /Kosz/, 'tools modal keeps trash available');
+assert.equal(
+  context.locVisitSummary({ visit_count: 1, last_visit: '2025-07-21' }),
+  '1 wizyta · ostatnio 21 lip 2025',
+  'location visit summary shows the latest visit date',
+);
+assert.equal(
+  context.locVisitSummary({ visit_count: 1 }),
+  '1 wizyta · brak daty ostatniej wizyty',
+  'location visit summary does not claim that a visited place has no visits',
+);
 assert.equal(context.locationResultLabel(1), 'wynik', 'location filter summary handles singular result label');
 assert.equal(context.locationResultLabel(3), 'wyniki', 'location filter summary handles plural result label');
 const locationProfileHtml = context.renderLocationDetailProfile({

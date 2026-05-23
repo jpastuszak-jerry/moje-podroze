@@ -1,5 +1,5 @@
 import copy
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import unittest
 from unittest.mock import patch
 
@@ -445,6 +445,50 @@ class ApiContractSmokeTests(unittest.TestCase):
             set(data['needs_attention'][0]),
         )
         self.assertEqual(data['needs_attention'][0]['visit_count'], 0)
+
+    def test_location_detail_contract_derives_last_visit_from_visit_dates(self):
+        location_row = {
+            'id': 1,
+            'name': 'Helsinki',
+            'country_id': 1,
+            'location_type_id': 2,
+            'parent_location_id': None,
+            'country_name': 'Finland',
+            'location_type': 'miasto',
+            'address': '',
+            'notes': None,
+            'latitude': None,
+            'longitude': None,
+            'parent_name': None,
+        }
+        direct_visits = [{
+            'id': 10,
+            'travel_name': 'Finlandia',
+            'start_date': None,
+            'end_date': None,
+            'arrival_date': date(2025, 7, 18),
+            'departure_date': date(2025, 7, 21),
+            'notes': None,
+        }]
+        child_visits = [{
+            'id': 12,
+            'travel_name': 'Uusimaa',
+            'start_date': None,
+            'end_date': None,
+            'child_location_id': 4,
+            'child_location_name': 'Espoo',
+            'arrival_date': date(2025, 7, 22),
+            'departure_date': date(2025, 7, 23),
+        }]
+
+        with patch.object(locations, 'query', side_effect=[location_row, direct_visits, child_visits]):
+            response = self.client.get('/api/locations/1')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data['visit_count'], 2)
+        self.assertEqual(data['last_visit'], '2025-07-23')
+        self.assertEqual(data['visits'][0]['arrival_date'], '2025-07-18')
 
 
 if __name__ == '__main__':

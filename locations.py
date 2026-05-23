@@ -18,7 +18,7 @@ def get_locations():
                    l.address, l.notes, l.latitude, l.longitude,
                    l.parent_location_id, pl.name AS parent_name,
                    COUNT(DISTINCT t.id) AS visit_count,
-                   MAX(t.start_date) AS last_visit
+                   MAX(COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date)) AS last_visit
             FROM locations l
             JOIN countries c ON l.country_id = c.id
             JOIN location_types lt ON l.location_type_id = lt.id
@@ -135,7 +135,6 @@ def get_location(lid):
         WHERE tl.location_id = %s AND t.deleted_at IS NULL
         ORDER BY t.start_date
     """, (lid,))]
-    loc['visit_count'] = len(loc['visits'])
     loc['child_visits'] = [dict(r) for r in query("""
         SELECT t.id, t.name AS travel_name, t.start_date, t.end_date,
                l.id AS child_location_id, l.name AS child_location_name,
@@ -147,6 +146,17 @@ def get_location(lid):
           AND t.deleted_at IS NULL AND l.deleted_at IS NULL
         ORDER BY t.start_date, l.name
     """, (lid,))]
+
+    all_visits = loc['visits'] + loc['child_visits']
+    loc['visit_count'] = len({v.get('id') for v in all_visits if v.get('id') is not None})
+    visit_dates = [
+        visit_date
+        for v in all_visits
+        if (visit_date := (v.get('departure_date') or v.get('arrival_date') or v.get('end_date') or v.get('start_date')))
+    ]
+    last_visit = max(visit_dates, default=None)
+    loc['last_visit'] = str(last_visit) if last_visit else None
+
     for v in loc['visits']:
         for key in ('start_date', 'end_date', 'arrival_date', 'departure_date'):
             if v.get(key):
@@ -254,9 +264,9 @@ def get_map_locations():
                l.address, l.notes,
                c.name AS country_name,
                lt.name AS location_type,
-               COUNT(DISTINCT tl.travel_id) AS visit_count,
-               MIN(t.start_date) AS first_visit,
-               MAX(t.start_date) AS last_visit,
+               COUNT(DISTINCT t.id) AS visit_count,
+               MIN(COALESCE(tl.arrival_date, tl.departure_date, t.start_date, t.end_date)) AS first_visit,
+               MAX(COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date)) AS last_visit,
                STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name) AS travel_names
         FROM locations l
         JOIN countries c ON l.country_id = c.id

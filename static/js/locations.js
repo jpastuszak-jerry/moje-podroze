@@ -275,8 +275,9 @@ function locVisitCountLabel(count) {
 
 function locVisitSummary(loc) {
   const count = locationVisitCount(loc);
-  const last = loc.last_visit ? `ostatnio ${fmtDate(loc.last_visit)}` : 'brak wizyt';
-  return `${locVisitCountLabel(count)} · ${last}`;
+  if (count === 0) return 'brak wizyt';
+  if (!loc.last_visit) return `${locVisitCountLabel(count)} · brak daty ostatniej wizyty`;
+  return `${locVisitCountLabel(count)} · ostatnio ${fmtDate(loc.last_visit)}`;
 }
 
 function locationVisitDates(visit) {
