@@ -55,6 +55,35 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ## P2 - UX i praca z danymi
 
+### 0. Nastepny priorytet po przerwie: przebudowa Podsumowania statystyk
+
+**Status:** do zrobienia w pierwszej kolejnosci po przerwie.
+
+**Problem:** zakladka `Statystyki -> Podsumowanie` ma wartosciowe dane, ale wizualnie konkuruje sama ze soba: gradientowy hero, kolorowe stat-karty, Hall of Fame, streak, wykresy i rankingi maja zbyt wiele roznych stylow, kolorow i poziomow waznosci. Przez to najwazniejsze informacje nie sa czytane wystarczajaco szybko.
+
+**Proponowany kierunek:** przebudowac widok jako spokojniejszy dashboard z wyrazna hierarchia:
+- naglowek i filtr roku,
+- podzakladki statystyk,
+- blok "Najwazniejsze liczby" jako neutralne karty z malym akcentem koloru, bez mocnych gradientow,
+- blok "Aktualny kontekst" dla aktualnej podrozy / streaka / kompletacji danych,
+- Hall of Fame jako mocna, ale spojna sekcja rekordow,
+- wykresy i analizy nizej, w jednolitych kartach.
+
+**Zasady UI:**
+- ograniczyc liczbe konkurujacych gradientow i mocnych kolorow,
+- kolor traktowac jako akcent znaczeniowy, a nie dekoracje kazdej karty,
+- ujednolicic typy kart na stronie: metryki, rekordy, kontekst, wykresy,
+- na iPhonie pokazac najpierw 4 najwazniejsze liczby, potem pozostale informacje w czytelnej kolejnosci,
+- zachowac obecna logike danych, ale poprawic hierarchie wizualna i rytm sekcji.
+
+**Zakres pierwszego kroku:**
+- uporzadkowac hero i `stats-grid`,
+- wyciszyc gradientowe stat-karty,
+- ulozyc Hall of Fame i streak w jednym spokojnym rytmie,
+- zostawic glebsze wykresy bez duzej przebudowy logiki.
+
+**Weryfikacja:** na desktopie i iPhonie `Statystyki -> Podsumowanie` powinno szybko odpowiadac: ile podrozy/dni/krajow/miejsc, co jest teraz wazne oraz jakie sa rekordy, bez wrazenia kolorowego balaganu.
+
 ### 5. Widok miejsc "Do uzupelnienia" - DONE
 
 **Status:** zrobione w `34f9ee9 Add location completion worklist`.
