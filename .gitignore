@@ -7,6 +7,9 @@ connection string.txt
 travel.sqlite
 *.zip
 
+# Lokalne plany importu danych z prywatnych plikow
+tools/import_drafts/*.json
+
 # Claude Code (lokalna konfiguracja i pamięć)
 .claude/
 
