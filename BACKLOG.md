@@ -225,14 +225,14 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - wspolny renderer podzakladek,
 - wspolny renderer pustej karty,
 - wspolny renderer rankingowych belek,
-- podpiecie pierwszych helperow w `stats.js`.
+- podpiecie pierwszych helperow w `stats.js`,
+- rozszerzone w `Extend frontend components`: wspolne helpery dla selectow, paneli filtrow, badge'y, metryk hero i list kart,
+- podpiecie nowych helperow w `travels.js`, `locations.js`, `todo.js` i glownej karcie podsumowania statystyk.
 
 **Do rozwazenia dalej:** rozszerzac `static/js/components.js` bez frameworka o kolejne helpery, np.:
-- `renderCard`,
-- `renderFilterBar`,
-- `renderBadges`,
-- `renderMetricCard`,
-- `renderRankingBars`.
+- kolejne wyspecjalizowane karty szczegolow,
+- wspolne renderowanie metryk miejsc,
+- wspolne renderowanie sekcji modalowych.
 
 **Weryfikacja:** `stats.js`, `todo.js`, `locations.js` i `travels.js` maja mniej duplikacji, a wyglad kart/filtrow pozostaje spojny.
 

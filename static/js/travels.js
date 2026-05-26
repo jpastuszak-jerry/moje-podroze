@@ -43,19 +43,22 @@ async function renderTravels(q) {
       : emptyState({ icon: '✈️', title: 'Brak podróży', message: 'Dodaj pierwszą podróż, żeby zacząć kolekcjonować wspomnienia.', ctaLabel: '＋ Nowa podróż', ctaOnclick: 'openWizard()' });
     return;
   }
-  list.innerHTML = '<div class="card-list">' + travels.map(t => {
-    const done = t.is_description_complete;
-    return '<div class="card' + (done ? ' completed' : '') + '" onclick="openTravel(' + t.id + ')">' +
-      '<div class="card-inner"><div class="card-icon" style="background:' + purposeIconBg(t.purpose) + '">' + purposeIcon(t.purpose) + '</div>' +
-      '<div class="card-body"><div class="card-title">' + escapeHtml(t.name || '(bez nazwy)') + (done ? ' ✓' : '') + '</div>' +
-      '<div class="card-subtitle">' + fmtDate(t.start_date) + ' – ' + fmtDate(t.end_date) + ' · ' + daysCount(t.start_date, t.end_date) + ' dni</div>' +
-      '<div class="card-meta">' +
-      (t.purpose ? '<span class="badge ' + purposeColor(t.purpose) + '">' + escapeHtml(t.purpose) + '</span>' : '') +
-      (t.rating ? '<span class="badge badge-orange">' + stars(t.rating) + '</span>' : '') +
-      (t.has_photo_album ? '<span class="badge badge-green">📷 Album</span>' : '') +
-      (t.amount > 0 ? '<span class="badge badge-purple">' + parseFloat(t.amount).toLocaleString('pl-PL') + ' ' + t.currency + '</span>' : '') +
-      '</div></div></div></div>';
-  }).join('') + '</div>';
+  list.innerHTML = renderCardList(travels, travelCardHtml);
+}
+
+function travelCardHtml(t) {
+  const done = t.is_description_complete;
+  const badges = renderBadges([
+    t.purpose && { label: t.purpose, tone: purposeColor(t.purpose) },
+    t.rating && { html: stars(t.rating), tone: 'orange' },
+    t.has_photo_album && { label: '📷 Album', tone: 'green' },
+    t.amount > 0 && { label: `${parseFloat(t.amount).toLocaleString('pl-PL')} ${t.currency}`, tone: 'purple' },
+  ]);
+  return '<div class="card' + (done ? ' completed' : '') + '" onclick="openTravel(' + t.id + ')">' +
+    '<div class="card-inner"><div class="card-icon" style="background:' + purposeIconBg(t.purpose) + '">' + purposeIcon(t.purpose) + '</div>' +
+    '<div class="card-body"><div class="card-title">' + escapeHtml(t.name || '(bez nazwy)') + (done ? ' ✓' : '') + '</div>' +
+    '<div class="card-subtitle">' + fmtDate(t.start_date) + ' – ' + fmtDate(t.end_date) + ' · ' + daysCount(t.start_date, t.end_date) + ' dni</div>' +
+    '<div class="card-meta">' + badges + '</div></div></div></div>';
 }
 
 function travelSortLabel(sort) {
@@ -84,28 +87,40 @@ function travelFilterLabels() {
 function renderTravelControls(years, resultCount) {
   const controls = document.getElementById('travel-controls');
   if (!controls) return;
-  const yearOptions = '<option value="">Wszystkie lata</option>' +
-    years.map(y => `<option value="${escapeAttr(y)}"${String(currentTravelYear || '') === String(y) ? ' selected' : ''}>${escapeHtml(y)}</option>`).join('');
-  const sortOptions = TRAVEL_SORTS
-    .map(s => `<option value="${escapeAttr(s.key)}"${currentSort === s.key ? ' selected' : ''}>${escapeHtml(s.label)}</option>`)
-    .join('');
   const labels = travelFilterLabels();
-  controls.innerHTML = `<div class="travel-filter-inner">
-    <div class="travel-filter-grid">
-      <label class="travel-control">
-        <span>Rok</span>
-        <select class="filter-select" id="travel-year-select" onchange="setTravelYear(this.value ? parseInt(this.value, 10) : null)">${yearOptions}</select>
-      </label>
-      <label class="travel-control">
-        <span>Sortowanie</span>
-        <select class="filter-select" id="travel-sort-select" onchange="setSort(this.value)">${sortOptions}</select>
-      </label>
-    </div>
-    ${labels.length ? `<div class="travel-filter-summary">
-      <div class="travel-filter-summary-text"><strong>${resultCount} ${travelResultLabel(resultCount)}</strong><span>${labels.map(escapeHtml).join(' · ')}</span></div>
-      <button class="filter-reset-btn" type="button" onclick="resetTravelFilters()">Wyczyść</button>
-    </div>` : ''}
-  </div>`;
+  controls.innerHTML = renderFilterInner({
+    innerClass: 'travel-filter-inner',
+    gridClass: 'travel-filter-grid',
+    controls: [
+      {
+        label: 'Rok',
+        id: 'travel-year-select',
+        onchange: 'setTravelYear(this.value ? parseInt(this.value, 10) : null)',
+        controlClass: 'travel-control',
+        options: years,
+        selectedValue: currentTravelYear,
+        optionsHtml: renderSelectOptions(years, currentTravelYear, { emptyOption: 'Wszystkie lata' }),
+      },
+      {
+        label: 'Sortowanie',
+        id: 'travel-sort-select',
+        onchange: 'setSort(this.value)',
+        controlClass: 'travel-control',
+        options: TRAVEL_SORTS,
+        selectedValue: currentSort,
+        valueKey: 'key',
+      },
+    ],
+    summary: labels.length ? {
+      count: resultCount,
+      countLabel: travelResultLabel(resultCount),
+      detail: labels,
+      resetOnclick: 'resetTravelFilters()',
+      resetLabel: 'Wyczyść',
+      summaryClass: 'travel-filter-summary',
+      textClass: 'travel-filter-summary-text',
+    } : null,
+  });
 }
 
 function sortTravels(travels, sort) {

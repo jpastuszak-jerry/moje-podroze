@@ -169,6 +169,53 @@ const rankingHtml = context.renderRankingBars(
 assert.match(rankingHtml, /gbar-row/, 'renderRankingBars renders rows');
 assert.match(rankingHtml, /width:100%/, 'renderRankingBars scales top value to full width');
 
+const selectOptionsHtml = context.renderSelectOptions(
+  [{ key: 'all', label: 'All' }, { key: 'gps', label: 'GPS', count: 2 }],
+  'gps',
+  { valueKey: 'key' },
+);
+assert.match(selectOptionsHtml, /value="gps" selected/, 'renderSelectOptions marks selected object option');
+assert.match(selectOptionsHtml, /GPS \(2\)/, 'renderSelectOptions renders option counts');
+
+const filterPanelHtml = context.renderFilterPanel({
+  controls: [{
+    label: 'Kind',
+    id: 'kind-select',
+    onchange: 'setKind(this.value)',
+    options: ['A', 'B'],
+    selectedValue: 'B',
+  }],
+  summary: {
+    count: 0,
+    countLabel: 'items',
+    detail: 'No active filters',
+    resetOnclick: 'resetFilters()',
+  },
+});
+assert.match(filterPanelHtml, /aux-filter-panel/, 'renderFilterPanel renders shared filter shell');
+assert.match(filterPanelHtml, /0 items/, 'renderFilterSummary keeps zero counts visible');
+assert.match(filterPanelHtml, /resetFilters\(\)/, 'renderFilterSummary keeps reset action');
+
+const badgesHtml = context.renderBadges([
+  { label: 'Trip', tone: 'green' },
+  { html: '<strong>5</strong>', tone: 'orange' },
+]);
+assert.match(badgesHtml, /badge-green/, 'renderBadges supports per-item tones');
+assert.match(badgesHtml, /<strong>5<\/strong>/, 'renderBadges can render trusted HTML content');
+
+const heroMetricsHtml = context.renderHeroMetrics([
+  { value: 0, label: 'zero value' },
+  { valueHtml: '<span>42</span>', label: 'raw value', extraHtml: '<em>delta</em>' },
+]);
+assert.match(heroMetricsHtml, /<div class="hero-val">0<\/div>/, 'renderHeroMetrics renders zero values');
+assert.match(heroMetricsHtml, /<em>delta<\/em>/, 'renderHeroMetrics keeps trusted extra HTML');
+
+const cardListHtml = context.renderCardList([{ id: 1 }, { id: 2 }], item => `<article>${item.id}</article>`, {
+  className: 'card-list test-list',
+});
+assert.match(cardListHtml, /test-list/, 'renderCardList keeps custom list class');
+assert.equal(count(cardListHtml, '<article>'), 2, 'renderCardList renders each item');
+
 vm.runInContext(fs.readFileSync(mapPath, 'utf8'), context, { filename: mapPath });
 const mapView = elementStub();
 mapView.scrollTop = 260;

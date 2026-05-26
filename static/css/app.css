@@ -226,6 +226,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .icon-button:active { transform: scale(0.96); }
 .icon-button:hover { color: var(--blue); }
 .card-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.compact-card-list { padding-top: 4px; padding-bottom: 4px; }
 .card { background: var(--card); border-radius: var(--radius);
   box-shadow: var(--shadow); overflow: hidden; cursor: pointer;
   transition: transform .1s, opacity .1s; }

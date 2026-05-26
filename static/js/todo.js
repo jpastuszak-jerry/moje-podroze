@@ -24,33 +24,37 @@ function resetTodoControls() {
 }
 
 function renderTodoControls({ years, filters, totalItems, visibleItems }) {
-  const yearOptions = '<option value="">Wszystkie lata</option>' +
-    years.map(y => `<option value="${escapeAttr(y)}"${String(currentTodoYear || '') === String(y) ? ' selected' : ''}>${escapeHtml(y)}</option>`).join('');
-  const filterOptions = [{ key: 'all', label: 'Wszystkie braki', count: null }, ...filters]
-    .map(f => `<option value="${escapeAttr(f.key)}"${currentTodoFilter === f.key ? ' selected' : ''}>${escapeHtml(f.label)}${f.count != null ? ` (${f.count})` : ''}</option>`)
-    .join('');
   const labels = [];
   if (currentTodoYear) labels.push(String(currentTodoYear));
   const activeFilter = filters.find(f => f.key === currentTodoFilter);
   if (activeFilter) labels.push(activeFilter.label);
-  return `<div class="aux-filter-panel">
-    <div class="aux-filter-inner">
-      <div class="aux-filter-grid">
-        <label class="aux-control">
-          <span>Rok</span>
-          <select class="filter-select" id="todo-year-select" onchange="setTodoYear(this.value ? parseInt(this.value, 10) : null)">${yearOptions}</select>
-        </label>
-        <label class="aux-control">
-          <span>Typ braku</span>
-          <select class="filter-select" id="todo-filter-select" onchange="setTodoFilter(this.value)">${filterOptions}</select>
-        </label>
-      </div>
-      <div class="aux-filter-summary">
-        <div class="aux-filter-summary-text"><strong>${visibleItems} ${worklistCountLabel(visibleItems)}</strong><span>${labels.length ? labels.map(escapeHtml).join(' · ') : `${totalItems} podróży wymaga uwagi`}</span></div>
-        ${labels.length ? '<button class="filter-reset-btn" type="button" onclick="resetTodoControls()">Wyczyść</button>' : ''}
-      </div>
-    </div>
-  </div>`;
+  return renderFilterPanel({
+    controls: [
+      {
+        label: 'Rok',
+        id: 'todo-year-select',
+        onchange: 'setTodoYear(this.value ? parseInt(this.value, 10) : null)',
+        options: years,
+        selectedValue: currentTodoYear,
+        emptyOption: 'Wszystkie lata',
+      },
+      {
+        label: 'Typ braku',
+        id: 'todo-filter-select',
+        onchange: 'setTodoFilter(this.value)',
+        options: filters,
+        selectedValue: currentTodoFilter,
+        valueKey: 'key',
+        emptyOption: { key: 'all', label: 'Wszystkie braki' },
+      },
+    ],
+    summary: {
+      count: visibleItems,
+      countLabel: worklistCountLabel(visibleItems),
+      detail: labels.length ? labels : `${totalItems} podróży wymaga uwagi`,
+      resetOnclick: labels.length ? 'resetTodoControls()' : '',
+    },
+  });
 }
 
 function todoWorklistCardHtml(item) {
@@ -63,9 +67,7 @@ function todoWorklistCardHtml(item) {
           <button class="btn-add-small" onclick="event.stopPropagation(); openTodoEdit(${item.id})">Edytuj</button>
         </div>
         <div class="card-subtitle">${fmtDate(item.start_date)} · ${item.missing_count} ${item.missing_count === 1 ? 'brak' : 'braki'}</div>
-        <div class="card-meta">
-          ${(item.missing || []).map(label => `<span class="badge badge-orange">${escapeHtml(label)}</span>`).join('')}
-        </div>
+        <div class="card-meta">${renderBadges(item.missing || [], { tone: 'orange' })}</div>
       </div>
     </div>
   </div>`;
@@ -106,12 +108,12 @@ async function renderTodo() {
 
   html += `<div class="hero-card">
     <div class="hero-label">${escapeHtml(yearLabel)}</div>
-    <div class="hero-numbers">
-      <div class="hero-number"><div class="hero-val">${data.total || 0}</div><div class="hero-key">podróży w zakresie</div></div>
-      <div class="hero-number"><div class="hero-val">${data.needs_attention?.length || 0}</div><div class="hero-key">wymaga uwagi</div></div>
-      <div class="hero-number"><div class="hero-val">${items.length}</div><div class="hero-key">na tej liście</div></div>
-      <div class="hero-number"><div class="hero-val">${filters.length}</div><div class="hero-key">typów braków</div></div>
-    </div>
+    ${renderHeroMetrics([
+      { value: data.total || 0, label: 'podróży w zakresie' },
+      { value: data.needs_attention?.length || 0, label: 'wymaga uwagi' },
+      { value: items.length, label: 'na tej liście' },
+      { value: filters.length, label: 'typów braków' },
+    ])}
   </div>`;
 
   if (!items.length) {
@@ -126,9 +128,7 @@ async function renderTodo() {
     return;
   }
 
-  html += '<div class="card-list worklist-list">';
-  html += items.map(todoWorklistCardHtml).join('');
-  html += '</div>';
+  html += renderCardList(items, todoWorklistCardHtml, { className: 'card-list worklist-list' });
   view.innerHTML = html;
 }
 

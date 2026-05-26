@@ -446,12 +446,12 @@ async function renderStats() {
   if (currentStatsSection === 'overview') {
   html += `<div class="hero-card">
     <div class="hero-label">${escapeHtml(heroLabel)}${prev ? ` &nbsp;·&nbsp; <span style="opacity:0.6">vs ${prev.year}</span>` : ''}</div>
-    <div class="hero-numbers">
-      <div class="hero-number"><div class="hero-val">${s.total_trips}</div><div class="hero-key">${currentStatsYear ? 'podróży w roku' : 'podróży'}</div>${prev ? yoyDelta(s.total_trips, prev.total_trips) : ''}</div>
-      <div class="hero-number"><div class="hero-val">${s.total_days}</div><div class="hero-key">dni w trasie</div>${prev ? yoyDelta(s.total_days, prev.total_days) : ''}</div>
-      <div class="hero-number"><div class="hero-val">${s.countries}</div><div class="hero-key">krajów</div>${prev ? yoyDelta(s.countries, prev.countries) : ''}</div>
-      <div class="hero-number"><div class="hero-val">${s.flights}</div><div class="hero-key">lotów</div>${prev ? yoyDelta(s.flights, prev.flights) : ''}</div>
-    </div>
+    ${renderHeroMetrics([
+      { value: s.total_trips, label: currentStatsYear ? 'podróży w roku' : 'podróży', extraHtml: prev ? yoyDelta(s.total_trips, prev.total_trips) : '' },
+      { value: s.total_days, label: 'dni w trasie', extraHtml: prev ? yoyDelta(s.total_days, prev.total_days) : '' },
+      { value: s.countries, label: 'krajów', extraHtml: prev ? yoyDelta(s.countries, prev.countries) : '' },
+      { value: s.flights, label: 'lotów', extraHtml: prev ? yoyDelta(s.flights, prev.flights) : '' },
+    ])}
     ${heroAmount ? `<div class="hero-amount">${heroAmount}</div>` : ''}
   </div>`;
 

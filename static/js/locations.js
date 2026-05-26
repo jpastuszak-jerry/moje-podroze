@@ -139,14 +139,12 @@ function populateLocationFilters(locs) {
   if (countryEl) {
     const selected = countryEl.value;
     const countries = [...new Set(locs.map(l => l.country_name).filter(Boolean))].sort();
-    countryEl.innerHTML = '<option value="">Wszystkie kraje</option>' +
-      countries.map(c => `<option value="${escapeAttr(c)}"${c === selected ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('');
+    countryEl.innerHTML = renderSelectOptions(countries, selected, { emptyOption: 'Wszystkie kraje' });
   }
   if (typeEl) {
     const selected = typeEl.value;
     const types = [...new Set(locs.map(l => l.location_type).filter(Boolean))].sort();
-    typeEl.innerHTML = '<option value="">Wszystkie typy</option>' +
-      types.map(t => `<option value="${escapeAttr(t)}"${t === selected ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('');
+    typeEl.innerHTML = renderSelectOptions(types, selected, { emptyOption: 'Wszystkie typy' });
   }
 }
 
@@ -365,7 +363,7 @@ function locCardHtml(l, showCountry = false) {
   const type = escapeHtml(l.location_type || '');
   const parent = l.parent_name ? ` · ${escapeHtml(l.parent_name)}` : '';
   const country = showCountry ? `${escapeHtml(l.country_name || '')} · ` : '';
-  const gpsBadge = locationHasGps(l) ? '' : '<span class="badge badge-orange">bez GPS</span>';
+  const gpsBadge = locationHasGps(l) ? '' : renderBadge('bez GPS', { tone: 'orange' });
   return `<div class="card" onclick="openLocation(${l.id})"><div class="card-inner">
     <div class="card-icon" style="background:var(--blue-light)">${locationIcon(l.location_type)}</div>
     <div class="card-body">
@@ -389,16 +387,14 @@ function renderLocList(locs) {
     return;
   }
   if (currentLocationSort !== 'country_name') {
-    list.innerHTML = `<div class="card-list">${locs.map(l => locCardHtml(l, true)).join('')}</div>`;
+    list.innerHTML = renderCardList(locs, l => locCardHtml(l, true));
     return;
   }
   const grouped = {};
   locs.forEach(l => { if (!grouped[l.country_name]) grouped[l.country_name] = []; grouped[l.country_name].push(l); });
   list.innerHTML = Object.entries(grouped).map(([country, items]) => `
     <div class="country-header">${escapeHtml(country)}</div>
-    <div class="card-list" style="padding-top:4px;padding-bottom:4px">
-      ${items.map(l => locCardHtml(l)).join('')}
-    </div>`).join('');
+    ${renderCardList(items, l => locCardHtml(l), { className: 'card-list compact-card-list' })}`).join('');
 }
 
 function onLocSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderLocations(val), 400); }
@@ -421,24 +417,25 @@ function resetLocationTodoControls() {
 }
 
 function renderLocationTodoControls({ filters, totalItems, visibleItems }) {
-  const filterOptions = [{ key: 'all', label: 'Wszystkie braki', count: null }, ...filters]
-    .map(f => `<option value="${escapeAttr(f.key)}"${currentLocationTodoFilter === f.key ? ' selected' : ''}>${escapeHtml(f.label)}${f.count != null ? ` (${f.count})` : ''}</option>`)
-    .join('');
   const activeFilter = filters.find(f => f.key === currentLocationTodoFilter);
-  return `<div class="aux-filter-panel">
-    <div class="aux-filter-inner">
-      <div class="aux-filter-grid single">
-        <label class="aux-control">
-          <span>Typ braku</span>
-          <select class="filter-select" id="location-todo-filter-select" onchange="setLocationTodoFilter(this.value)">${filterOptions}</select>
-        </label>
-      </div>
-      <div class="aux-filter-summary">
-        <div class="aux-filter-summary-text"><strong>${visibleItems} ${worklistCountLabel(visibleItems)}</strong><span>${activeFilter ? escapeHtml(activeFilter.label) : `${totalItems} miejsc wymaga uwagi`}</span></div>
-        ${activeFilter ? '<button class="filter-reset-btn" type="button" onclick="resetLocationTodoControls()">Wyczyść</button>' : ''}
-      </div>
-    </div>
-  </div>`;
+  return renderFilterPanel({
+    gridClass: 'aux-filter-grid single',
+    controls: [{
+      label: 'Typ braku',
+      id: 'location-todo-filter-select',
+      onchange: 'setLocationTodoFilter(this.value)',
+      options: filters,
+      selectedValue: currentLocationTodoFilter,
+      valueKey: 'key',
+      emptyOption: { key: 'all', label: 'Wszystkie braki' },
+    }],
+    summary: {
+      count: visibleItems,
+      countLabel: worklistCountLabel(visibleItems),
+      detail: activeFilter ? activeFilter.label : `${totalItems} miejsc wymaga uwagi`,
+      resetOnclick: activeFilter ? 'resetLocationTodoControls()' : '',
+    },
+  });
 }
 
 function locationTodoCardHtml(item) {
@@ -451,9 +448,7 @@ function locationTodoCardHtml(item) {
           <button class="btn-add-small" onclick="event.stopPropagation(); openEditLocationModal(${item.id})">Edytuj</button>
         </div>
         <div class="card-subtitle">${escapeHtml(item.location_type)} · ${escapeHtml(item.country_name)} · ${item.visit_count || 0} wizyt</div>
-        <div class="card-meta">
-          ${(item.missing || []).map(label => `<span class="badge badge-orange">${escapeHtml(label)}</span>`).join('')}
-        </div>
+        <div class="card-meta">${renderBadges(item.missing || [], { tone: 'orange' })}</div>
       </div>
     </div>
   </div>`;
@@ -489,12 +484,12 @@ async function renderLocationTodo() {
   });
   html += `<div class="hero-card">
     <div class="hero-label">Jakość miejsc</div>
-    <div class="hero-numbers">
-      <div class="hero-number"><div class="hero-val">${data.total || 0}</div><div class="hero-key">miejsc w bazie</div></div>
-      <div class="hero-number"><div class="hero-val">${data.needs_attention?.length || 0}</div><div class="hero-key">wymaga uwagi</div></div>
-      <div class="hero-number"><div class="hero-val">${items.length}</div><div class="hero-key">na tej liście</div></div>
-      <div class="hero-number"><div class="hero-val">${filters.length}</div><div class="hero-key">typów braków</div></div>
-    </div>
+    ${renderHeroMetrics([
+      { value: data.total || 0, label: 'miejsc w bazie' },
+      { value: data.needs_attention?.length || 0, label: 'wymaga uwagi' },
+      { value: items.length, label: 'na tej liście' },
+      { value: filters.length, label: 'typów braków' },
+    ])}
   </div>`;
 
   if (!items.length) {
@@ -509,9 +504,7 @@ async function renderLocationTodo() {
     return;
   }
 
-  html += '<div class="card-list worklist-list">';
-  html += items.map(locationTodoCardHtml).join('');
-  html += '</div>';
+  html += renderCardList(items, locationTodoCardHtml, { className: 'card-list worklist-list' });
   view.innerHTML = html;
 }
 
