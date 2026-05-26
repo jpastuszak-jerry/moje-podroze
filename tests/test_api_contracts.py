@@ -189,13 +189,13 @@ def fake_stats_query(sql, params=(), one=False):
 
     if 'COUNT(*) AS cnt FROM locations' in normalized:
         return {'cnt': 4}
-    if 'ORDER BY days DESC LIMIT 1' in normalized and '(end_date - start_date + 1)' in normalized:
+    if 'ORDER BY days DESC' in normalized and '(end_date - start_date + 1)' in normalized:
         return {'id': 1, 'name': 'Longest trip', 'days': 11}
     if 'SELECT id, name, amount, currency' in normalized:
         return {'id': 1, 'name': 'Priciest trip', 'amount': 1000.0, 'currency': 'EUR'}
     if 'SELECT id, name, rating' in normalized:
         return {'id': 1, 'name': 'Best trip', 'rating': 4.5}
-    if 'COUNT(tl.id) AS loc_count' in normalized:
+    if 'COUNT(DISTINCT tl.location_id) AS loc_count' in normalized:
         return {'id': 1, 'name': 'Most places', 'loc_count': 7}
     if 'number_of_flights' in normalized:
         return {'id': 1, 'name': 'Most flights', 'number_of_flights': 4}
@@ -380,6 +380,25 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertEqual(hall_of_fame['top_country']['name'], 'Finland')
         self.assertEqual(hall_of_fame['longest_streak']['start_date'], '2025-07-18')
         self.assertEqual(hall_of_fame['best_month'], {'year': 2025, 'month': 7, 'value': 11})
+
+    def test_hall_of_fame_queries_avoid_stale_or_duplicate_records(self):
+        captured = []
+
+        def capture_hof_query(sql, params=(), one=False):
+            captured.append(' '.join(sql.split()))
+            return fake_stats_query(sql, params, one)
+
+        with patch.object(stats_hall_of_fame, 'query', side_effect=capture_hof_query):
+            stats_hall_of_fame._hall_of_fame()
+
+        most_places_sql = next(sql for sql in captured if 'AS loc_count' in sql)
+        self.assertIn('COUNT(DISTINCT tl.location_id) AS loc_count', most_places_sql)
+        self.assertIn('JOIN locations l ON l.id = tl.location_id', most_places_sql)
+        self.assertIn('l.deleted_at IS NULL', most_places_sql)
+
+        gap_sql = next(sql for sql in captured if 'AS gap_days' in sql)
+        self.assertIn('MAX(end_date) OVER', gap_sql)
+        self.assertIn('ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING', gap_sql)
 
     def test_stats_todo_endpoint_contract(self):
         payload = _data_quality_payload()

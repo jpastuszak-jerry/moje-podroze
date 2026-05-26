@@ -412,6 +412,142 @@ function renderCountryHistory(history, year) {
   </div>`;
 }
 
+function hallOfFameRecords(hof, monthLabels = []) {
+  if (!hof) return [];
+  return [
+    hof.longest && {
+      key: 'longest',
+      icon: '📅',
+      title: 'Najdłuższa',
+      value: `${hof.longest.value} dni`,
+      name: hof.longest.name,
+      id: hof.longest.id,
+      tone: '#1a6fdb',
+      soft: 'rgba(26,111,219,0.12)',
+      featured: true,
+    },
+    hof.priciest && {
+      key: 'priciest',
+      icon: '💰',
+      title: 'Najdroższa',
+      value: `${Math.round(hof.priciest.value).toLocaleString('pl-PL')} ${hof.priciest.currency}`,
+      name: hof.priciest.name,
+      id: hof.priciest.id,
+      tone: '#e11d48',
+      soft: 'rgba(225,29,72,0.12)',
+      featured: true,
+    },
+    hof.best_rated && {
+      key: 'best_rated',
+      icon: '⭐',
+      title: 'Najwyżej oceniana',
+      valueHtml: stars(hof.best_rated.value),
+      name: hof.best_rated.name,
+      id: hof.best_rated.id,
+      tone: '#f97316',
+      soft: 'rgba(249,115,22,0.13)',
+      featured: true,
+    },
+    hof.most_places && {
+      key: 'most_places',
+      icon: '📍',
+      title: 'Najwięcej miejsc',
+      value: `${hof.most_places.value} miejsc`,
+      name: hof.most_places.name,
+      id: hof.most_places.id,
+      tone: '#7c3aed',
+      soft: 'rgba(124,58,237,0.12)',
+    },
+    hof.most_flights && {
+      key: 'most_flights',
+      icon: '🛫',
+      title: 'Najwięcej lotów',
+      value: `${hof.most_flights.value} lotów`,
+      name: hof.most_flights.name,
+      id: hof.most_flights.id,
+      tone: '#0891b2',
+      soft: 'rgba(8,145,178,0.12)',
+    },
+    hof.most_countries && {
+      key: 'most_countries',
+      icon: '🌍',
+      title: 'Najwięcej krajów',
+      value: `${hof.most_countries.value} krajów`,
+      name: hof.most_countries.name,
+      id: hof.most_countries.id,
+      tone: '#059669',
+      soft: 'rgba(5,150,105,0.12)',
+    },
+    hof.top_country && {
+      key: 'top_country',
+      icon: '🏳️',
+      title: 'Najczęstszy kraj',
+      value: `${hof.top_country.visits}×`,
+      name: hof.top_country.name,
+      sub: `${hof.top_country.days} dni`,
+      tone: '#d97706',
+      soft: 'rgba(217,119,6,0.13)',
+    },
+    hof.longest_gap && {
+      key: 'longest_gap',
+      icon: '⏳',
+      title: 'Najdłuższa przerwa',
+      value: `${hof.longest_gap.value} dni`,
+      name: hof.longest_gap.name,
+      id: hof.longest_gap.id,
+      tone: '#9f1239',
+      soft: 'rgba(159,18,57,0.12)',
+    },
+    hof.longest_streak && {
+      key: 'longest_streak',
+      icon: '🔥',
+      title: 'Najdłuższa seria',
+      value: `${hof.longest_streak.value} dni`,
+      name: `${fmtDate(hof.longest_streak.start_date)} – ${fmtDate(hof.longest_streak.end_date)}`,
+      tone: '#dc2626',
+      soft: 'rgba(220,38,38,0.12)',
+    },
+    hof.best_month && {
+      key: 'best_month',
+      icon: '🗓',
+      title: 'Najlepszy miesiąc',
+      value: `${hof.best_month.value} dni`,
+      name: `${monthLabels[hof.best_month.month] || hof.best_month.month} ${hof.best_month.year}`,
+      tone: '#4f46e5',
+      soft: 'rgba(79,70,229,0.12)',
+    },
+  ].filter(Boolean);
+}
+
+function renderHallOfFameCard(record) {
+  const classes = ['hof-card'];
+  if (record.featured) classes.push('featured');
+  if (record.id) classes.push('hof-clickable');
+  const style = `--hof-accent:${record.tone};--hof-soft:${record.soft}`;
+  const value = record.valueHtml != null ? record.valueHtml : escapeHtml(record.value);
+  const body = `<div class="hof-icon">${record.icon}</div>
+    <div class="hof-main">
+      <div class="hof-cat">${escapeHtml(record.title)}</div>
+      <div class="hof-value">${value}</div>
+      <div class="hof-name">${escapeHtml(record.name)}</div>
+      ${record.sub ? `<div class="hof-sub">${escapeHtml(record.sub)}</div>` : ''}
+    </div>`;
+  if (record.id) {
+    const ariaLabel = `Otwórz podróż: ${record.title}, ${record.name}`;
+    return `<button type="button" class="${escapeAttr(classes.join(' '))}" style="${escapeAttr(style)}" aria-label="${escapeAttr(ariaLabel)}" onclick="openTravel(${record.id})">${body}</button>`;
+  }
+  return `<div class="${escapeAttr(classes.join(' '))}" style="${escapeAttr(style)}">${body}</div>`;
+}
+
+function renderHallOfFame(hof, monthLabels = []) {
+  const records = hallOfFameRecords(hof, monthLabels);
+  if (!records.length) return '';
+  return `<div class="hof-section">
+    <div class="section-title hof-title-row">🏆 Hall of Fame <span class="hof-hint">${records.length} rekordów</span></div>
+    <div class="hof-grid">${records.map(renderHallOfFameCard).join('')}</div>
+  </div>`;
+}
+
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
@@ -481,45 +617,7 @@ async function renderStats() {
     html += '</div>';
   }
 
-  if (s.hall_of_fame) {
-    const hof = s.hall_of_fame;
-    const grads = [
-      'linear-gradient(135deg,#1a6fdb,#0d47a1)',
-      'linear-gradient(135deg,#e11d48,#9f1239)',
-      'linear-gradient(135deg,#f97316,#c2410c)',
-      'linear-gradient(135deg,#7c3aed,#4c1d95)',
-      'linear-gradient(135deg,#0891b2,#164e63)',
-    ];
-    const records = [
-      hof.longest && { icon:'📅', title:'Najdłuższa', value: hof.longest.value+' dni', id: hof.longest.id, name: hof.longest.name },
-      hof.priciest && { icon:'💰', title:'Najdroższa', value: Math.round(hof.priciest.value).toLocaleString('pl-PL')+' '+hof.priciest.currency, id: hof.priciest.id, name: hof.priciest.name },
-      hof.best_rated && { icon:'⭐', title:'Najwyżej oceniana', value: stars(hof.best_rated.value), id: hof.best_rated.id, name: hof.best_rated.name },
-      hof.most_places && { icon:'📍', title:'Najwięcej miejsc', value: hof.most_places.value+' miejsc', id: hof.most_places.id, name: hof.most_places.name },
-      hof.most_flights && { icon:'🛫', title:'Najwięcej lotów', value: hof.most_flights.value+' lotów', id: hof.most_flights.id, name: hof.most_flights.name },
-      hof.most_countries && { icon:'🌍', title:'Najwięcej krajów', value: hof.most_countries.value+' krajów', id: hof.most_countries.id, name: hof.most_countries.name },
-      hof.top_country && { icon:'🏳️', title:'Najczęstszy kraj', value: `${hof.top_country.visits}× · ${hof.top_country.days} dni`, name: hof.top_country.name },
-      hof.longest_gap && { icon:'⏳', title:'Najdłuższa przerwa', value: hof.longest_gap.value+' dni', id: hof.longest_gap.id, name: hof.longest_gap.name },
-      hof.longest_streak && { icon:'🔥', title:'Najdłuższa seria', value: hof.longest_streak.value+' dni', name: `${fmtDate(hof.longest_streak.start_date)} – ${fmtDate(hof.longest_streak.end_date)}` },
-      hof.best_month && { icon:'🗓', title:'Najlepszy miesiąc', value: hof.best_month.value+' dni', name: `${months[hof.best_month.month]} ${hof.best_month.year}` },
-    ].filter(Boolean);
-    if (records.length) {
-      html += '<div class="hof-section">';
-      html += `<div class="section-title hof-title-row">🏆 Hall of Fame <span class="hof-hint">${records.length} kategorie</span></div>`;
-      html += '<div class="hof-scroll-wrap"><button class="hof-nav hof-nav-prev" type="button" aria-label="Poprzednie rekordy">‹</button><div class="hof-scroll">';
-      records.forEach((r, i) => {
-        const clickAttr = r.id ? ` onclick="openTravel(${r.id})"` : '';
-        html += `<div class="hof-card"${clickAttr} style="background:${grads[i % grads.length]}">
-          <div class="hof-icon">${r.icon}</div>
-          <div class="hof-cat">${escapeHtml(r.title)}</div>
-          <div class="hof-name">${escapeHtml(r.name)}</div>
-          <div class="hof-value">${r.value}</div>
-        </div>`;
-      });
-      html += '</div><button class="hof-nav hof-nav-next" type="button" aria-label="Następne rekordy">›</button><div class="hof-fade"></div></div>';
-      html += '<div class="hof-dots">' + records.map((_, i) => `<div class="hof-dot${i === 0 ? ' active' : ''}"></div>`).join('') + '</div>';
-      html += '</div>';
-    }
-  }
+  html += renderHallOfFame(s.hall_of_fame, months);
 
   html += '<div class="stats-grid">';
   html += '<div class="stat-card sc-blue"><div class="stat-icon">✈️</div><div class="stat-value">'+s.total_trips+'</div><div class="stat-label">'+(currentStatsYear?'Podróży w roku':'Podróży')+'</div>'+(prev?yoyDelta(s.total_trips, prev.total_trips):'')+'</div>';
@@ -671,35 +769,6 @@ async function renderStats() {
   }
   html += '</div><div style="height:16px"></div>';
   view.innerHTML = html;
-
-  const hofScroll = view.querySelector('.hof-scroll');
-  const hofDots = view.querySelectorAll('.hof-dot');
-  if (hofScroll && hofDots.length) {
-    const firstCard = hofScroll.querySelector('.hof-card');
-    const cardStep = firstCard ? firstCard.offsetWidth + 10 : 180;
-    const prevBtn = view.querySelector('.hof-nav-prev');
-    const nextBtn = view.querySelector('.hof-nav-next');
-    const updateHofNav = () => {
-      const idx = Math.min(hofDots.length - 1, Math.round(hofScroll.scrollLeft / cardStep));
-      hofDots.forEach((d, i) => d.classList.toggle('active', i === idx));
-      const maxScroll = hofScroll.scrollWidth - hofScroll.clientWidth - 2;
-      if (prevBtn) prevBtn.disabled = hofScroll.scrollLeft <= 2;
-      if (nextBtn) nextBtn.disabled = hofScroll.scrollLeft >= maxScroll;
-    };
-    const scrollHof = direction => {
-      hofScroll.scrollBy({ left: direction * cardStep * 2, behavior: 'smooth' });
-    };
-    prevBtn?.addEventListener('click', () => scrollHof(-1));
-    nextBtn?.addEventListener('click', () => scrollHof(1));
-    hofScroll.addEventListener('wheel', e => {
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
-      e.preventDefault();
-      hofScroll.scrollLeft += e.deltaY;
-    }, { passive: false });
-    hofScroll.addEventListener('scroll', updateHofNav, { passive: true });
-    window.addEventListener('resize', updateHofNav, { passive: true });
-    updateHofNav();
-  }
 
   initStatsMiniMap(s.top_places || []);
 }

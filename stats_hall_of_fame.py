@@ -11,25 +11,36 @@ def _hof_row(sql):
 def _hall_of_fame():
     hof_longest = _hof_row("""
         SELECT id, name, (end_date - start_date + 1) AS days
-        FROM travels WHERE deleted_at IS NULL ORDER BY days DESC LIMIT 1
+        FROM travels
+        WHERE deleted_at IS NULL
+        ORDER BY days DESC, start_date DESC, id DESC LIMIT 1
     """)
     hof_priciest = _hof_row("""
         SELECT id, name, amount, currency
-        FROM travels WHERE deleted_at IS NULL AND amount > 0 ORDER BY amount DESC LIMIT 1
+        FROM travels
+        WHERE deleted_at IS NULL AND amount > 0
+        ORDER BY amount DESC, start_date DESC, id DESC LIMIT 1
     """)
     hof_best_rated = _hof_row("""
         SELECT id, name, rating
-        FROM travels WHERE deleted_at IS NULL AND rating IS NOT NULL ORDER BY rating DESC, start_date DESC LIMIT 1
+        FROM travels
+        WHERE deleted_at IS NULL AND rating IS NOT NULL
+        ORDER BY rating DESC, start_date DESC, id DESC LIMIT 1
     """)
     hof_most_places = _hof_row("""
-        SELECT t.id, t.name, COUNT(tl.id) AS loc_count
-        FROM travels t JOIN travel_locations tl ON tl.travel_id = t.id
-        WHERE t.deleted_at IS NULL
-        GROUP BY t.id, t.name ORDER BY loc_count DESC LIMIT 1
+        SELECT t.id, t.name, COUNT(DISTINCT tl.location_id) AS loc_count
+        FROM travels t
+        JOIN travel_locations tl ON tl.travel_id = t.id
+        JOIN locations l ON l.id = tl.location_id
+        WHERE t.deleted_at IS NULL AND l.deleted_at IS NULL
+        GROUP BY t.id, t.name, t.start_date
+        ORDER BY loc_count DESC, t.start_date DESC, t.id DESC LIMIT 1
     """)
     hof_most_flights = _hof_row("""
         SELECT id, name, number_of_flights
-        FROM travels WHERE deleted_at IS NULL AND number_of_flights > 0 ORDER BY number_of_flights DESC LIMIT 1
+        FROM travels
+        WHERE deleted_at IS NULL AND number_of_flights > 0
+        ORDER BY number_of_flights DESC, start_date DESC, id DESC LIMIT 1
     """)
     hof_most_countries = _hof_row("""
         SELECT t.id, t.name, COUNT(DISTINCT c.id) AS country_count
@@ -57,14 +68,17 @@ def _hall_of_fame():
     hof_longest_gap = _hof_row("""
         WITH ordered AS (
             SELECT id, name, start_date,
-                   LAG(end_date) OVER (ORDER BY start_date, end_date, id) AS prev_end_date
+                   MAX(end_date) OVER (
+                       ORDER BY start_date, end_date, id
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                   ) AS prev_end_date
             FROM travels
             WHERE deleted_at IS NULL
         )
         SELECT id, name, GREATEST(start_date - prev_end_date - 1, 0) AS gap_days
         FROM ordered
         WHERE prev_end_date IS NOT NULL
-        ORDER BY gap_days DESC, start_date DESC LIMIT 1
+        ORDER BY gap_days DESC, start_date DESC, id DESC LIMIT 1
     """)
     hof_longest_streak = _hof_row("""
         WITH days AS (

@@ -1008,10 +1008,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   .hero-val { font-size: 22px; }
 }
 
-/* ── Hall of Fame scroll cards (DASH5) ──────────────────── */
-.hof-section { margin-bottom: 12px; }
+/* ── Hall of Fame record grid (DASH5) ──────────────────── */
+.hof-section { margin: 0 16px 12px; }
 .hof-title-row {
-  margin: 0 16px 8px;
+  margin: 0 0 10px;
   font-size: 12px; font-weight: 600; color: var(--text2);
   text-transform: uppercase; letter-spacing: 0.05em;
   display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
@@ -1020,84 +1020,70 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   font-size: 10px; font-weight: 500; color: var(--text3);
   text-transform: none; letter-spacing: 0;
 }
-.hof-scroll-wrap { position: relative; }
-.hof-scroll {
-  display: flex; gap: 10px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  padding: 4px 16px 8px;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  scrollbar-width: none;
-}
-.hof-scroll::-webkit-scrollbar { display: none; }
-.hof-nav {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 34px; height: 34px; border-radius: 50%;
-  border: 1px solid var(--border); background: var(--card); color: var(--text);
-  box-shadow: 0 3px 12px rgba(0,0,0,0.16);
-  cursor: pointer; z-index: 2; font-size: 22px; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  transition: opacity .15s, transform .12s, color .15s;
-}
-.hof-nav:hover { color: var(--blue); }
-.hof-nav:active { transform: translateY(-50%) scale(0.94); }
-.hof-nav:disabled { opacity: 0.28; cursor: default; pointer-events: none; }
-.hof-nav-prev { left: 8px; }
-.hof-nav-next { right: 8px; }
-.hof-fade {
-  position: absolute; right: 0; top: 0; bottom: 8px;
-  width: 36px; pointer-events: none;
-  background: linear-gradient(to left, var(--bg) 0%, transparent 100%);
+.hof-grid {
+  display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 10px;
 }
 .hof-card {
-  flex: 0 0 168px;
-  scroll-snap-align: start;
-  border-radius: 14px;
-  padding: 14px;
-  color: #fff; cursor: pointer;
+  grid-column: span 3;
+  min-width: 0; min-height: 126px;
+  border-radius: 10px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--hof-accent);
+  background: linear-gradient(135deg, var(--hof-soft), var(--card) 58%);
+  color: var(--text); cursor: default;
   display: flex; flex-direction: column;
-  min-height: 138px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-  transition: transform .12s, box-shadow .12s;
+  text-align: left; font: inherit; appearance: none;
+  box-shadow: var(--shadow);
+  transition: transform .12s, box-shadow .12s, border-color .15s;
   position: relative; overflow: hidden;
 }
-.hof-card::before {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(circle at 80% 0%, rgba(255,255,255,0.18) 0%, transparent 55%);
-  pointer-events: none;
+.hof-card.featured { grid-column: span 4; min-height: 150px; }
+.hof-clickable { cursor: pointer; }
+.hof-clickable:hover { border-color: var(--hof-accent); box-shadow: 0 7px 18px rgba(15,23,42,0.13); }
+.hof-clickable:active { transform: scale(0.98); }
+.hof-icon {
+  width: 32px; height: 32px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; background: var(--hof-soft); color: var(--hof-accent);
 }
-.hof-card:active { transform: scale(0.97); }
-.hof-card > * { position: relative; }
-.hof-icon { font-size: 24px; margin-bottom: 6px; }
+.hof-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .hof-cat {
+  margin-top: 9px;
   font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; opacity: 0.88;
-}
-.hof-name {
-  font-size: 13px; font-weight: 600; margin-top: 4px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; line-height: 1.25;
+  text-transform: uppercase; color: var(--text3);
 }
 .hof-value {
+  margin-top: 4px;
+  font-size: 22px; line-height: 1.05; font-weight: 850;
+  color: var(--hof-accent);
+  overflow-wrap: anywhere;
+}
+.hof-card.featured .hof-value { font-size: 26px; }
+.hof-name {
   margin-top: auto; padding-top: 8px;
-  font-size: 16px; font-weight: 800; letter-spacing: -0.3px;
+  font-size: 13px; font-weight: 700; line-height: 1.25; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.hof-dots {
-  display: flex; justify-content: center; gap: 6px;
-  margin: 4px 0 8px;
+.hof-sub {
+  margin-top: 3px; font-size: 11px; color: var(--text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.hof-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--text3); opacity: 0.4;
-  transition: opacity .15s, transform .15s, background .15s;
+.hof-value .stars { font-size: 18px; }
+@media (max-width: 860px) {
+  .hof-card,
+  .hof-card.featured { grid-column: span 6; }
 }
-.hof-dot.active {
-  opacity: 1; background: var(--blue);
-  transform: scale(1.3);
-}
-@media (max-width: 700px) {
-  .hof-nav { display: none; }
+@media (max-width: 520px) {
+  .hof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .hof-card,
+  .hof-card.featured { grid-column: span 1; min-height: 122px; padding: 11px; }
+  .hof-card.featured:first-child { grid-column: 1 / -1; min-height: 132px; }
+  .hof-card.featured .hof-value { font-size: 23px; }
+  .hof-value { font-size: 20px; }
+  .hof-icon { width: 28px; height: 28px; font-size: 16px; }
 }
 
 /* ── Streak strip (DASH6) ───────────────────────────────── */
@@ -1730,24 +1716,9 @@ button.yearbook-highlight { cursor: pointer; }
     margin-bottom: 12px;
   }
 
-  .hof-title-row,
-  .hof-scroll {
+  .hof-section {
     padding-left: 0;
     padding-right: 0;
-  }
-
-  .hof-title-row {
-    margin-left: auto;
-    margin-right: auto;
-    width: min(var(--desktop-content), calc(100% - (var(--desktop-gutter) * 2)));
-  }
-
-  .hof-nav-prev {
-    left: 2px;
-  }
-
-  .hof-nav-next {
-    right: 2px;
   }
 
   .fab {

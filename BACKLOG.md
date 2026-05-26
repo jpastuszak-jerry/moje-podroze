@@ -14,6 +14,8 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Status:** zrobione w `7211d05 Expand stats hall of fame`.
 
+**Dopiete pozniej:** w `Improve hall of fame grid` Hall of Fame zostal przebudowany z poziomej listy na responsywna siatke rekordow. Przy okazji doprecyzowano klikalnosc kafli oraz utwardzono agregaty dla liczby miejsc i najdluzszej przerwy.
+
 **Weryfikacja:** sekcja Hall of Fame pokazuje nowe kafle, a klik w rekord zwiazany z podroza otwiera jej szczegoly.
 
 ### 3. Koszty - srednie i rozklad - PARTIAL

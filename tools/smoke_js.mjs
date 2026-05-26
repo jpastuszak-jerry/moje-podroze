@@ -549,6 +549,13 @@ function statsPayload(overrides = {}) {
       longest: { id: 1, name: 'Longest', value: 8 },
       priciest: { id: 1, name: 'Priciest', value: 1200, currency: 'EUR' },
       best_rated: { id: 1, name: 'Best', value: 4.5 },
+      most_places: { id: 2, name: 'Most places', value: 7 },
+      most_flights: { id: 3, name: 'Most flights', value: 4 },
+      most_countries: { id: 4, name: 'Most countries', value: 3 },
+      top_country: { name: 'Finlandia', visits: 3, days: 9 },
+      longest_gap: { id: 5, name: 'After break', value: 120 },
+      longest_streak: { start_date: '2025-07-18', end_date: '2025-07-28', value: 11 },
+      best_month: { year: 2025, month: 7, value: 11 },
     },
     current_trip: null,
     streak_months: 2,
@@ -653,6 +660,15 @@ context.createColorIcon = () => null;
 context.L = undefined;
 vm.runInContext(fs.readFileSync(statsPath, 'utf8'), context, { filename: statsPath });
 
+const hofRecords = context.hallOfFameRecords(statsPayload().hall_of_fame, ['', 'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip']);
+assert.equal(hofRecords.length, 10, 'hall of fame includes all available record categories');
+assert.equal(hofRecords.filter(r => r.id).length, 7, 'hall of fame marks only trip records as clickable');
+assert.equal(hofRecords.find(r => r.key === 'top_country').id, undefined, 'country aggregate does not pretend to open a trip');
+const hofHtml = context.renderHallOfFame(statsPayload().hall_of_fame, ['', 'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip']);
+assert.match(hofHtml, /hof-grid/, 'hall of fame renders as a visible grid');
+assert.doesNotMatch(hofHtml, /hof-scroll/, 'hall of fame no longer uses a horizontal scroll list');
+assert.equal(count(hofHtml, 'hof-clickable'), 7, 'hall of fame click targets match trip-backed records');
+
 let statsResponse = statsPayload();
 const apiCalls = [];
 context.__statsApi = async path => {
@@ -677,6 +693,8 @@ async function renderStatsSection(section, { year = null, payload = statsPayload
 const overviewStats = await renderStatsSection('overview');
 assert.match(overviewStats, /Podsumowanie/, 'stats render section tabs');
 assert.match(overviewStats, /Hall of Fame/, 'overview keeps hall of fame records');
+assert.match(overviewStats, /hof-grid/, 'overview shows hall of fame as a grid');
+assert.doesNotMatch(overviewStats, /hof-scroll/, 'overview avoids horizontal hall of fame scroller');
 assert.match(overviewStats, /Cel podr/, 'overview keeps purpose chart');
 assert.doesNotMatch(overviewStats, /Koszty wed/, 'overview does not show cost section details');
 
