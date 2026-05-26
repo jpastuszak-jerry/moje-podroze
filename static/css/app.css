@@ -730,14 +730,45 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   box-shadow: 0 1px 6px rgba(0,0,0,0.05);
 }
 
-.stat-card { box-shadow: 0 4px 14px rgba(0,0,0,0.1); border: none; }
-.stat-card.sc-blue   { background: linear-gradient(135deg,#1a6fdb,#0d47a1); color:#fff; }
-.stat-card.sc-orange { background: linear-gradient(135deg,#f97316,#c2410c); color:#fff; }
-.stat-card.sc-green  { background: linear-gradient(135deg,#059669,#065f46); color:#fff; }
-.stat-card.sc-purple { background: linear-gradient(135deg,#7c3aed,#4c1d95); color:#fff; }
-.stat-card.sc-rose   { background: linear-gradient(135deg,#e11d48,#9f1239); color:#fff; }
-.stat-card.sc-teal   { background: linear-gradient(135deg,#0891b2,#164e63); color:#fff; }
-.stat-card[class*="sc-"] .stat-label { color: rgba(255,255,255,0.75); }
+.stat-card {
+  --stat-accent: var(--blue);
+  min-height: 118px;
+  display: flex; flex-direction: column; align-items: stretch;
+  text-align: left; border: 1px solid var(--border);
+  border-top: 3px solid var(--stat-accent);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+}
+.stat-card.sc-blue   { --stat-accent: var(--blue); }
+.stat-card.sc-orange { --stat-accent: var(--orange); }
+.stat-card.sc-green  { --stat-accent: var(--green); }
+.stat-card.sc-purple { --stat-accent: var(--purple); }
+.stat-card.sc-rose   { --stat-accent: var(--red); }
+.stat-card.sc-teal   { --stat-accent: #0891b2; }
+.stat-card-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; min-width: 0;
+}
+.stat-card .stat-icon {
+  width: 34px; height: 34px; margin: 0; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); color: var(--stat-accent);
+  font-size: 18px; flex-shrink: 0;
+}
+.stat-card .stat-value {
+  min-width: 0; text-align: right;
+  color: var(--text); font-size: 22px; line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+.stat-card .stat-label {
+  margin-top: auto; padding-top: 12px;
+  color: var(--text2); font-weight: 700; line-height: 1.25;
+}
+.stat-amount-line {
+  display: block; font-size: 15px; line-height: 1.18;
+}
+.stat-amount-line span {
+  font-size: 10px; font-weight: 700; color: var(--text2);
+}
 
 .page-header {
   background: linear-gradient(180deg, var(--card) 85%, transparent);
@@ -961,51 +992,77 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 /* ── Stats hero card ─────────────────────────────────────── */
 .hero-card {
   margin: 12px 16px;
-  padding: 18px 18px 20px;
-  background: linear-gradient(135deg, #1a6fdb 0%, #4c1d95 100%);
+  padding: 16px;
+  background: var(--card);
   border-radius: var(--radius);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(26,111,219,0.25);
-  position: relative; overflow: hidden;
-}
-.hero-card::before {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.18) 0%, transparent 50%);
-  pointer-events: none;
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  position: relative;
 }
 .hero-label {
   font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
-  text-transform: uppercase; opacity: 0.85; margin-bottom: 12px;
+  text-transform: uppercase; color: var(--text2); margin-bottom: 12px;
 }
 .hero-numbers {
   display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 12px; position: relative;
+  gap: 10px; position: relative;
 }
 .hero-number {
   display: flex; flex-direction: column; align-items: flex-start;
-  min-width: 0;
+  min-width: 0; padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px; background: var(--bg);
 }
 .hero-val {
-  font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
-  line-height: 1.1;
+  font-size: 25px; font-weight: 850; letter-spacing: 0;
+  line-height: 1.05; color: var(--text);
 }
 .hero-key {
-  font-size: 11px; opacity: 0.78; margin-top: 2px;
+  font-size: 11px; color: var(--text2); margin-top: 4px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 100%;
-}
-.hero-amount {
-  margin-top: 14px; padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.18);
-  font-size: 14px; font-weight: 600; opacity: 0.94;
-}
-.hero-amount .hero-cur {
-  font-size: 11px; font-weight: 600; opacity: 0.75;
 }
 
 @media (max-width: 420px) {
   .hero-numbers { grid-template-columns: repeat(2, 1fr); gap: 14px 10px; }
   .hero-val { font-size: 22px; }
+}
+
+.stats-context-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px; margin: 0 16px 12px;
+}
+.context-card {
+  min-width: 0; min-height: 86px;
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 12px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--text); box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  text-align: left; font: inherit;
+}
+.context-clickable { cursor: pointer; }
+.context-clickable:active { transform: scale(0.985); }
+.context-icon {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--blue-light); color: var(--blue);
+  font-size: 18px; flex-shrink: 0;
+}
+.context-body { min-width: 0; flex: 1; }
+.context-label {
+  font-size: 10px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.context-value {
+  margin-top: 4px; font-size: 14px; font-weight: 800;
+  color: var(--text); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.context-sub { margin-top: 2px; font-size: 11px; color: var(--text2); }
+
+@media (max-width: 620px) {
+  .stats-context-grid { grid-template-columns: 1fr; }
 }
 
 /* ── Hall of Fame record grid (DASH5) ──────────────────── */
@@ -1031,11 +1088,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   padding: 13px;
   border: 1px solid var(--border);
   border-top: 4px solid var(--hof-accent);
-  background: linear-gradient(135deg, var(--hof-soft), var(--card) 58%);
+  background: var(--card);
   color: var(--text); cursor: default;
   display: flex; flex-direction: column;
   text-align: left; font: inherit; appearance: none;
-  box-shadow: var(--shadow);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
   transition: transform .12s, box-shadow .12s, border-color .15s;
   position: relative; overflow: hidden;
 }
@@ -1129,13 +1186,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .yoy-down { background: rgba(239,68,68,0.18);  color: #ef4444; }
 .yoy-flat { background: rgba(127,127,127,0.18); color: var(--text2); }
 
-/* Na hero / gradient stat-cards (białe litery) — kontrast */
-.hero-card .yoy-up   { background: rgba(255,255,255,0.22); color: #d1fae5; }
-.hero-card .yoy-down { background: rgba(255,255,255,0.22); color: #fecaca; }
-.hero-card .yoy-flat { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); }
-.stat-card[class*="sc-"] .yoy-up   { background: rgba(255,255,255,0.22); color: #d1fae5; }
-.stat-card[class*="sc-"] .yoy-down { background: rgba(255,255,255,0.22); color: #fecaca; }
-.stat-card[class*="sc-"] .yoy-flat { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); }
+.stat-card .yoy { align-self: flex-start; }
 
 /* ── Theme toggle ───────────────────────────────────────── */
 #theme-toggle {
@@ -1193,8 +1244,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
 .stats-2col { display: contents; }
 @media (min-width: 900px) {
   .stats-grid { grid-template-columns: repeat(4, 1fr); max-width: 1100px; margin-left: auto; margin-right: auto; }
-  .stats-section-tabs, .hero-card, .streak-strip, .hof-section { max-width: 1100px; margin-left: auto; margin-right: auto; }
-  .hero-card, .streak-strip { margin-top: 12px; margin-bottom: 12px; }
+  .stats-section-tabs, .hero-card, .stats-context-grid, .streak-strip, .hof-section { max-width: 1100px; margin-left: auto; margin-right: auto; }
+  .hero-card, .stats-context-grid, .streak-strip { margin-top: 12px; margin-bottom: 12px; }
   .stats-2col {
     display: grid; grid-template-columns: 1fr 1fr;
     gap: 12px; margin: 0 auto 12px; padding: 0 16px;
@@ -1653,6 +1704,7 @@ button.yearbook-highlight { cursor: pointer; }
   .detail-body,
   .stats-grid,
   .hero-card,
+  .stats-context-grid,
   .streak-strip,
   .hof-section,
   .stats-2col,
@@ -1711,6 +1763,7 @@ button.yearbook-highlight { cursor: pointer; }
   }
 
   .hero-card,
+  .stats-context-grid,
   .streak-strip {
     margin-top: 12px;
     margin-bottom: 12px;

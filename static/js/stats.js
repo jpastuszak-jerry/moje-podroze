@@ -548,6 +548,114 @@ function renderHallOfFame(hof, monthLabels = []) {
   </div>`;
 }
 
+function renderStatSummaryCard({ tone = 'blue', icon, value, valueHtml, label, extraHtml = '' }) {
+  const valueContent = valueHtml != null ? valueHtml : escapeHtml(String(value ?? '–'));
+  return `<div class="stat-card sc-${escapeAttr(tone)}">
+    <div class="stat-card-top">
+      <div class="stat-icon">${icon}</div>
+      <div class="stat-value">${valueContent}</div>
+    </div>
+    <div class="stat-label">${escapeHtml(label)}</div>
+    ${extraHtml}
+  </div>`;
+}
+
+function formatAmountLines(currencies) {
+  if (!currencies.length) return '–';
+  return currencies.map(([cur, amt]) =>
+    `<span class="stat-amount-line">${Math.round(amt).toLocaleString('pl-PL')} <span>${escapeHtml(cur)}</span></span>`
+  ).join('');
+}
+
+function pluralMonths(n) {
+  if (n === 1) return 'miesiąc';
+  return n < 5 ? 'miesiące' : 'miesięcy';
+}
+
+function renderOverviewContext(s, currentYear) {
+  const cards = [];
+  if (!currentYear && s.current_trip) {
+    const ct = s.current_trip;
+    cards.push(`<button type="button" class="context-card context-clickable" onclick="openTravel(${ct.id})">
+      <div class="context-icon">🧳</div>
+      <div class="context-body">
+        <div class="context-label">Aktualnie w trasie</div>
+        <div class="context-value">${escapeHtml(ct.name)}</div>
+        <div class="context-sub">dzień ${ct.days_in} z ${ct.days_total}</div>
+      </div>
+    </button>`);
+  }
+  if (!currentYear && s.streak_months > 0) {
+    cards.push(`<div class="context-card">
+      <div class="context-icon">🔥</div>
+      <div class="context-body">
+        <div class="context-label">Streak</div>
+        <div class="context-value">${s.streak_months} ${pluralMonths(s.streak_months)} z rzędu</div>
+        <div class="context-sub">co najmniej jedna podróż</div>
+      </div>
+    </div>`);
+  }
+  if (s.progress) {
+    cards.push(`<div class="context-card">
+      <div class="context-icon">✍️</div>
+      <div class="context-body">
+        <div class="context-label">Kompletność opisów</div>
+        <div class="context-value">${s.progress.described}/${s.progress.total}</div>
+        <div class="context-sub">podróży opisanych</div>
+      </div>
+    </div>`);
+  }
+  if (!cards.length) return '';
+  return `<div class="stats-context-grid">${cards.join('')}</div>`;
+}
+
+function renderOverviewMetrics(s, prev, currentYear, currencies) {
+  const cards = [
+    renderStatSummaryCard({
+      tone: 'teal',
+      icon: '🛫',
+      value: s.flights,
+      label: 'Lotów',
+      extraHtml: prev ? yoyDelta(s.flights, prev.flights) : '',
+    }),
+    renderStatSummaryCard({
+      tone: 'green',
+      icon: '📷',
+      value: s.albums,
+      label: 'Albumów',
+      extraHtml: prev ? yoyDelta(s.albums, prev.albums) : '',
+    }),
+    renderStatSummaryCard({
+      tone: 'orange',
+      icon: '⭐',
+      value: s.avg_rating || '–',
+      label: 'Śr. ocena',
+      extraHtml: prev ? yoyDelta(s.avg_rating, prev.avg_rating) : '',
+    }),
+    renderStatSummaryCard({
+      tone: 'blue',
+      icon: '📆',
+      value: s.avg_trip_days || '–',
+      label: 'Śr. długość (dni)',
+    }),
+    renderStatSummaryCard({
+      tone: 'rose',
+      icon: '💰',
+      valueHtml: formatAmountLines(currencies),
+      label: currencies.length === 1 ? `${currencies[0][0]} wydane` : 'Wydane',
+    }),
+  ];
+  if (!currentYear && s.locations != null) {
+    cards.push(renderStatSummaryCard({
+      tone: 'purple',
+      icon: '🗂',
+      value: s.locations,
+      label: 'Miejsc w bazie',
+    }));
+  }
+  return `<div class="stats-grid">${cards.join('')}</div>`;
+}
+
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
@@ -574,9 +682,6 @@ async function renderStats() {
   });
   const heroLabel = currentStatsYear ? `Aktywność w ${currentStatsYear}` : 'Wszystkie podróże';
   const heroCurrencies = Object.entries(s.amount_by_currency || {});
-  const heroAmount = heroCurrencies.length
-    ? heroCurrencies.map(([cur, amt]) => `${Math.round(amt).toLocaleString('pl-PL')} <span class="hero-cur">${escapeHtml(cur)}</span>`).join(' &nbsp;·&nbsp; ')
-    : '';
   const prev = s.prev_period;
 
   if (currentStatsSection === 'overview') {
@@ -586,61 +691,12 @@ async function renderStats() {
       { value: s.total_trips, label: currentStatsYear ? 'podróży w roku' : 'podróży', extraHtml: prev ? yoyDelta(s.total_trips, prev.total_trips) : '' },
       { value: s.total_days, label: 'dni w trasie', extraHtml: prev ? yoyDelta(s.total_days, prev.total_days) : '' },
       { value: s.countries, label: 'krajów', extraHtml: prev ? yoyDelta(s.countries, prev.countries) : '' },
-      { value: s.flights, label: 'lotów', extraHtml: prev ? yoyDelta(s.flights, prev.flights) : '' },
+      { value: s.visited_locations || 0, label: 'odwiedzonych miejsc', extraHtml: prev ? yoyDelta(s.visited_locations || 0, prev.visited_locations || 0) : '' },
     ])}
-    ${heroAmount ? `<div class="hero-amount">${heroAmount}</div>` : ''}
   </div>`;
-
-  if (!currentStatsYear && (s.current_trip || s.streak_months > 0)) {
-    html += '<div class="streak-strip">';
-    if (s.current_trip) {
-      const ct = s.current_trip;
-      html += `<div class="streak-card streak-active" onclick="openTravel(${ct.id})">
-        <div class="streak-icon">🧳</div>
-        <div class="streak-body">
-          <div class="streak-label">Aktualnie w trasie</div>
-          <div class="streak-value">${escapeHtml(ct.name)}</div>
-          <div class="streak-sub">dzień ${ct.days_in} z ${ct.days_total}</div>
-        </div>
-      </div>`;
-    }
-    if (s.streak_months > 0) {
-      html += `<div class="streak-card streak-fire">
-        <div class="streak-icon">🔥</div>
-        <div class="streak-body">
-          <div class="streak-label">Streak</div>
-          <div class="streak-value">${s.streak_months} ${s.streak_months === 1 ? 'miesiąc' : (s.streak_months < 5 ? 'miesiące' : 'miesięcy')} z rzędu</div>
-          <div class="streak-sub">co najmniej jedna podróż</div>
-        </div>
-      </div>`;
-    }
-    html += '</div>';
-  }
-
+  html += renderOverviewContext(s, currentStatsYear);
+  html += renderOverviewMetrics(s, prev, currentStatsYear, heroCurrencies);
   html += renderHallOfFame(s.hall_of_fame, months);
-
-  html += '<div class="stats-grid">';
-  html += '<div class="stat-card sc-blue"><div class="stat-icon">✈️</div><div class="stat-value">'+s.total_trips+'</div><div class="stat-label">'+(currentStatsYear?'Podróży w roku':'Podróży')+'</div>'+(prev?yoyDelta(s.total_trips, prev.total_trips):'')+'</div>';
-  html += '<div class="stat-card sc-orange"><div class="stat-icon">📅</div><div class="stat-value">'+s.total_days+'</div><div class="stat-label">Dni w trasie</div>'+(prev?yoyDelta(s.total_days, prev.total_days):'')+'</div>';
-  html += '<div class="stat-card sc-green"><div class="stat-icon">🌍</div><div class="stat-value">'+s.countries+'</div><div class="stat-label">Krajów</div>'+(prev?yoyDelta(s.countries, prev.countries):'')+'</div>';
-  html += '<div class="stat-card sc-purple"><div class="stat-icon">📍</div><div class="stat-value">'+(s.visited_locations || 0)+'</div><div class="stat-label">Odwiedzonych miejsc</div>'+(prev?yoyDelta(s.visited_locations || 0, prev.visited_locations || 0):'')+'</div>';
-  html += '<div class="stat-card sc-teal"><div class="stat-icon">🛫</div><div class="stat-value">'+s.flights+'</div><div class="stat-label">Lotów</div>'+(prev?yoyDelta(s.flights, prev.flights):'')+'</div>';
-  html += '<div class="stat-card sc-green"><div class="stat-icon">📷</div><div class="stat-value">'+s.albums+'</div><div class="stat-label">Albumów</div>'+(prev?yoyDelta(s.albums, prev.albums):'')+'</div>';
-  html += '<div class="stat-card sc-orange"><div class="stat-icon">⭐</div><div class="stat-value">'+(s.avg_rating||'–')+'</div><div class="stat-label">Śr. ocena</div>'+(prev?yoyDelta(s.avg_rating, prev.avg_rating):'')+'</div>';
-  const currencies = Object.entries(s.amount_by_currency || {});
-  if (currencies.length === 0) {
-    html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div class="stat-value">–</div><div class="stat-label">Wydane</div></div>';
-  } else if (currencies.length === 1) {
-    const [cur, amt] = currencies[0];
-    html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div class="stat-value" style="font-size:15px">'+Math.round(amt).toLocaleString('pl-PL')+'</div><div class="stat-label">'+escapeHtml(cur)+' wydane</div></div>';
-  } else {
-    const lines = currencies.map(([cur, amt]) => `<div style="font-size:13px;font-weight:700;line-height:1.2">${Math.round(amt).toLocaleString('pl-PL')} <span style="font-size:10px;font-weight:600;opacity:0.8">${escapeHtml(cur)}</span></div>`).join('');
-    html += '<div class="stat-card sc-rose"><div class="stat-icon">💰</div><div style="display:flex;flex-direction:column;gap:3px;align-items:center">'+lines+'</div><div class="stat-label" style="margin-top:4px">Wydane</div></div>';
-  }
-  html += '<div class="stat-card sc-blue"><div class="stat-icon">📆</div><div class="stat-value">'+(s.avg_trip_days||'–')+'</div><div class="stat-label">Śr. długość (dni)</div></div>';
-  if (s.progress) html += '<div class="stat-card sc-purple"><div class="stat-icon">✍️</div><div class="stat-value">'+s.progress.described+'/'+s.progress.total+'</div><div class="stat-label">Opisanych</div></div>';
-  if (!currentStatsYear) html += '<div class="stat-card sc-teal"><div class="stat-icon">🗂</div><div class="stat-value">'+s.locations+'</div><div class="stat-label">Miejsc w bazie</div></div>';
-  html += '</div>';
   }
 
   html += '<div class="stats-2col">';
