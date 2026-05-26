@@ -55,9 +55,26 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ## P2 - UX i praca z danymi
 
-### 0. Nastepny priorytet po przerwie: przebudowa Podsumowania statystyk
+### 0. Nastepny priorytet po przerwie: karta szczegolow podrozy po duzych importach
 
-**Status:** do zrobienia w pierwszej kolejnosci po przerwie.
+**Status:** do zrobienia w pierwszej kolejnosci jutro.
+
+**Decyzja:** zaczac od UX/UI, nie od czystego refaktoru. Refaktor dopuszczalny tylko jako porzadkowanie przy okazji wdrozenia.
+
+**Kontekst:** po imporcie opisow dla `Gory Literatury z Olga` i `Workation w Trapani` aplikacja ma duzo bogatsze notatki oraz znacznie dluzsze listy miejsc w podrozy. Karta szczegolow podrozy musi lepiej uniesc takie dane, szczegolnie na iPhonie.
+
+**Proponowany zakres:**
+- uporzadkowac szczegoly podrozy w wyrazne sekcje: podsumowanie, uczestnicy, miejsca, notatki, refleksje,
+- poprawic prezentacje dlugich notatek, np. czytelne bloki dzienne albo zwijanie/rozwijanie,
+- liste miejsc w podrozy pokazac bardziej trasowo: daty, kraj/typ, wazne miejsca i notatki bez sciany tekstu,
+- dopilnowac ergonomii na iPhonie, bo dlugie podroze najszybciej pokaza slabosci ukladu,
+- zachowac istniejaca logike danych i nie ruszac modelu bazy, jesli nie bedzie to konieczne.
+
+**Weryfikacja:** otworzyc `Gory Literatury z Olga` i `Workation w Trapani` na desktopie oraz iPhonie. Uzytkownik powinien szybko zrozumiec przebieg podrozy, miejsca i notatki bez poczucia przytloczenia.
+
+### 0a. Przebudowa Podsumowania statystyk - DONE
+
+**Status:** zrobione w `b5f4727 Tidy stats overview dashboard`.
 
 **Problem:** zakladka `Statystyki -> Podsumowanie` ma wartosciowe dane, ale wizualnie konkuruje sama ze soba: gradientowy hero, kolorowe stat-karty, Hall of Fame, streak, wykresy i rankingi maja zbyt wiele roznych stylow, kolorow i poziomow waznosci. Przez to najwazniejsze informacje nie sa czytane wystarczajaco szybko.
 
