@@ -1445,6 +1445,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   max-width: 560px;
 }
 .chart-card .section-title { margin-bottom: 12px; }
+.stats-card-header { padding: 0; margin-bottom: 8px; }
 .stats-empty-card { max-width: none; }
 .stats-empty-text {
   color: var(--text2); font-size: 13px; line-height: 1.45;

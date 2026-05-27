@@ -162,6 +162,17 @@ const emptyCardHtml = context.renderEmptyCard('Brak danych', 'Nie ma nic do poka
 assert.match(emptyCardHtml, /test-empty-text/, 'renderEmptyCard keeps custom message class');
 assert.match(emptyCardHtml, /Nie ma nic do pokazania/, 'renderEmptyCard renders message');
 
+const sectionCardHtml = context.renderSectionCard({
+  title: 'Sekcja',
+  className: 'chart-card test-section',
+  actionsHtml: '<button>Akcja</button>',
+  headerClass: 'section-header test-header',
+  body: '<p>Treść</p>',
+});
+assert.match(sectionCardHtml, /test-section/, 'renderSectionCard keeps custom card class');
+assert.match(sectionCardHtml, /test-header/, 'renderSectionCard renders action header');
+assert.match(sectionCardHtml, /<p>Treść<\/p>/, 'renderSectionCard keeps trusted body HTML');
+
 const rankingHtml = context.renderRankingBars(
   [{ name: 'Ala', score: 10 }, { name: 'Ola', score: 5 }],
   { nameKey: 'name', valueKey: 'score', color: 'red' },
@@ -209,6 +220,41 @@ const heroMetricsHtml = context.renderHeroMetrics([
 ]);
 assert.match(heroMetricsHtml, /<div class="hero-val">0<\/div>/, 'renderHeroMetrics renders zero values');
 assert.match(heroMetricsHtml, /<em>delta<\/em>/, 'renderHeroMetrics keeps trusted extra HTML');
+
+const metricGridHtml = context.renderMetricGrid([
+  { label: 'Days', value: 4 },
+  { label: 'Rating', valueHtml: '<strong>5</strong>', className: 'rating' },
+], {
+  className: 'test-metrics',
+  itemClass: 'test-metric',
+  valueClass: 'test-value',
+  labelClass: 'test-label',
+  labelFirst: true,
+});
+assert.match(metricGridHtml, /test-metrics/, 'renderMetricGrid keeps custom grid class');
+assert.match(metricGridHtml, /test-metric rating/, 'renderMetricItem keeps per-metric classes');
+assert.match(metricGridHtml, /<strong>5<\/strong>/, 'renderMetricItem keeps trusted value HTML');
+
+const statCardHtml = context.renderStatSummaryCard({
+  tone: 'green',
+  icon: 'i',
+  value: 12,
+  label: 'Wynik',
+  extraHtml: '<em>+2</em>',
+});
+assert.match(statCardHtml, /stat-card sc-green/, 'renderStatSummaryCard keeps tone classes');
+assert.match(statCardHtml, /<em>\+2<\/em>/, 'renderStatSummaryCard keeps trusted extra HTML');
+
+const contextCardHtml = context.renderContextCard({
+  icon: 'i',
+  label: 'Aktualnie',
+  value: 'Podróż',
+  sub: 'dzień 2',
+  onclick: 'openTravel(1)',
+});
+assert.match(contextCardHtml, /<button type="button"/, 'renderContextCard uses buttons for clickable cards');
+assert.match(contextCardHtml, /context-clickable/, 'renderContextCard marks clickable cards');
+assert.match(contextCardHtml, /openTravel\(1\)/, 'renderContextCard keeps click action');
 
 const cardListHtml = context.renderCardList([{ id: 1 }, { id: 2 }], item => `<article>${item.id}</article>`, {
   className: 'card-list test-list',

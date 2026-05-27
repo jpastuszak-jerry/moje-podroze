@@ -27,9 +27,40 @@ function renderEmptyCard(title, message, {
   className = 'chart-card',
   messageClass = 'empty-card-text',
 } = {}) {
+  return renderSectionCard({
+    title,
+    className,
+    body: `<div class="${escapeAttr(messageClass)}">${escapeHtml(message)}</div>`,
+  });
+}
+
+function renderSectionCard({
+  title = '',
+  titleHtml = '',
+  body = '',
+  className = 'chart-card',
+  titleClass = 'section-title',
+  headerClass = '',
+  subtitle = '',
+  subtitleHtml = '',
+  subtitleClass = '',
+  actionsHtml = '',
+} = {}) {
+  const titleContent = titleHtml || escapeHtml(String(title || ''));
+  const subtitleContent = subtitleHtml || (subtitle ? escapeHtml(String(subtitle)) : '');
+  const titleNode = titleContent
+    ? `<div class="${escapeAttr(titleClass)}">${titleContent}</div>`
+    : '';
+  const subtitleNode = subtitleContent
+    ? `<div${subtitleClass ? ` class="${escapeAttr(subtitleClass)}"` : ''}>${subtitleContent}</div>`
+    : '';
+  const headingNode = subtitleNode ? `<div>${titleNode}${subtitleNode}</div>` : titleNode;
+  const headerNode = actionsHtml
+    ? `<div class="${escapeAttr(headerClass || 'section-header')}">${headingNode}${actionsHtml}</div>`
+    : `${titleNode}${subtitleNode}`;
   return `<div class="${escapeAttr(className)}">
-    <div class="section-title">${escapeHtml(title)}</div>
-    <div class="${escapeAttr(messageClass)}">${escapeHtml(message)}</div>
+    ${headerNode}
+    ${body}
   </div>`;
 }
 
@@ -170,6 +201,72 @@ function renderHeroMetrics(metrics, {
       </div>`;
     }).join('')}
   </div>`;
+}
+
+function renderMetricItem(metric, {
+  itemClass = 'metric-item',
+  valueClass = 'metric-value',
+  labelClass = 'metric-label',
+  subClass = 'metric-sub',
+  labelFirst = false,
+} = {}) {
+  const classes = [itemClass, metric.className].filter(Boolean).join(' ');
+  const value = metric.valueHtml != null
+    ? metric.valueHtml
+    : escapeHtml(String(metric.value ?? '–'));
+  const label = `<div class="${escapeAttr(labelClass)}">${escapeHtml(metric.label || '')}</div>`;
+  const valueNode = `<div class="${escapeAttr(valueClass)}">${value}</div>`;
+  const sub = metric.subHtml != null
+    ? metric.subHtml
+    : (metric.sub ? escapeHtml(String(metric.sub)) : '');
+  return `<div class="${escapeAttr(classes)}">
+    ${labelFirst ? label + valueNode : valueNode + label}
+    ${sub ? `<div class="${escapeAttr(subClass)}">${sub}</div>` : ''}
+  </div>`;
+}
+
+function renderMetricGrid(metrics, {
+  className = 'metric-grid',
+  ...itemOptions
+} = {}) {
+  return `<div class="${escapeAttr(className)}">
+    ${(metrics || []).map(metric => renderMetricItem(metric, itemOptions)).join('')}
+  </div>`;
+}
+
+function renderStatSummaryCard({ tone = 'blue', icon, value, valueHtml, label, extraHtml = '' }) {
+  const valueContent = valueHtml != null ? valueHtml : escapeHtml(String(value ?? '–'));
+  return `<div class="stat-card sc-${escapeAttr(tone)}">
+    <div class="stat-card-top">
+      <div class="stat-icon">${icon}</div>
+      <div class="stat-value">${valueContent}</div>
+    </div>
+    <div class="stat-label">${escapeHtml(label)}</div>
+    ${extraHtml}
+  </div>`;
+}
+
+function renderContextCard({
+  icon,
+  label,
+  value,
+  valueHtml = null,
+  sub = '',
+  subHtml = '',
+  onclick = '',
+} = {}) {
+  const tag = onclick ? 'button' : 'div';
+  const classes = `context-card${onclick ? ' context-clickable' : ''}`;
+  const valueContent = valueHtml != null ? valueHtml : escapeHtml(String(value ?? ''));
+  const subContent = subHtml || (sub ? escapeHtml(String(sub)) : '');
+  return `<${tag}${onclick ? ' type="button"' : ''} class="${escapeAttr(classes)}"${onclick ? ` onclick="${escapeAttr(onclick)}"` : ''}>
+    <div class="context-icon">${icon || ''}</div>
+    <div class="context-body">
+      <div class="context-label">${escapeHtml(label || '')}</div>
+      <div class="context-value">${valueContent}</div>
+      ${subContent ? `<div class="context-sub">${subContent}</div>` : ''}
+    </div>
+  </${tag}>`;
 }
 
 function renderCardList(items, renderer, {

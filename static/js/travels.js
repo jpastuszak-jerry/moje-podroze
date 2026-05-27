@@ -186,14 +186,6 @@ function travelCountriesLabel(locations, limit = 3) {
   return `${countries.slice(0, limit).join(', ')} +${countries.length - limit}`;
 }
 
-function renderTravelHeroStat(label, value, sub = '') {
-  return `<div class="travel-hero-stat">
-    <div class="travel-hero-stat-value">${escapeHtml(String(value ?? '–'))}</div>
-    <div class="travel-hero-stat-label">${escapeHtml(label)}</div>
-    ${sub ? `<div class="travel-hero-stat-sub">${escapeHtml(sub)}</div>` : ''}
-  </div>`;
-}
-
 function renderTravelDetail(t) {
   const locations = t.locations || [];
   const participants = t.participants || [];
@@ -211,12 +203,18 @@ function renderTravelDetail(t) {
         </div>
         <div class="detail-title">${escapeHtml(t.name || '(bez nazwy)')}</div>
         <div class="detail-sub">${fmtDate(t.start_date)} – ${fmtDate(t.end_date)}</div>
-        <div class="travel-hero-stats">
-          ${renderTravelHeroStat('Dni', daysCount(t.start_date, t.end_date))}
-          ${renderTravelHeroStat('Miejsca', locations.length)}
-          ${renderTravelHeroStat('Kraje', countryCount || '–', travelCountriesLabel(locations, 2))}
-          ${renderTravelHeroStat('Uczestnicy', participants.length || '–')}
-        </div>
+        ${renderMetricGrid([
+          { label: 'Dni', value: daysCount(t.start_date, t.end_date) },
+          { label: 'Miejsca', value: locations.length },
+          { label: 'Kraje', value: countryCount || '–', sub: travelCountriesLabel(locations, 2) },
+          { label: 'Uczestnicy', value: participants.length || '–' },
+        ], {
+          className: 'travel-hero-stats',
+          itemClass: 'travel-hero-stat',
+          valueClass: 'travel-hero-stat-value',
+          labelClass: 'travel-hero-stat-label',
+          subClass: 'travel-hero-stat-sub',
+        })}
       </div>
     </div>
     <div class="detail-body travel-detail-body">
@@ -245,10 +243,12 @@ function renderTravelSummarySection(t) {
   return `<div class="section travel-summary-section">
     <div class="section-title">Podsumowanie</div>
     <div class="travel-summary-grid">
-      ${items.map(item => `<div class="travel-summary-card${item.className ? ' ' + escapeAttr(item.className) : ''}">
-        <div class="travel-summary-label">${escapeHtml(item.label)}</div>
-        <div class="travel-summary-value">${item.valueHtml != null ? item.valueHtml : escapeHtml(String(item.value ?? '–'))}</div>
-      </div>`).join('')}
+      ${items.map(item => renderMetricItem(item, {
+        itemClass: 'travel-summary-card',
+        valueClass: 'travel-summary-value',
+        labelClass: 'travel-summary-label',
+        labelFirst: true,
+      })).join('')}
     </div>
   </div>`;
 }

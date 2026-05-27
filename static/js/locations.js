@@ -285,14 +285,6 @@ function locationVisitDates(visit) {
   return start || end || 'brak dat';
 }
 
-function locationDetailMetric(label, value, sub = '') {
-  return `<div class="location-metric">
-    <div class="location-metric-value">${value}</div>
-    <div class="location-metric-label">${escapeHtml(label)}</div>
-    ${sub ? `<div class="location-metric-sub">${escapeHtml(sub)}</div>` : ''}
-  </div>`;
-}
-
 function renderLocationDetailProfile(loc, directVisits, childVisits) {
   const hasGps = locationHasGps(loc);
   const gpsText = hasGps
@@ -312,11 +304,17 @@ function renderLocationDetailProfile(loc, directVisits, childVisits) {
         </div>
       </div>
     </div>
-    <div class="location-metrics-grid">
-      ${locationDetailMetric('Wizyty łącznie', totalVisits || 0)}
-      ${locationDetailMetric('Bezpośrednie', directVisits.length)}
-      ${locationDetailMetric('Przez podrzędne', childVisits.length)}
-    </div>
+    ${renderMetricGrid([
+      { label: 'Wizyty łącznie', value: totalVisits || 0 },
+      { label: 'Bezpośrednie', value: directVisits.length },
+      { label: 'Przez podrzędne', value: childVisits.length },
+    ], {
+      className: 'location-metrics-grid',
+      itemClass: 'location-metric',
+      valueClass: 'location-metric-value',
+      labelClass: 'location-metric-label',
+      subClass: 'location-metric-sub',
+    })}
     <div class="location-meta-list">
       ${loc.parent_name ? `<div class="location-meta-item">
         <span>Region / miasto</span>
