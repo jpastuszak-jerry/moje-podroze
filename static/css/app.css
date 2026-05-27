@@ -239,6 +239,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif
   overflow: hidden; text-overflow: ellipsis; }
 .card-subtitle { font-size: 12px; color: var(--text2); margin-top: 2px; }
 .card-meta { display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+.card-chevron { color: var(--text3); font-size: 20px; align-self: center; }
 .badge { font-size: 11px; padding: 2px 7px; border-radius: 20px; font-weight: 500; }
 .badge-blue { background: var(--blue-light); color: var(--blue); }
 .badge-green { background: var(--green-light); color: var(--green); }

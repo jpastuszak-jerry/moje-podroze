@@ -188,6 +188,81 @@ function renderBadges(items, {
   }).join('');
 }
 
+function renderEntityCard({
+  className = 'card',
+  onclick = '',
+  innerClass = 'card-inner',
+  icon = '',
+  iconHtml = null,
+  iconClass = 'card-icon',
+  iconStyle = '',
+  bodyClass = 'card-body',
+  title = '',
+  titleHtml = null,
+  titleClass = 'card-title',
+  titleActionHtml = '',
+  titleRowClass = 'worklist-card-title-row',
+  subtitles = [],
+  metaHtml = '',
+  trailingHtml = '',
+} = {}) {
+  const iconContent = iconHtml != null ? iconHtml : escapeHtml(String(icon || ''));
+  const iconNode = iconContent
+    ? `<div class="${escapeAttr(iconClass)}"${iconStyle ? ` style="${escapeAttr(iconStyle)}"` : ''}>${iconContent}</div>`
+    : '';
+  const titleContent = titleHtml != null ? titleHtml : escapeHtml(String(title || ''));
+  const titleNode = titleContent ? `<div class="${escapeAttr(titleClass)}">${titleContent}</div>` : '';
+  const titleBlock = titleActionHtml
+    ? `<div class="${escapeAttr(titleRowClass)}">${titleNode}${titleActionHtml}</div>`
+    : titleNode;
+  const subtitlesHtml = (subtitles || []).filter(item => item != null && item !== '').map(item => {
+    if (item && typeof item === 'object') {
+      const itemClass = item.className || 'card-subtitle';
+      const content = item.html != null ? item.html : escapeHtml(String(item.text ?? ''));
+      return content ? `<div class="${escapeAttr(itemClass)}">${content}</div>` : '';
+    }
+    return `<div class="card-subtitle">${escapeHtml(String(item))}</div>`;
+  }).join('');
+  return `<div class="${escapeAttr(className)}"${onclick ? ` onclick="${escapeAttr(onclick)}"` : ''}>
+    <div class="${escapeAttr(innerClass)}">
+      ${iconNode}
+      <div class="${escapeAttr(bodyClass)}">
+        ${titleBlock}
+        ${subtitlesHtml}
+        ${metaHtml}
+      </div>
+      ${trailingHtml}
+    </div>
+  </div>`;
+}
+
+function renderWorklistCard({
+  onclick,
+  icon = '',
+  iconHtml = null,
+  iconClass = 'card-icon worklist-icon',
+  title,
+  editOnclick = '',
+  subtitle = '',
+  badges = [],
+  badgeTone = 'orange',
+} = {}) {
+  const badgesHtml = renderBadges(badges, { tone: badgeTone });
+  return renderEntityCard({
+    onclick,
+    icon,
+    iconHtml,
+    iconClass,
+    title: title || '(bez nazwy)',
+    titleClass: 'card-title worklist-card-title',
+    titleActionHtml: editOnclick
+      ? `<button class="btn-add-small" onclick="event.stopPropagation(); ${escapeAttr(editOnclick)}">Edytuj</button>`
+      : '',
+    subtitles: [subtitle],
+    metaHtml: badgesHtml ? `<div class="card-meta">${badgesHtml}</div>` : '',
+  });
+}
+
 function renderHeroMetrics(metrics, {
   className = 'hero-numbers',
 } = {}) {

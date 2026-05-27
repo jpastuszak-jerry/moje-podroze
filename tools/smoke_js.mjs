@@ -256,6 +256,36 @@ assert.match(contextCardHtml, /<button type="button"/, 'renderContextCard uses b
 assert.match(contextCardHtml, /context-clickable/, 'renderContextCard marks clickable cards');
 assert.match(contextCardHtml, /openTravel\(1\)/, 'renderContextCard keeps click action');
 
+const entityCardHtml = context.renderEntityCard({
+  className: 'card completed',
+  onclick: 'openItem(1)',
+  icon: 'i',
+  iconStyle: 'background:red',
+  titleHtml: 'Item <strong>done</strong>',
+  subtitles: ['subtitle > detail', { html: '<em>trusted</em>' }],
+  metaHtml: '<div class="card-meta">meta</div>',
+  trailingHtml: '<div class="card-chevron">›</div>',
+});
+assert.match(entityCardHtml, /card completed/, 'renderEntityCard keeps card classes');
+assert.match(entityCardHtml, /openItem\(1\)/, 'renderEntityCard keeps click action');
+assert.match(entityCardHtml, /Item <strong>done<\/strong>/, 'renderEntityCard supports trusted title HTML');
+assert.match(entityCardHtml, /&gt;/, 'renderEntityCard escapes plain subtitles');
+assert.match(entityCardHtml, /<em>trusted<\/em>/, 'renderEntityCard supports trusted subtitle HTML');
+assert.match(entityCardHtml, /card-chevron/, 'renderEntityCard keeps trailing content');
+
+const worklistCardHtml = context.renderWorklistCard({
+  onclick: 'openTravel(2)',
+  icon: '!',
+  iconClass: 'card-icon worklist-icon warn',
+  title: 'Do poprawy',
+  editOnclick: 'openTodoEdit(2)',
+  subtitle: '2 braki',
+  badges: ['Bez oceny'],
+});
+assert.match(worklistCardHtml, /worklist-card-title-row/, 'renderWorklistCard renders title action row');
+assert.match(worklistCardHtml, /openTodoEdit\(2\)/, 'renderWorklistCard keeps edit action');
+assert.match(worklistCardHtml, /badge-orange/, 'renderWorklistCard renders missing-data badges');
+
 const cardListHtml = context.renderCardList([{ id: 1 }, { id: 2 }], item => `<article>${item.id}</article>`, {
   className: 'card-list test-list',
 });
@@ -368,6 +398,17 @@ assert.equal(context.locationResultLabel(1), 'wynik', 'location filter summary h
 assert.equal(context.locationResultLabel(3), 'wyniki', 'location filter summary handles plural result label');
 assert.equal(context.worklistCountLabel(1), 'pozycja', 'worklist count label handles singular rows');
 assert.equal(context.worklistCountLabel(3), 'pozycje', 'worklist count label handles plural rows');
+const locationCardHtml = context.locCardHtml({
+  id: 10,
+  name: 'Helsinki',
+  location_type: 'miasto',
+  country_name: 'Finlandia',
+  visit_count: 1,
+  last_visit: '2025-07-21',
+}, true);
+assert.match(locationCardHtml, /openLocation\(10\)/, 'location cards keep click navigation');
+assert.match(locationCardHtml, /card-chevron/, 'location cards use shared trailing affordance');
+assert.doesNotMatch(locationCardHtml, /style="color:var\(--text3\)/, 'location cards avoid inline chevron styles');
 const locationProfileHtml = context.renderLocationDetailProfile({
   id: 10,
   name: 'Helsinki',
@@ -453,6 +494,21 @@ assert.match(trashBody.innerHTML, /trash-action danger/, 'trash hard delete acti
 assert.doesNotMatch(trashBody.innerHTML, /style="/, 'trash rows avoid inline styles');
 
 vm.runInContext(fs.readFileSync(travelsPath, 'utf8'), context, { filename: travelsPath });
+const travelCard = context.travelCardHtml({
+  id: 7,
+  name: 'Helsinki',
+  start_date: '2025-07-18',
+  end_date: '2025-07-21',
+  purpose: 'Wakacje',
+  rating: 4.5,
+  amount: 1200,
+  currency: 'EUR',
+  has_photo_album: 1,
+  is_description_complete: 1,
+});
+assert.match(travelCard, /card completed/, 'travel cards keep completed state');
+assert.match(travelCard, /openTravel\(7\)/, 'travel cards keep click navigation');
+assert.match(travelCard, /card-meta/, 'travel cards keep badges in card metadata');
 const travelControlsHtml = vm.runInContext(`
   currentSearch = 'Helsinki';
   currentTravelYear = 2025;

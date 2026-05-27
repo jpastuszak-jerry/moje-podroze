@@ -58,19 +58,15 @@ function renderTodoControls({ years, filters, totalItems, visibleItems }) {
 }
 
 function todoWorklistCardHtml(item) {
-  return `<div class="card" onclick="openTravel(${item.id})">
-    <div class="card-inner">
-      <div class="card-icon worklist-icon warn">✱</div>
-      <div class="card-body">
-        <div class="worklist-card-title-row">
-          <div class="card-title worklist-card-title">${escapeHtml(item.name || '(bez nazwy)')}</div>
-          <button class="btn-add-small" onclick="event.stopPropagation(); openTodoEdit(${item.id})">Edytuj</button>
-        </div>
-        <div class="card-subtitle">${fmtDate(item.start_date)} · ${item.missing_count} ${item.missing_count === 1 ? 'brak' : 'braki'}</div>
-        <div class="card-meta">${renderBadges(item.missing || [], { tone: 'orange' })}</div>
-      </div>
-    </div>
-  </div>`;
+  return renderWorklistCard({
+    onclick: `openTravel(${item.id})`,
+    icon: '✱',
+    iconClass: 'card-icon worklist-icon warn',
+    title: item.name || '(bez nazwy)',
+    editOnclick: `openTodoEdit(${item.id})`,
+    subtitle: `${fmtDate(item.start_date)} · ${item.missing_count} ${item.missing_count === 1 ? 'brak' : 'braki'}`,
+    badges: item.missing || [],
+  });
 }
 
 async function renderTodo() {

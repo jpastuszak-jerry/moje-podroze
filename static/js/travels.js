@@ -54,11 +54,15 @@ function travelCardHtml(t) {
     t.has_photo_album && { label: '📷 Album', tone: 'green' },
     t.amount > 0 && { label: `${parseFloat(t.amount).toLocaleString('pl-PL')} ${t.currency}`, tone: 'purple' },
   ]);
-  return '<div class="card' + (done ? ' completed' : '') + '" onclick="openTravel(' + t.id + ')">' +
-    '<div class="card-inner"><div class="card-icon" style="background:' + purposeIconBg(t.purpose) + '">' + purposeIcon(t.purpose) + '</div>' +
-    '<div class="card-body"><div class="card-title">' + escapeHtml(t.name || '(bez nazwy)') + (done ? ' ✓' : '') + '</div>' +
-    '<div class="card-subtitle">' + fmtDate(t.start_date) + ' – ' + fmtDate(t.end_date) + ' · ' + daysCount(t.start_date, t.end_date) + ' dni</div>' +
-    '<div class="card-meta">' + badges + '</div></div></div></div>';
+  return renderEntityCard({
+    className: `card${done ? ' completed' : ''}`,
+    onclick: `openTravel(${t.id})`,
+    iconHtml: purposeIcon(t.purpose),
+    iconStyle: `background:${purposeIconBg(t.purpose)}`,
+    titleHtml: `${escapeHtml(t.name || '(bez nazwy)')}${done ? ' ✓' : ''}`,
+    subtitles: [`${fmtDate(t.start_date)} – ${fmtDate(t.end_date)} · ${daysCount(t.start_date, t.end_date)} dni`],
+    metaHtml: badges ? `<div class="card-meta">${badges}</div>` : '',
+  });
 }
 
 function travelSortLabel(sort) {

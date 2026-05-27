@@ -362,17 +362,19 @@ function locCardHtml(l, showCountry = false) {
   const parent = l.parent_name ? ` · ${escapeHtml(l.parent_name)}` : '';
   const country = showCountry ? `${escapeHtml(l.country_name || '')} · ` : '';
   const gpsBadge = locationHasGps(l) ? '' : renderBadge('bez GPS', { tone: 'orange' });
-  return `<div class="card" onclick="openLocation(${l.id})"><div class="card-inner">
-    <div class="card-icon" style="background:var(--blue-light)">${locationIcon(l.location_type)}</div>
-    <div class="card-body">
-      <div class="card-title">${escapeHtml(l.name || '(bez nazwy)')}</div>
-      <div class="card-subtitle">${country}${type}${parent}</div>
-      <div class="card-subtitle">${escapeHtml(locVisitSummary(l))}</div>
-      ${l.address ? `<div class="card-subtitle">${escapeHtml(l.address)}</div>` : ''}
-      ${gpsBadge ? `<div class="card-meta">${gpsBadge}</div>` : ''}
-    </div>
-    <div style="color:var(--text3);font-size:20px;align-self:center">›</div>
-  </div></div>`;
+  return renderEntityCard({
+    onclick: `openLocation(${l.id})`,
+    iconHtml: locationIcon(l.location_type),
+    iconStyle: 'background:var(--blue-light)',
+    title: l.name || '(bez nazwy)',
+    subtitles: [
+      { html: `${country}${type}${parent}` },
+      locVisitSummary(l),
+      l.address || '',
+    ],
+    metaHtml: gpsBadge ? `<div class="card-meta">${gpsBadge}</div>` : '',
+    trailingHtml: '<div class="card-chevron">›</div>',
+  });
 }
 
 function renderLocList(locs) {
@@ -437,19 +439,14 @@ function renderLocationTodoControls({ filters, totalItems, visibleItems }) {
 }
 
 function locationTodoCardHtml(item) {
-  return `<div class="card" onclick="openLocation(${item.id})">
-    <div class="card-inner">
-      <div class="card-icon worklist-icon">${locationIcon(item.location_type)}</div>
-      <div class="card-body">
-        <div class="worklist-card-title-row">
-          <div class="card-title worklist-card-title">${escapeHtml(item.name || '(bez nazwy)')}</div>
-          <button class="btn-add-small" onclick="event.stopPropagation(); openEditLocationModal(${item.id})">Edytuj</button>
-        </div>
-        <div class="card-subtitle">${escapeHtml(item.location_type)} · ${escapeHtml(item.country_name)} · ${item.visit_count || 0} wizyt</div>
-        <div class="card-meta">${renderBadges(item.missing || [], { tone: 'orange' })}</div>
-      </div>
-    </div>
-  </div>`;
+  return renderWorklistCard({
+    onclick: `openLocation(${item.id})`,
+    iconHtml: locationIcon(item.location_type),
+    title: item.name || '(bez nazwy)',
+    editOnclick: `openEditLocationModal(${item.id})`,
+    subtitle: `${item.location_type || ''} · ${item.country_name || ''} · ${item.visit_count || 0} wizyt`,
+    badges: item.missing || [],
+  });
 }
 
 async function renderLocationTodo() {
