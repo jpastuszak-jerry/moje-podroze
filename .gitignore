@@ -10,6 +10,10 @@ travel.sqlite
 # Lokalne plany importu danych z prywatnych plikow
 tools/import_drafts/*.json
 
+# Lokalne podglady i logi robocze
+icon-previews/
+server.*.log
+
 # Claude Code (lokalna konfiguracja i pamięć)
 .claude/
 
