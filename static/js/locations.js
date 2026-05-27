@@ -907,16 +907,18 @@ async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
 }
 
 function buildLocPickerList(locs, travelId, travelStart, travelEnd) {
-  if (!locs.length) return `<div style="color:var(--text3);font-size:13px;padding:8px 0;text-align:center">Brak wyników</div>`;
+  if (!locs.length) return `<div class="modal-list-empty">Brak wyników</div>`;
   const grouped = {};
   locs.forEach(l => { if (!grouped[l.country_name]) grouped[l.country_name] = []; grouped[l.country_name].push(l); });
   return Object.entries(grouped).map(([country, items]) => `
-    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:8px 0 4px">${escapeHtml(country)}</div>
-    ${items.map(l => `<div class="person-row" onclick="openConfirmAddLocation(${travelId}, ${l.id}, '${jsStringArg(l.name)}', '${jsStringArg(l.location_type)}', '${jsStringArg(travelStart)}', '${jsStringArg(travelEnd)}', ${l.parent_location_id || 'null'}, '${jsStringArg(l.parent_name || '')}')">
-      <div style="font-size:20px;width:28px;text-align:center;flex-shrink:0">${locationIcon(l.location_type)}</div>
-      <div class="person-row-info"><div style="font-size:14px;font-weight:500">${escapeHtml(l.name)}</div>
-        <div style="font-size:12px;color:var(--text2)">${escapeHtml(l.location_type)}${l.parent_name ? ' · ' + escapeHtml(l.parent_name) : ''}</div></div>
-      <div class="person-row-plus">＋</div></div>`).join('')}`).join('');
+    <div class="picker-group-label">${escapeHtml(country)}</div>
+    ${items.map(l => renderPickerRow({
+      onclick: `openConfirmAddLocation(${travelId}, ${l.id}, '${jsStringArg(l.name)}', '${jsStringArg(l.location_type)}', '${jsStringArg(travelStart)}', '${jsStringArg(travelEnd)}', ${l.parent_location_id || 'null'}, '${jsStringArg(l.parent_name || '')}')`,
+      iconHtml: locationIcon(l.location_type),
+      iconClass: 'picker-row-icon',
+      title: l.name,
+      subtitle: `${l.location_type || ''}${l.parent_name ? ' · ' + l.parent_name : ''}`,
+    })).join('')}`).join('');
 }
 
 function filterLocPicker(q) {

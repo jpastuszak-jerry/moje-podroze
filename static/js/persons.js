@@ -48,15 +48,17 @@ function buildPersonsList(persons, relTypes) {
     const relOpts = `<option value="">– brak –</option>` +
       relTypes.map(r => `<option value="${r.id}"${r.id === p.relation_type_id ? ' selected' : ''}>${escapeHtml(r.name)}</option>`).join('');
     return `<div class="modal-list-row" id="person-row-${p.id}">
-      <div class="modal-row-view" id="person-view-${p.id}">
-        <div class="avatar modal-row-avatar">${initials(p.name)}</div>
-        <div class="modal-row-main">
-          <div class="modal-row-title">${escapeHtml(p.name)}</div>
-          ${p.relation_type ? `<div class="modal-row-sub">${escapeHtml(p.relation_type)}</div>` : ''}
-        </div>
-        <button class="modal-row-button neutral" onclick="startEditPerson(${p.id})">✏️</button>
-        <button class="modal-row-button danger" onclick="deletePersonFromModal(${p.id})">✕</button>
-      </div>
+      ${renderPickerRow({
+        id: `person-view-${p.id}`,
+        rowClass: 'modal-row-view',
+        iconHtml: initials(p.name),
+        iconClass: 'avatar modal-row-avatar',
+        title: p.name,
+        subtitle: p.relation_type || '',
+        plusHtml: '',
+        actionsHtml: `<button class="modal-row-button neutral" onclick="startEditPerson(${p.id})">✏️</button>
+          <button class="modal-row-button danger" onclick="deletePersonFromModal(${p.id})">✕</button>`,
+      })}
       <div id="person-edit-${p.id}" class="hidden">
         <input class="form-input form-edit-input" id="person-name-${p.id}" value="${(p.name||'').replace(/"/g,'&quot;')}">
         <select class="form-input" id="person-rel-${p.id}">${relOpts}</select>

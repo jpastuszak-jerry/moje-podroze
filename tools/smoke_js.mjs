@@ -9,6 +9,7 @@ const appCssPath = path.join(repoRoot, 'static', 'css', 'app.css');
 const utilsPath = path.join(repoRoot, 'static', 'js', 'utils.js');
 const componentsPath = path.join(repoRoot, 'static', 'js', 'components.js');
 const dictionariesPath = path.join(repoRoot, 'static', 'js', 'dictionaries.js');
+const personsPath = path.join(repoRoot, 'static', 'js', 'persons.js');
 const locationsPath = path.join(repoRoot, 'static', 'js', 'locations.js');
 const mapPath = path.join(repoRoot, 'static', 'js', 'map.js');
 const travelsPath = path.join(repoRoot, 'static', 'js', 'travels.js');
@@ -286,6 +287,23 @@ assert.match(worklistCardHtml, /worklist-card-title-row/, 'renderWorklistCard re
 assert.match(worklistCardHtml, /openTodoEdit\(2\)/, 'renderWorklistCard keeps edit action');
 assert.match(worklistCardHtml, /badge-orange/, 'renderWorklistCard renders missing-data badges');
 
+const pickerRowHtml = context.renderPickerRow({
+  onclick: 'pick(1)',
+  iconHtml: '<span>A</span>',
+  title: 'Anna <Nowak>',
+  subtitle: 'Rodzina',
+});
+assert.match(pickerRowHtml, /person-row/, 'renderPickerRow uses shared picker row class');
+assert.match(pickerRowHtml, /pick\(1\)/, 'renderPickerRow keeps click action');
+assert.match(pickerRowHtml, /Anna &lt;Nowak&gt;/, 'renderPickerRow escapes plain titles');
+assert.match(pickerRowHtml, /modal-row-sub/, 'renderPickerRow renders subtitles');
+assert.match(context.renderPickerRow({
+  id: 'row-1',
+  title: 'Row',
+  plusHtml: '',
+  actionsHtml: '<button>Go</button>',
+}), /<button>Go<\/button>/, 'renderPickerRow can render action buttons');
+
 const cardListHtml = context.renderCardList([{ id: 1 }, { id: 2 }], item => `<article>${item.id}</article>`, {
   className: 'card-list test-list',
 });
@@ -374,6 +392,17 @@ assert.equal(
   'export record count label is human-readable',
 );
 
+vm.runInContext(fs.readFileSync(personsPath, 'utf8'), context, { filename: personsPath });
+const personsListHtml = context.buildPersonsList([{
+  id: 3,
+  name: 'Anna Nowak',
+  relation_type: 'Rodzina',
+  relation_type_id: 1,
+}], [{ id: 1, name: 'Rodzina' }]);
+assert.match(personsListHtml, /person-view-3/, 'persons modal keeps row view ids');
+assert.match(personsListHtml, /modal-row-button neutral/, 'persons modal keeps edit actions');
+assert.match(personsListHtml, /person-row-info/, 'persons modal uses shared picker row content');
+
 vm.runInContext(fs.readFileSync(locationsPath, 'utf8'), context, { filename: locationsPath });
 let locationToolsOverlay = null;
 const previousAppendChild = context.document.body.appendChild;
@@ -434,6 +463,16 @@ const locationVisitsHtml = context.renderLocationVisitSection('Wizyty', [{
   notes: 'Spacer',
 }], 'x');
 assert.match(locationVisitsHtml, /location-visit-row/, 'location detail renders visit rows as buttons');
+const locationPickerHtml = context.buildLocPickerList([{
+  id: 10,
+  name: 'Helsinki',
+  location_type: 'miasto',
+  country_name: 'Finlandia',
+  parent_location_id: null,
+}], 7, '2025-07-18', '2025-07-21');
+assert.match(locationPickerHtml, /picker-group-label/, 'location picker uses shared group labels');
+assert.match(locationPickerHtml, /picker-row-icon/, 'location picker uses shared icon class');
+assert.doesNotMatch(locationPickerHtml, /style="/, 'location picker rows avoid inline styles');
 
 const newLocationOverlays = [];
 const previousNewLocationAppend = context.document.body.appendChild;
@@ -605,6 +644,13 @@ assert.match(swSource, /\/api\/stats/, 'service worker treats stats cost and qua
 assert.match(swSource, /Cache-Control/, 'service worker respects no-store cache headers');
 
 vm.runInContext(fs.readFileSync(wizardPath, 'utf8'), context, { filename: wizardPath });
+const wizardParticipantPickerHtml = context.wizardAvailableParticipantsHtml([{
+  id: 3,
+  name: 'Anna Nowak',
+  relation_type: 'Rodzina',
+}]);
+assert.match(wizardParticipantPickerHtml, /person-row/, 'wizard participant picker uses shared picker rows');
+assert.match(wizardParticipantPickerHtml, /wizardPickParticipant/, 'wizard participant picker keeps click action');
 
 const wizardSaveButton = elementStub();
 let wizardClosed = false;

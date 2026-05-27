@@ -263,6 +263,34 @@ function renderWorklistCard({
   });
 }
 
+function renderPickerRow({
+  id = '',
+  onclick = '',
+  icon = '',
+  iconHtml = null,
+  iconClass = 'avatar',
+  title = '',
+  titleHtml = null,
+  subtitle = '',
+  subtitleHtml = '',
+  plusHtml = '＋',
+  actionsHtml = '',
+  rowClass = 'person-row',
+} = {}) {
+  const iconContent = iconHtml != null ? iconHtml : escapeHtml(String(icon || ''));
+  const titleContent = titleHtml != null ? titleHtml : escapeHtml(String(title || ''));
+  const subtitleContent = subtitleHtml || (subtitle ? escapeHtml(String(subtitle)) : '');
+  const actionNode = actionsHtml || (plusHtml ? `<div class="person-row-plus">${plusHtml}</div>` : '');
+  return `<div class="${escapeAttr(rowClass)}"${id ? ` id="${escapeAttr(id)}"` : ''}${onclick ? ` onclick="${escapeAttr(onclick)}"` : ''}>
+    ${iconContent ? `<div class="${escapeAttr(iconClass)}">${iconContent}</div>` : ''}
+    <div class="person-row-info">
+      <div class="modal-row-title">${titleContent}</div>
+      ${subtitleContent ? `<div class="modal-row-sub">${subtitleContent}</div>` : ''}
+    </div>
+    ${actionNode}
+  </div>`;
+}
+
 function renderHeroMetrics(metrics, {
   className = 'hero-numbers',
 } = {}) {

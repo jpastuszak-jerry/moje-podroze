@@ -162,15 +162,12 @@ function wizardParticipantRowsHtml(participants = wizardState.participants) {
 
 function wizardAvailableParticipantsHtml(available) {
   if (!available.length) return wizardEmptyHtml('Wszystkie osoby już dodane.', true);
-  return available.map(p => `
-    <div class="person-row" onclick="wizardPickParticipant(${p.id}, '${jsStringArg(p.name)}', '${jsStringArg(p.relation_type || '')}', this)">
-      <div class="avatar">${initials(p.name)}</div>
-      <div class="person-row-info">
-        <div class="modal-row-title">${escapeHtml(p.name)}</div>
-        ${p.relation_type ? `<div class="modal-row-sub">${escapeHtml(p.relation_type)}</div>` : ''}
-      </div>
-      <div class="person-row-plus">＋</div>
-    </div>`).join('');
+  return available.map(p => renderPickerRow({
+    onclick: `wizardPickParticipant(${p.id}, '${jsStringArg(p.name)}', '${jsStringArg(p.relation_type || '')}', this)`,
+    iconHtml: initials(p.name),
+    title: p.name,
+    subtitle: p.relation_type || '',
+  })).join('');
 }
 
 /* ── Krok 0: Podstawowe info ──────────────────────────────── */

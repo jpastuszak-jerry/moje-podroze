@@ -473,12 +473,12 @@ async function openAddParticipant(travelId) {
       <div class="modal-header"><span class="modal-title">Dodaj uczestnika</span>
         <button class="modal-save" onclick="closeModal(document.getElementById('participant-overlay'))">Gotowe</button></div>
       <div class="form-section"><div class="form-label">Wybierz z listy</div>
-        ${available.length ? available.map(p => `
-          <div class="person-row" onclick="addParticipantToTravel(${travelId}, ${p.id}, '${jsStringArg(p.name)}', '${jsStringArg(p.relation_type || '')}', this)">
-            <div class="avatar">${escapeHtml(initials(p.name))}</div>
-            <div class="person-row-info"><div style="font-size:14px;font-weight:500">${escapeHtml(p.name)}</div>
-              ${p.relation_type ? `<div style="font-size:12px;color:var(--text2)">${escapeHtml(p.relation_type)}</div>` : ''}</div>
-            <div class="person-row-plus">＋</div></div>`).join('') : `<div style="color:var(--text3);font-size:13px;padding:8px 0">Wszystkie osoby już dodane</div>`}
+        ${available.length ? available.map(p => renderPickerRow({
+          onclick: `addParticipantToTravel(${travelId}, ${p.id}, '${jsStringArg(p.name)}', '${jsStringArg(p.relation_type || '')}', this)`,
+          iconHtml: initials(p.name),
+          title: p.name,
+          subtitle: p.relation_type || '',
+        })).join('') : '<div class="inline-empty">Wszystkie osoby już dodane</div>'}
       </div>
       <div class="form-section form-section-divider">
         <div class="form-label">Lub dodaj nową osobę</div>
@@ -614,11 +614,12 @@ function askTravelDateConflict(conflicts) {
     document.getElementById('travel-conflict-overlay')?.remove();
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay'; overlay.id = 'travel-conflict-overlay';
-    const list = conflicts.map(c => `
-      <div class="modal-list-row">
-        <div class="modal-row-title">${escapeHtml(c.location_name)}</div>
-        <div class="modal-row-sub">${fmtDate(c.arrival_date) || '?'} – ${fmtDate(c.departure_date) || '?'}</div>
-      </div>`).join('');
+    const list = conflicts.map(c => renderPickerRow({
+      rowClass: 'modal-list-row',
+      title: c.location_name,
+      subtitle: `${fmtDate(c.arrival_date) || '?'} – ${fmtDate(c.departure_date) || '?'}`,
+      plusHtml: '',
+    })).join('');
     overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
       <div class="modal-header"><span class="modal-title">⚠️ Konflikt dat</span></div>
       <div class="form-section">
