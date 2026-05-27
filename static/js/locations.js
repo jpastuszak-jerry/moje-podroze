@@ -708,7 +708,9 @@ async function removeLocationFromTravel(travelId, tlid) {
     const res = await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
     if (res.error) { toastApiError(res, 'Nie udało się usunąć miejsca z podróży'); return; }
     const row = document.getElementById('tl-' + tlid);
+    const group = row?.closest('.travel-route-day');
     removeWithSlide(row, () => {
+      if (group && !group.querySelector('.loc-row')) group.remove();
       const list = document.getElementById('locations-list');
       if (list && !list.querySelector('.loc-row')) list.innerHTML = `<div class="empty-locs inline-empty">Brak miejsc</div>`;
     });
@@ -782,8 +784,14 @@ async function saveEditTravelLocation(travelId, tlid) {
     row.dataset.arrival = arrival || '';
     row.dataset.departure = departure || '';
     row.dataset.notes = notes || '';
-    document.getElementById('tl-dates-' + tlid).textContent = fmtDate(arrival) + ' – ' + fmtDate(departure);
-    document.getElementById('tl-notes-' + tlid).textContent = notes || '';
+    const datesEl = document.getElementById('tl-dates-' + tlid);
+    if (datesEl) datesEl.textContent = travelVisitDateLabel(arrival, departure);
+    const noteWrap = document.getElementById('tl-note-wrap-' + tlid);
+    if (noteWrap) noteWrap.innerHTML = travelLocationNoteHtml(tlid, notes);
+    else {
+      const notesEl = document.getElementById('tl-notes-' + tlid);
+      if (notesEl) notesEl.textContent = notes || '';
+    }
   }
 }
 
@@ -992,24 +1000,7 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
   }
   document.getElementById('loc-confirm-overlay')?.remove();
   document.getElementById('loc-picker-overlay')?.remove();
-  const list = document.getElementById('locations-list');
-  if (list) {
-    list.querySelectorAll('.empty-locs').forEach(el => el.remove());
-    const row = document.createElement('div'); row.className = 'loc-row'; row.id = 'tl-' + res.id;
-    row.dataset.arrival = arrival || '';
-    row.dataset.departure = departure || '';
-    row.dataset.notes = notes || '';
-    row.dataset.locationId = locationId;
-    row.innerHTML = `<div class="loc-icon">${locationIcon(locationType)}</div><div style="flex:1">
-      <div class="loc-name">${escapeHtml(locationName)}</div><div class="loc-sub">${escapeHtml(locationType)}</div>
-      <div class="loc-sub" id="tl-dates-${res.id}">${fmtDate(arrival)} – ${fmtDate(departure)}</div>
-      <div class="loc-sub" id="tl-notes-${res.id}" style="font-style:italic">${notes ? escapeHtml(notes) : ''}</div></div>
-      <div style="display:flex;flex-direction:column;gap:4px;align-self:flex-start;margin-top:2px">
-        <button onclick="openEditTravelLocation(${travelId}, ${res.id})" style="background:none;border:none;color:var(--blue);font-size:16px;cursor:pointer;padding:0;line-height:1">✎</button>
-        <button onclick="removeLocationFromTravel(${travelId}, ${res.id})" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0;line-height:1">✕</button>
-      </div>`;
-    list.appendChild(row);
-  }
+  openTravel(travelId);
 }
 
 /* ── Kosz (soft delete) ───────────────────────────────────── */

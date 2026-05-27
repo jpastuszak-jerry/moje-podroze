@@ -149,6 +149,271 @@ function resetTravelFilters() {
   renderTravels('');
 }
 
+function travelPlural(count, one, few, many) {
+  count = Number(count || 0);
+  if (count === 1) return one;
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return few;
+  return many;
+}
+
+function travelUniqueValues(items, key) {
+  return [...new Set((items || []).map(item => item && item[key]).filter(Boolean))];
+}
+
+function travelCostLabel(t) {
+  const amount = parseFloat(t.amount || 0);
+  if (!amount) return '–';
+  return `${amount.toLocaleString('pl-PL')} ${escapeHtml(t.currency || '')}`.trim();
+}
+
+function travelVisitDateLabel(arrival, departure) {
+  if (!arrival && !departure) return 'Brak daty wizyty';
+  if (!arrival) return fmtDate(departure);
+  if (!departure || arrival === departure) return fmtDate(arrival);
+  return `${fmtDate(arrival)} – ${fmtDate(departure)}`;
+}
+
+function travelDayLabel(date, travelStart) {
+  if (!date || !travelStart) return '';
+  const dayNo = daysCount(travelStart, date);
+  return dayNo > 0 ? `Dzień ${dayNo}` : '';
+}
+
+function travelCountriesLabel(locations, limit = 3) {
+  const countries = travelUniqueValues(locations, 'country_name');
+  if (!countries.length) return '–';
+  if (countries.length <= limit) return countries.join(', ');
+  return `${countries.slice(0, limit).join(', ')} +${countries.length - limit}`;
+}
+
+function renderTravelHeroStat(label, value, sub = '') {
+  return `<div class="travel-hero-stat">
+    <div class="travel-hero-stat-value">${escapeHtml(String(value ?? '–'))}</div>
+    <div class="travel-hero-stat-label">${escapeHtml(label)}</div>
+    ${sub ? `<div class="travel-hero-stat-sub">${escapeHtml(sub)}</div>` : ''}
+  </div>`;
+}
+
+function renderTravelDetail(t) {
+  const locations = t.locations || [];
+  const participants = t.participants || [];
+  const countryCount = travelUniqueValues(locations, 'country_name').length;
+  return `
+    <div class="detail-header-gradient travel-detail-hero" style="background:${purposeGradient(t.purpose)}">
+      <div class="travel-detail-hero-inner">
+        <button class="back-btn" onclick="showTab('travels')">‹ Podróże</button>
+        <div class="travel-hero-top">
+          <div class="travel-hero-kicker">
+            <span>${purposeIcon(t.purpose)} ${escapeHtml(t.purpose || 'Podróż')}</span>
+            ${t.is_description_complete ? '<span class="travel-status-chip done">Opis kompletny</span>' : '<span class="travel-status-chip todo">Do uzupełnienia</span>'}
+          </div>
+          <button class="travel-hero-edit" onclick="openEditTravel()" title="Edytuj podróż">✎ Edytuj</button>
+        </div>
+        <div class="detail-title">${escapeHtml(t.name || '(bez nazwy)')}</div>
+        <div class="detail-sub">${fmtDate(t.start_date)} – ${fmtDate(t.end_date)}</div>
+        <div class="travel-hero-stats">
+          ${renderTravelHeroStat('Dni', daysCount(t.start_date, t.end_date))}
+          ${renderTravelHeroStat('Miejsca', locations.length)}
+          ${renderTravelHeroStat('Kraje', countryCount || '–', travelCountriesLabel(locations, 2))}
+          ${renderTravelHeroStat('Uczestnicy', participants.length || '–')}
+        </div>
+      </div>
+    </div>
+    <div class="detail-body travel-detail-body">
+      ${renderTravelSummarySection(t)}
+      ${renderTravelParticipantsSection(t)}
+      ${renderTravelRouteSection(t)}
+      ${renderTravelNotesSection(t)}
+      ${renderTravelReflectionsSection(t)}
+      <div class="section travel-danger-section">
+        <div class="section-title">Zarządzanie</div>
+        <button class="delete-btn travel-detail-delete" onclick="confirmDelete(${t.id})">🗑 Usuń podróż</button>
+      </div>
+      <div class="travel-detail-spacer"></div>
+    </div>`;
+}
+
+function renderTravelSummarySection(t) {
+  const items = [
+    { label: 'Cel', value: t.purpose || '–' },
+    { label: 'Koszt', valueHtml: travelCostLabel(t) },
+    { label: 'Loty', value: t.number_of_flights || 0 },
+    { label: 'Ocena', valueHtml: t.rating ? stars(t.rating) : '–', className: 'rating' },
+    { label: 'Album', value: t.has_photo_album ? 'Tak' : 'Nie' },
+    { label: 'Opis', value: t.is_description_complete ? 'Kompletny' : 'Do uzupełnienia' },
+  ];
+  return `<div class="section travel-summary-section">
+    <div class="section-title">Podsumowanie</div>
+    <div class="travel-summary-grid">
+      ${items.map(item => `<div class="travel-summary-card${item.className ? ' ' + escapeAttr(item.className) : ''}">
+        <div class="travel-summary-label">${escapeHtml(item.label)}</div>
+        <div class="travel-summary-value">${item.valueHtml != null ? item.valueHtml : escapeHtml(String(item.value ?? '–'))}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderTravelParticipantsSection(t) {
+  const participants = t.participants || [];
+  return `<div class="section" id="section-participants">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Uczestnicy</div>
+        <div class="travel-section-sub">${participants.length ? `${participants.length} ${travelPlural(participants.length, 'osoba', 'osoby', 'osób')}` : 'Brak dopisanych osób'}</div>
+      </div>
+      <button class="section-action" onclick="openAddParticipant(${t.id})">＋ Dodaj</button>
+    </div>
+    <div class="person-chips travel-person-chips" id="participants-chips">
+      ${participants.length ? participants.map(p => `
+        <div class="person-chip" id="chip-${p.id}">
+          <div class="avatar">${initials(p.name)}</div>
+          <div class="person-chip-text"><div class="person-chip-name">${escapeHtml(p.name.split(' ')[0])}</div>
+          ${p.relation_type ? `<div class="person-chip-meta">${escapeHtml(p.relation_type)}</div>` : ''}</div>
+          <button class="row-icon-button danger" onclick="removeParticipantFromTravel(${t.id}, ${p.id})" title="Usuń uczestnika">✕</button>
+        </div>`).join('') : `<div class="empty-chips inline-empty">Brak uczestników</div>`}
+    </div>
+  </div>`;
+}
+
+function sortedTravelLocations(locations) {
+  return [...(locations || [])].sort((a, b) => {
+    const dateCmp = String(a.arrival_date || '').localeCompare(String(b.arrival_date || ''));
+    if (dateCmp) return dateCmp;
+    return String(a.location_name || '').localeCompare(String(b.location_name || ''), 'pl');
+  });
+}
+
+function renderTravelRouteSection(t) {
+  const locations = sortedTravelLocations(t.locations || []);
+  const ids = locations.map(l => parseInt(l.location_id, 10)).filter(Boolean);
+  return `<div class="section travel-route-section" id="section-locations">
+    <div class="section-header travel-route-header">
+      <div>
+        <div class="section-title">Trasa i miejsca</div>
+        <div class="travel-section-sub">${locations.length ? `${locations.length} ${travelPlural(locations.length, 'wpis', 'wpisy', 'wpisów')} trasy` : 'Brak miejsc w podróży'}</div>
+      </div>
+      <div class="section-actions">
+        ${ids.length ? `<button class="section-action secondary" onclick="showTravelOnMap([${ids.join(',')}])">🗺 Mapa</button>` : ''}
+        <button class="section-action" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
+      </div>
+    </div>
+    <div class="travel-route-list" id="locations-list">
+      ${locations.length ? renderTravelRouteGroups(t, locations) : `<div class="empty-locs inline-empty">Brak miejsc</div>`}
+    </div>
+  </div>`;
+}
+
+function renderTravelRouteGroups(t, locations) {
+  const groups = [];
+  locations.forEach(location => {
+    const key = location.arrival_date || 'no-date';
+    let group = groups.find(item => item.key === key);
+    if (!group) {
+      group = { key, items: [] };
+      groups.push(group);
+    }
+    group.items.push(location);
+  });
+  return groups.map(group => {
+    const title = group.key === 'no-date' ? 'Bez daty' : fmtDate(group.key);
+    const day = group.key === 'no-date' ? '' : travelDayLabel(group.key, t.start_date);
+    return `<div class="travel-route-day" data-route-day="${escapeAttr(group.key)}">
+      <div class="travel-route-day-header">
+        <div>
+          <div class="travel-route-date">${escapeHtml(title)}</div>
+          ${day ? `<div class="travel-route-day-sub">${escapeHtml(day)}</div>` : ''}
+        </div>
+        <div class="travel-route-count">${group.items.length} ${travelPlural(group.items.length, 'miejsce', 'miejsca', 'miejsc')}</div>
+      </div>
+      ${group.items.map(location => renderTravelLocationRow(t.id, location)).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderTravelLocationRow(travelId, l) {
+  const type = l.location_type || '';
+  const country = l.country_name || '';
+  return `<div class="travel-route-row loc-row" id="tl-${l.id}"
+      data-arrival="${escapeAttr(l.arrival_date || '')}"
+      data-departure="${escapeAttr(l.departure_date || '')}"
+      data-notes="${escapeAttr(l.notes || '')}"
+      data-location-id="${escapeAttr(l.location_id || '')}">
+      <div class="travel-route-icon">${locationIcon(type)}</div>
+      <div class="travel-route-main">
+        <div class="travel-route-top">
+          <button type="button" class="travel-route-name" onclick="openLocation(${l.location_id})">${escapeHtml(l.location_name)}</button>
+          <div class="travel-route-dates" id="tl-dates-${l.id}">${escapeHtml(travelVisitDateLabel(l.arrival_date, l.departure_date))}</div>
+        </div>
+        <div class="travel-route-meta">
+          ${type ? `<span>${escapeHtml(type)}</span>` : ''}
+          ${country ? `<span>${escapeHtml(country)}</span>` : ''}
+        </div>
+        <div class="travel-route-note-wrap" id="tl-note-wrap-${l.id}">
+          ${travelLocationNoteHtml(l.id, l.notes)}
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="row-icon-button primary" onclick="openEditTravelLocation(${travelId}, ${l.id})" title="Edytuj wizytę">✎</button>
+        <button class="row-icon-button danger" onclick="removeLocationFromTravel(${travelId}, ${l.id})" title="Usuń z podróży">✕</button>
+      </div>
+    </div>`;
+}
+
+function travelLocationNoteHtml(id, notes) {
+  const text = String(notes || '').trim();
+  if (!text) return `<div class="travel-route-note-empty" id="tl-notes-${id}"></div>`;
+  const preview = text.length > 86 ? `${text.slice(0, 83)}…` : text;
+  return `<details class="travel-route-note">
+    <summary><span>Notatka</span><span class="travel-route-note-preview">${escapeHtml(preview)}</span></summary>
+    <div class="travel-route-note-text" id="tl-notes-${id}">${escapeHtml(text)}</div>
+  </details>`;
+}
+
+function parseTravelDailyNotes(notes) {
+  const result = { intro: [], days: [] };
+  String(notes || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).forEach(line => {
+    const day = line.match(/^(\d{4}-\d{2}-\d{2})\s+-\s+(.+)$/);
+    if (day) {
+      result.days.push({ date: day[1], text: day[2] });
+    } else if (!line.includes('-->')) {
+      result.intro.push(line);
+    }
+  });
+  return result;
+}
+
+function renderTravelNotesSection(t) {
+  if (!t.notes) return '';
+  const parsed = parseTravelDailyNotes(t.notes);
+  if (parsed.days.length >= 2) {
+    return `<div class="section travel-notes-section">
+      <div class="section-title">Notatki dzienne</div>
+      ${parsed.intro.length ? `<div class="notes-text travel-notes-intro">${escapeHtml(parsed.intro.join('\n'))}</div>` : ''}
+      <div class="travel-day-notes">
+        ${parsed.days.map((day, idx) => `<details class="travel-day-card"${idx < 2 ? ' open' : ''}>
+          <summary>
+            <span class="travel-day-title">${escapeHtml(fmtDate(day.date))}</span>
+            <span class="travel-day-tag">${escapeHtml(travelDayLabel(day.date, t.start_date))}</span>
+          </summary>
+          <div class="travel-day-text">${escapeHtml(day.text)}</div>
+        </details>`).join('')}
+      </div>
+    </div>`;
+  }
+  return `<div class="section travel-notes-section">
+    <div class="section-title">Notatki</div>
+    <div class="notes-text">${escapeHtml(t.notes)}</div>
+  </div>`;
+}
+
+function renderTravelReflectionsSection(t) {
+  if (!t.reflections) return '';
+  return `<div class="section">
+    <div class="section-title">Wspomnienia</div>
+    <div class="reflections-text">${escapeHtml(t.reflections)}</div>
+  </div>`;
+}
+
 async function openTravel(id) {
   setMapViewMode(false);
   const view = document.getElementById('view');
@@ -161,74 +426,7 @@ async function openTravel(id) {
     return;
   }
   window._currentTravel = t;
-  view.innerHTML = `
-    <div class="detail-header-gradient" style="background:${purposeGradient(t.purpose)}">
-      <button class="back-btn" onclick="showTab('travels')">‹ Podróże</button>
-      <div class="detail-title">${escapeHtml(t.name || '(bez nazwy)')}</div>
-      <div class="detail-sub">${fmtDate(t.start_date)} – ${fmtDate(t.end_date)}</div>
-      <div class="travel-header-pill">${purposeIcon(t.purpose)} ${escapeHtml(t.purpose || 'Podróż')} · ${daysCount(t.start_date, t.end_date)} dni${t.rating ? ' · ' + stars(t.rating) : ''}</div>
-    </div>
-    <div class="detail-body">
-      <div class="section"><div class="section-title">Szczegóły</div>
-        <div class="info-grid">
-          <div class="info-item"><label>Cel</label><span>${escapeHtml(t.purpose || '–')}</span></div>
-          <div class="info-item"><label>Czas trwania</label><span>${daysCount(t.start_date, t.end_date)} dni</span></div>
-          <div class="info-item"><label>Koszt</label><span>${t.amount > 0 ? t.amount.toLocaleString('pl-PL')+' '+escapeHtml(t.currency) : '–'}</span></div>
-          <div class="info-item"><label>Loty</label><span>${t.number_of_flights || 0}</span></div>
-          <div class="info-item"><label>Ocena</label><span style="color:var(--orange)">${t.rating ? stars(t.rating) : '–'}</span></div>
-          <div class="info-item"><label>Album</label><span>${t.has_photo_album ? '📷 Tak' : 'Nie'}</span></div>
-        </div>
-      </div>
-      ${t.notes ? `<div class="section"><div class="section-title">Notatki</div><div class="notes-text">${escapeHtml(t.notes)}</div></div>` : ''}
-      ${t.reflections ? `<div class="section"><div class="section-title">Wspomnienia</div><div class="reflections-text">${escapeHtml(t.reflections)}</div></div>` : ''}
-      <div class="section" id="section-locations">
-        <div class="section-header">
-          <div class="section-title">Odwiedzone miejsca${t.locations && t.locations.length ? ' (' + t.locations.length + ')' : ''}</div>
-          <div class="section-actions">
-            ${t.locations && t.locations.length ? `<button class="section-action secondary" onclick="showTravelOnMap([${t.locations.map(l=>l.location_id).join(',')}])">🗺 Mapa</button>` : ''}
-            <button class="section-action" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
-          </div>
-        </div>
-        <div id="locations-list">
-          ${(t.locations && t.locations.length) ? t.locations.map(l => `
-            <div class="loc-row" id="tl-${l.id}"
-              data-arrival="${l.arrival_date||''}"
-              data-departure="${l.departure_date||''}"
-              data-notes="${(l.notes||'').replace(/"/g,'&quot;')}"
-              data-location-id="${l.location_id}">
-              <div class="loc-icon">${locationIcon(l.location_type)}</div>
-              <div style="flex:1">
-                <div class="loc-name">${escapeHtml(l.location_name)}</div>
-                <div class="loc-sub">${escapeHtml(l.location_type)} · ${escapeHtml(l.country_name)}</div>
-                <div class="loc-sub" id="tl-dates-${l.id}">${fmtDate(l.arrival_date)} – ${fmtDate(l.departure_date)}</div>
-                <div class="loc-sub" id="tl-notes-${l.id}" style="font-style:italic">${l.notes ? escapeHtml(l.notes) : ''}</div>
-              </div>
-              <div class="row-actions">
-                <button class="row-icon-button primary" onclick="openEditTravelLocation(${t.id}, ${l.id})" title="Edytuj wizytę">✎</button>
-                <button class="row-icon-button danger" onclick="removeLocationFromTravel(${t.id}, ${l.id})" title="Usuń z podróży">✕</button>
-              </div>
-            </div>`).join('') : `<div class="empty-locs inline-empty">Brak miejsc</div>`}
-        </div>
-      </div>
-      <div class="section" id="section-participants">
-        <div class="section-header">
-          <div class="section-title">Uczestnicy</div>
-          <button class="section-action" onclick="openAddParticipant(${t.id})">＋ Dodaj</button>
-        </div>
-        <div class="person-chips" id="participants-chips">
-          ${(t.participants && t.participants.length) ? t.participants.map(p => `
-            <div class="person-chip" id="chip-${p.id}">
-              <div class="avatar">${initials(p.name)}</div>
-              <div class="person-chip-text"><div class="person-chip-name">${escapeHtml(p.name.split(' ')[0])}</div>
-              ${p.relation_type ? `<div class="person-chip-meta">${escapeHtml(p.relation_type)}</div>` : ''}</div>
-              <button class="row-icon-button danger" onclick="removeParticipantFromTravel(${t.id}, ${p.id})" title="Usuń uczestnika">✕</button>
-            </div>`).join('') : `<div class="empty-chips inline-empty">Brak uczestników</div>`}
-        </div>
-      </div>
-      <button class="delete-btn" onclick="confirmDelete(${t.id})">🗑 Usuń podróż</button>
-      <div style="height:12px"></div>
-    </div>
-    <button class="fab" onclick="openEditTravel()">✎</button>`;
+  view.innerHTML = renderTravelDetail(t);
 }
 
 async function confirmDelete(id) {

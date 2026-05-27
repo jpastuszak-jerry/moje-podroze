@@ -57,18 +57,24 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ### 0. Nastepny priorytet po przerwie: karta szczegolow podrozy po duzych importach
 
-**Status:** do zrobienia w pierwszej kolejnosci jutro.
+**Status:** zrobione w `Redesign travel detail card`.
 
 **Decyzja:** zaczac od UX/UI, nie od czystego refaktoru. Refaktor dopuszczalny tylko jako porzadkowanie przy okazji wdrozenia.
 
 **Kontekst:** po imporcie opisow dla `Gory Literatury z Olga` i `Workation w Trapani` aplikacja ma duzo bogatsze notatki oraz znacznie dluzsze listy miejsc w podrozy. Karta szczegolow podrozy musi lepiej uniesc takie dane, szczegolnie na iPhonie.
 
-**Proponowany zakres:**
+**Zakres:**
 - uporzadkowac szczegoly podrozy w wyrazne sekcje: podsumowanie, uczestnicy, miejsca, notatki, refleksje,
 - poprawic prezentacje dlugich notatek, np. czytelne bloki dzienne albo zwijanie/rozwijanie,
 - liste miejsc w podrozy pokazac bardziej trasowo: daty, kraj/typ, wazne miejsca i notatki bez sciany tekstu,
 - dopilnowac ergonomii na iPhonie, bo dlugie podroze najszybciej pokaza slabosci ukladu,
 - zachowac istniejaca logike danych i nie ruszac modelu bazy, jesli nie bedzie to konieczne.
+
+**Zrobione:**
+- karta szczegolow podrozy ma teraz sekcje: naglowek z metrykami, podsumowanie, uczestnicy, trasa i miejsca, notatki dzienne, wspomnienia oraz zarzadzanie,
+- miejsca w podrozy sa pokazywane jako trasa grupowana po dacie przyjazdu, z krajem, typem i kompaktowym podgladem notatki,
+- notatki importowane w formacie `YYYY-MM-DD - opis` sa renderowane jako zwijane bloki dzienne,
+- edycja podrozy zostala przeniesiona z plywajacego przycisku do naglowka, zeby na iPhonie nie zaslaniac tresci.
 
 **Weryfikacja:** otworzyc `Gory Literatury z Olga` i `Workation w Trapani` na desktopie oraz iPhonie. Uzytkownik powinien szybko zrozumiec przebieg podrozy, miejsca i notatki bez poczucia przytloczenia.
 

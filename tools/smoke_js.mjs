@@ -420,6 +420,54 @@ assert.match(travelControlsHtml, /travel-filter-grid/, 'travel filters render as
 assert.match(travelControlsHtml, /Wyczyść/, 'travel filters expose reset action when active');
 assert.doesNotMatch(travelControlsHtml, /sort-btn/, 'travel filters avoid long horizontal chip bars');
 assert.equal(context.travelResultLabel(2), 'podróże', 'travel filter summary has human-readable count labels');
+const parsedTravelNotes = context.parseTravelDailyNotes(
+  'Test trip --> 2025-05-08 --- 2025-05-10\n\n2025-05-08 - Start w porcie.\n2025-05-09 - Spacer po mieście.',
+);
+assert.equal(parsedTravelNotes.days.length, 2, 'travel detail parses imported daily notes');
+const sampleTravelDetail = {
+  id: 7,
+  name: 'Workation test',
+  start_date: '2025-05-08',
+  end_date: '2025-05-10',
+  purpose: 'Wakacje',
+  amount: 1200,
+  currency: 'EUR',
+  number_of_flights: 2,
+  rating: 4.5,
+  has_photo_album: 1,
+  is_description_complete: 1,
+  notes: 'Workation test --> 2025-05-08 --- 2025-05-10\n\n2025-05-08 - Start w porcie.\n2025-05-09 - Spacer po mieście.',
+  reflections: '',
+  participants: [{ id: 3, name: 'Anna Nowak', relation_type: 'Rodzina' }],
+  locations: [{
+    id: 11,
+    location_id: 101,
+    location_name: 'Trapani',
+    location_type: 'miasto',
+    country_name: 'Włochy',
+    arrival_date: '2025-05-08',
+    departure_date: '2025-05-10',
+    notes: 'Baza wyjazdu.',
+  }, {
+    id: 12,
+    location_id: 102,
+    location_name: 'Erice',
+    location_type: 'miasto',
+    country_name: 'Włochy',
+    arrival_date: '2025-05-09',
+    departure_date: '2025-05-09',
+    notes: 'Spacer po mieście.',
+  }],
+};
+const routeHtml = context.renderTravelRouteSection(sampleTravelDetail);
+assert.match(routeHtml, /travel-route-day/, 'travel detail groups route by day');
+assert.match(routeHtml, /data-route-day="2025-05-08"/, 'travel route keeps date group keys');
+assert.match(routeHtml, /travel-route-note/, 'travel route renders visit notes in compact details');
+assert.doesNotMatch(routeHtml, /style="/, 'travel route rows avoid inline styles');
+const detailHtml = context.renderTravelDetail(sampleTravelDetail);
+assert.match(detailHtml, /travel-hero-stats/, 'travel detail renders the compact hero metrics');
+assert.match(detailHtml, /Notatki dzienne/, 'travel detail turns imported notes into daily blocks');
+assert.match(detailHtml, /travel-day-card/, 'travel detail renders daily notes as collapsible cards');
 
 vm.runInContext(fs.readFileSync(todoPath, 'utf8'), context, { filename: todoPath });
 const todoView = elementStub();
