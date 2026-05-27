@@ -136,15 +136,18 @@ function wizardGroupedLocationsHtml(locs) {
   });
   return Object.entries(grouped).map(([country, items]) => `
     <div class="wizard-picker-group">${escapeHtml(country)}</div>
-    ${items.map(l => `
-      <div class="wiz-picker-item" onclick="wizardPickLocation(${l.id})">
-        <div class="wiz-picker-icon">${locationIcon(l.location_type)}</div>
-        <div class="wiz-picker-info">
-          <div class="wiz-picker-name">${escapeHtml(l.name)}</div>
-          <div class="wiz-picker-sub">${escapeHtml(l.location_type)}${l.parent_name ? ' · ' + escapeHtml(l.parent_name) : ''}</div>
-        </div>
-        <div class="wiz-picker-plus">＋</div>
-      </div>`).join('')}`).join('');
+    ${items.map(l => renderPickerRow({
+      rowClass: 'wiz-picker-item',
+      onclick: `wizardPickLocation(${l.id})`,
+      iconHtml: locationIcon(l.location_type),
+      iconClass: 'wiz-picker-icon',
+      infoClass: 'wiz-picker-info',
+      title: l.name,
+      titleClass: 'wiz-picker-name',
+      subtitle: `${l.location_type || ''}${l.parent_name ? ' · ' + l.parent_name : ''}`,
+      subtitleClass: 'wiz-picker-sub',
+      plusClass: 'wiz-picker-plus',
+    })).join('')}`).join('');
 }
 
 function wizardParticipantRowsHtml(participants = wizardState.participants) {

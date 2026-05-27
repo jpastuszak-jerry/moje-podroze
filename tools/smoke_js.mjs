@@ -303,6 +303,10 @@ assert.match(context.renderPickerRow({
   plusHtml: '',
   actionsHtml: '<button>Go</button>',
 }), /<button>Go<\/button>/, 'renderPickerRow can render action buttons');
+assert.match(context.renderPickerRow({
+  title: 'Styled',
+  plusClass: 'custom-plus',
+}), /custom-plus/, 'renderPickerRow keeps custom plus class');
 
 const cardListHtml = context.renderCardList([{ id: 1 }, { id: 2 }], item => `<article>${item.id}</article>`, {
   className: 'card-list test-list',
@@ -651,6 +655,15 @@ const wizardParticipantPickerHtml = context.wizardAvailableParticipantsHtml([{
 }]);
 assert.match(wizardParticipantPickerHtml, /person-row/, 'wizard participant picker uses shared picker rows');
 assert.match(wizardParticipantPickerHtml, /wizardPickParticipant/, 'wizard participant picker keeps click action');
+const wizardLocationPickerHtml = context.wizardGroupedLocationsHtml([{
+  id: 10,
+  name: 'Helsinki',
+  location_type: 'miasto',
+  country_name: 'Finlandia',
+  parent_name: 'Uusimaa',
+}]);
+assert.match(wizardLocationPickerHtml, /wiz-picker-item/, 'wizard location picker keeps wizard row class');
+assert.match(wizardLocationPickerHtml, /wizardPickLocation\(10\)/, 'wizard location picker keeps click action');
 
 const wizardSaveButton = elementStub();
 let wizardClosed = false;
