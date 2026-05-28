@@ -5,9 +5,11 @@ walidacja, ETag, oraz idempotentne migracje schematu uruchamiane przy starcie.
 import hashlib
 import json
 import os
+from threading import Lock
 
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 from flask import Response, g, jsonify, request
 from pydantic import ValidationError
 
@@ -15,19 +17,78 @@ from pydantic import ValidationError
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 
+def _env_int(name, default):
+    try:
+        return int(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+
+
+DB_POOL_MINCONN = max(1, _env_int('DB_POOL_MINCONN', 1))
+DB_POOL_MAXCONN = max(DB_POOL_MINCONN, _env_int('DB_POOL_MAXCONN', 5))
+
+_db_pool = None
+_db_pool_lock = Lock()
+_db_write_version = 0
+_db_write_lock = Lock()
+
+
+SCHEMA_INDEX_STATEMENTS = (
+    "CREATE INDEX IF NOT EXISTS idx_travel_locations_travel_id ON travel_locations (travel_id)",
+    "CREATE INDEX IF NOT EXISTS idx_travel_locations_location_id ON travel_locations (location_id)",
+    "CREATE INDEX IF NOT EXISTS idx_travel_participants_travel_id ON travel_participants (travel_id)",
+    "CREATE INDEX IF NOT EXISTS idx_travel_participants_person_id ON travel_participants (person_id)",
+    "CREATE INDEX IF NOT EXISTS idx_locations_parent_location_id ON locations (parent_location_id)",
+    "CREATE INDEX IF NOT EXISTS idx_locations_country_id ON locations (country_id)",
+    "CREATE INDEX IF NOT EXISTS idx_travels_active_start_date ON travels (start_date) WHERE deleted_at IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_locations_active_country_id ON locations (country_id) WHERE deleted_at IS NULL",
+)
+
+
+def get_db_pool():
+    global _db_pool
+    if not DATABASE_URL:
+        raise RuntimeError('DATABASE_URL is not configured')
+    if _db_pool is None:
+        with _db_pool_lock:
+            if _db_pool is None:
+                _db_pool = psycopg2.pool.ThreadedConnectionPool(
+                    DB_POOL_MINCONN,
+                    DB_POOL_MAXCONN,
+                    DATABASE_URL,
+                )
+    return _db_pool
+
+
 def get_db():
     if 'db' not in g:
-        g.db = psycopg2.connect(DATABASE_URL)
+        g.db = get_db_pool().getconn()
+        g.db_from_pool = True
         g.db.autocommit = False
     return g.db
 
 
 def close_db(e=None):
     db = g.pop('db', None)
+    db_from_pool = g.pop('db_from_pool', False)
     if db:
         if not db.closed:
             db.rollback()
-        db.close()
+        if db_from_pool and _db_pool:
+            _db_pool.putconn(db, close=bool(db.closed))
+        else:
+            db.close()
+
+
+def mark_db_write():
+    global _db_write_version
+    with _db_write_lock:
+        _db_write_version += 1
+        return _db_write_version
+
+
+def get_db_write_version():
+    return _db_write_version
 
 
 def query(sql, params=(), one=False):
@@ -41,11 +102,11 @@ def execute(sql, params=()):
     db = get_db()
     with db.cursor() as cur:
         cur.execute(sql, params)
+        row = cur.fetchone() if cur.description else None
+        result = row[0] if row else None
         db.commit()
-        try:
-            return cur.fetchone()[0]
-        except (TypeError, psycopg2.ProgrammingError):
-            return None
+        mark_db_write()
+        return result
 
 
 def execute_rowcount(sql, params=()):
@@ -54,6 +115,7 @@ def execute_rowcount(sql, params=()):
         cur.execute(sql, params)
         rowcount = cur.rowcount
         db.commit()
+        mark_db_write()
         return rowcount
 
 
@@ -137,6 +199,9 @@ def ensure_schema():
                     print(f'[schema] recreated view: {vname}')
             else:
                 print(f'[schema] rating: typ={row[0] if row else "?"} — migracja niepotrzebna')
+            for statement in SCHEMA_INDEX_STATEMENTS:
+                cur.execute(statement)
+            print(f'[schema] indexes ensured: {len(SCHEMA_INDEX_STATEMENTS)}')
         conn.close()
     except Exception as e:
         print('[schema] migration failed:', e)

@@ -3,7 +3,7 @@
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
-from core import db_error_response, execute, execute_rowcount, get_db, query, validation_error_response
+from core import db_error_response, execute, execute_rowcount, get_db, mark_db_write, query, validation_error_response
 from schemas import (
     ParticipantAdd,
     TravelCreate,
@@ -136,6 +136,7 @@ def create_travel_from_wizard():
                 """, (new_id, participant.person_id))
 
             db.commit()
+            mark_db_write()
     except Exception as e:
         db.rollback()
         return _wizard_save_error_response(e)
@@ -223,6 +224,7 @@ def update_travel(tid):
             """, (t.start_date, t.end_date, t.start_date, t.end_date, tid,
                   t.start_date, t.end_date, t.start_date, t.end_date))
         db.commit()
+        mark_db_write()
     return jsonify({'ok': True})
 
 
@@ -240,6 +242,7 @@ def delete_travel(tid):
                 db.rollback()
                 return jsonify({'error': 'Not found'}), 404
             db.commit()
+            mark_db_write()
         return jsonify({'ok': True, 'hard': True})
     if execute_rowcount("UPDATE travels SET deleted_at = NOW() WHERE id=%s AND deleted_at IS NULL", (tid,)) == 0:
         return jsonify({'error': 'Not found'}), 404

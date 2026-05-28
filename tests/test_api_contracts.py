@@ -229,6 +229,7 @@ def fake_export_query(sql, params=(), one=False):
 
 class ApiContractSmokeTests(unittest.TestCase):
     def setUp(self):
+        stats.clear_stats_cache()
         self.client = app_module.app.test_client()
 
     def test_export_contract_has_metadata_filename_and_no_store(self):

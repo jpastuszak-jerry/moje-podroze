@@ -1,11 +1,14 @@
 """Blueprint /api/stats: aggregate travel analytics for the dashboard."""
 
+import copy
+import os
+import time
 from datetime import date
 from statistics import median
 
 from flask import Blueprint, request
 
-from core import etag_json, query
+from core import etag_json, get_db_write_version, query
 from stats_common import _day_series, _period_bounds, _series_params, _travel_period_clause
 from stats_countries import _country_history, _country_milestones
 from stats_hall_of_fame import _hall_of_fame
@@ -14,6 +17,44 @@ from stats_yearbook import _yearbook
 
 
 bp = Blueprint('stats', __name__)
+
+
+def _env_int(name, default):
+    try:
+        return int(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+
+
+STATS_CACHE_TTL_SECONDS = max(0, _env_int('STATS_CACHE_TTL_SECONDS', 60))
+_stats_payload_cache = {}
+
+
+def clear_stats_cache():
+    _stats_payload_cache.clear()
+
+
+def _cache_key(year):
+    return (year, get_db_write_version())
+
+
+def _stats_payload(year):
+    if STATS_CACHE_TTL_SECONDS <= 0:
+        return _build_stats_payload(year)
+
+    now = time.monotonic()
+    key = _cache_key(year)
+    cached = _stats_payload_cache.get(key)
+    if cached and cached['expires_at'] > now:
+        return copy.deepcopy(cached['payload'])
+
+    payload = _build_stats_payload(year)
+    _stats_payload_cache.clear()
+    _stats_payload_cache[key] = {
+        'expires_at': now + STATS_CACHE_TTL_SECONDS,
+        'payload': copy.deepcopy(payload),
+    }
+    return payload
 
 
 def _period_stats(year=None):
@@ -298,7 +339,10 @@ def _heatmap_data():
 def get_stats():
     raw_year = request.args.get('year')
     year = int(raw_year) if raw_year and raw_year.isdigit() else None
+    return etag_json(_stats_payload(year))
 
+
+def _build_stats_payload(year):
     period = _period_stats(year)
 
     prev_period = None
@@ -333,7 +377,7 @@ def get_stats():
         y['count'] = int(y['count'])
         y['days'] = int(y['days'])
 
-    return etag_json({
+    return {
         **period,
         'locations': locations_count,
         'by_year': by_year,
@@ -347,7 +391,7 @@ def get_stats():
         'country_milestones': _country_milestones(year),
         'country_history': _country_history(year),
         'yearbook': _yearbook(),
-    })
+    }
 
 
 @bp.route('/api/stats/todo')
