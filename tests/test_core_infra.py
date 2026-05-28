@@ -116,6 +116,21 @@ class CoreInfrastructureTests(unittest.TestCase):
         ):
             self.assertIn(fragment, statements)
 
+    def test_schema_constraint_statements_cover_domain_invariants(self):
+        statements = '\n'.join(core.SCHEMA_CONSTRAINT_STATEMENTS)
+        for fragment in (
+            'chk_travels_amount_non_negative',
+            'chk_travels_currency_iso',
+            'chk_travels_dates_order',
+            'chk_travels_rating_half_step',
+            'chk_travels_flights_non_negative',
+            'chk_travel_locations_dates_order',
+            'chk_locations_latitude_bounds',
+            'chk_locations_longitude_bounds',
+            'chk_locations_parent_not_self',
+        ):
+            self.assertIn(fragment, statements)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -426,13 +426,11 @@ function locationFormHtml({ prefix, countries, locTypes, parentChangeHandler, in
     <div class="form-row">
       <div><div class="form-label">Kraj *</div>
         <select class="form-input" id="${prefix}-country" onchange="${parentChangeHandler}">
-          <option value="">– wybierz –</option>
-          ${countries.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
+          ${renderSelectOptions(countries, '', { emptyOption: '– wybierz –', valueKey: 'id', labelKey: 'name' })}
         </select></div>
       <div><div class="form-label">Typ miejsca *</div>
         <select class="form-input" id="${prefix}-type">
-          <option value="">– wybierz –</option>
-          ${locTypes.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+          ${renderSelectOptions(locTypes, '', { emptyOption: '– wybierz –', valueKey: 'id', labelKey: 'name' })}
         </select></div>
     </div>
     <div class="form-label">Miejsce nadrzędne (opcjonalnie)</div>

@@ -562,23 +562,21 @@ async function openEditLocationModal(id) {
       <button class="modal-save" onclick="closeModal(document.getElementById('edit-loc-overlay'))">Anuluj</button></div>
     <div class="form-section">
       <div class="form-label">Nazwa miejsca *</div>
-      <input class="form-input" id="el-name" value="${(loc.name||'').replace(/"/g,'&quot;')}">
+      <input class="form-input" id="el-name" value="${escapeAttr(loc.name || '')}">
       <div class="form-row">
         <div><div class="form-label">Kraj *</div>
           <select class="form-input" id="el-country" onchange="updateParentLocListFor('edit-loc-overlay','el')">
-            <option value="">– wybierz –</option>
-            ${countries.map(c => `<option value="${c.id}"${c.id===loc.country_id?' selected':''}>${c.name}</option>`).join('')}
+            ${renderSelectOptions(countries, loc.country_id, { emptyOption: '– wybierz –', valueKey: 'id', labelKey: 'name' })}
           </select></div>
         <div><div class="form-label">Typ miejsca *</div>
           <select class="form-input" id="el-type">
-            <option value="">– wybierz –</option>
-            ${locTypes.map(t => `<option value="${t.id}"${t.id===loc.location_type_id?' selected':''}>${t.name}</option>`).join('')}
+            ${renderSelectOptions(locTypes, loc.location_type_id, { emptyOption: '– wybierz –', valueKey: 'id', labelKey: 'name' })}
           </select></div>
       </div>
       <div class="form-label">Miejsce nadrzędne (opcjonalnie)</div>
       <select class="form-input" id="el-parent"><option value="">– brak –</option></select>
       <div class="form-label">Adres / opis (opcjonalnie)</div>
-      <input class="form-input" id="el-address" value="${(loc.address||'').replace(/"/g,'&quot;')}">
+      <input class="form-input" id="el-address" value="${escapeAttr(loc.address || '')}">
       <div class="form-label">Współrzędne GPS (opcjonalnie)</div>
       <div class="form-inline-row">
         <input class="form-input" id="el-lat" placeholder="Szer. np. 37.50745"
@@ -659,8 +657,15 @@ function updateParentLocListFor(overlayId, prefix) {
   const cSel = document.getElementById(prefix+'-country');
   const countryName = countryId ? (cSel.options[cSel.selectedIndex]?.text || null) : null;
   const filtered = countryName ? allLocs.filter(l => l.country_name === countryName) : [];
-  document.getElementById(prefix+'-parent').innerHTML = '<option value="">– brak –</option>' +
-    filtered.map(l => `<option value="${l.id}"${l.id === currentParentId ? ' selected' : ''}>${l.name} (${l.location_type})</option>`).join('');
+  const options = filtered.map(l => ({
+    id: l.id,
+    label: `${l.name || ''} (${l.location_type || ''})`,
+  }));
+  document.getElementById(prefix+'-parent').innerHTML = renderSelectOptions(options, currentParentId, {
+    emptyOption: '– brak –',
+    valueKey: 'id',
+    labelKey: 'label',
+  });
 }
 
 async function saveEditLocation(id) {
@@ -729,7 +734,7 @@ function openEditTravelLocation(travelId, tlid) {
         <div><div class="form-label">Wyjazd</div><input class="form-input" type="date" id="etl-departure" value="${departure}"></div>
       </div>
       <div class="form-label">Notatka</div>
-      <input class="form-input" id="etl-notes" value="${notes.replace(/"/g,'&quot;')}">
+      <input class="form-input" id="etl-notes" value="${escapeAttr(notes)}">
       <button class="form-primary-btn" id="etl-save-btn" onclick="saveEditTravelLocation(${travelId}, ${tlid})">
         Zapisz zmiany
       </button>

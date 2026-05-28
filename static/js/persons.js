@@ -2,7 +2,11 @@ async function openPersonsModal() {
   if (!beginOverlayOpen('persons-overlay')) return;
   try {
   const [persons, relTypes] = await Promise.all([api('/api/persons'), api('/api/relation_types')]);
-  const relOpts = relTypes.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+  const relOpts = renderSelectOptions(relTypes, '', {
+    emptyOption: '– typ relacji –',
+    valueKey: 'id',
+    labelKey: 'name',
+  });
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'persons-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Osoby</span>
@@ -13,7 +17,6 @@ async function openPersonsModal() {
         <button class="form-icon-btn" onclick="addPersonFromModal()">Dodaj</button>
       </div>
       <select class="form-input form-spaced" id="new-person-modal-rel">
-        <option value="">– typ relacji –</option>
         ${relOpts}
       </select>
       <div id="persons-list">${buildPersonsList(persons, relTypes)}</div>
@@ -45,8 +48,11 @@ async function addPersonFromModal() {
 function buildPersonsList(persons, relTypes) {
   if (!persons.length) return `<div class="modal-list-empty">Brak osób</div>`;
   return persons.map(p => {
-    const relOpts = `<option value="">– brak –</option>` +
-      relTypes.map(r => `<option value="${r.id}"${r.id === p.relation_type_id ? ' selected' : ''}>${escapeHtml(r.name)}</option>`).join('');
+    const relOpts = renderSelectOptions(relTypes, p.relation_type_id, {
+      emptyOption: '– brak –',
+      valueKey: 'id',
+      labelKey: 'name',
+    });
     return `<div class="modal-list-row" id="person-row-${p.id}">
       ${renderPickerRow({
         id: `person-view-${p.id}`,
@@ -60,7 +66,7 @@ function buildPersonsList(persons, relTypes) {
           <button class="modal-row-button danger" onclick="deletePersonFromModal(${p.id})">✕</button>`,
       })}
       <div id="person-edit-${p.id}" class="hidden">
-        <input class="form-input form-edit-input" id="person-name-${p.id}" value="${(p.name||'').replace(/"/g,'&quot;')}">
+        <input class="form-input form-edit-input" id="person-name-${p.id}" value="${escapeAttr(p.name || '')}">
         <select class="form-input" id="person-rel-${p.id}">${relOpts}</select>
         <div class="inline-edit-actions">
           <button class="inline-form-button primary" onclick="saveEditPerson(${p.id})">Zapisz</button>

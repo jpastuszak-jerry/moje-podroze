@@ -484,8 +484,9 @@ async function openAddParticipant(travelId) {
         <div class="form-label">Lub dodaj nową osobę</div>
         <input class="form-input" id="new-person-name" placeholder="Imię i nazwisko">
         <div class="form-label">Typ relacji</div>
-        <select class="form-input" id="new-person-reltype"><option value="">– brak –</option>
-          ${relTypes.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}</select>
+        <select class="form-input" id="new-person-reltype">
+          ${renderSelectOptions(relTypes, '', { emptyOption: '– brak –', valueKey: 'id', labelKey: 'name' })}
+        </select>
         <button class="form-primary-btn" onclick="createAndAddPerson(${travelId})">Dodaj nową osobę</button>
       </div></div>`;
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });

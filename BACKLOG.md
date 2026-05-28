@@ -6,7 +6,7 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 ### 0. Audyt Claude Code 2026-05-28: bezpieczenstwo i fundamenty - PARTIAL
 
-**Status:** dopisane po analizie zrzutow `Co jest dobrze/slabe/Rekomendacja i ocena 2026-05-28` oraz szybkim sprawdzeniu aktualnego kodu. Pierwsza partia P0 zrobiona w `Improve database and stats performance`: connection pooling, indeksy relacji/aktywnych rekordow i krotki cache TTL dla `/api/stats` uniewazniany po zapisach.
+**Status:** dopisane po analizie zrzutow `Co jest dobrze/slabe/Rekomendacja i ocena 2026-05-28` oraz szybkim sprawdzeniu aktualnego kodu. Pierwsza partia P0 zrobiona w `Improve database and stats performance`: connection pooling, indeksy relacji/aktywnych rekordow i krotki cache TTL dla `/api/stats` uniewazniany po zapisach. Druga partia P0 zrobiona w `Harden frontend and data constraints`: XSS audit najczestszych select/input rendererow, jedno zrodlo polityki `no-store` oraz `Decimal`/CHECK constraints dla danych domenowych.
 
 **Z czym sie zgadzam i podnosze do najwyzszego priorytetu:**
 1. Auth natychmiast. Aplikacja nie ma warstwy logowania/autoryzacji, a `/api/export`, kosz i mutacje API sa dostepne tak samo jak zwykle odczyty. Istniejacy punkt "Role uzytkownikow: admin i viewer" zostaje podniesiony do P0.
@@ -14,10 +14,10 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 3. Migracje wersjonowane. `ensure_schema()` dobrze wspiera zasade "no manual steps after deploy", ale przy kolejnych zmianach schematu potrzebny jest Alembic albo prosty wlasny system migracji wersjonowanych. Istniejacy punkt migracji zostaje podniesiony do P0.
 4. Indeksy FK i partial indexes - DONE. `ensure_schema()` tworzy idempotentnie indeksy pod relacje i aktywne rekordy, szczegolnie `travel_locations(travel_id)`, `travel_locations(location_id)`, `travel_participants(travel_id/person_id)`, `locations(parent_location_id)`, `locations(country_id)`, `travels(start_date) WHERE deleted_at IS NULL` i `locations(country_id) WHERE deleted_at IS NULL`.
 5. Budzet zapytan dla `/api/stats` - PARTIAL. Endpoint nadal sklada wiele agregatow w jednym kontrakcie, ale ma teraz krotki cache TTL (`STATS_CACHE_TTL_SECONDS`, domyslnie 60s) z uniewaznianiem po zapisach. Kolejny krok: pomiar liczby/czasu zapytan i ewentualne rozbicie ciezszych sekcji albo materialized views.
-6. Audyt XSS w frontendzie. Template stringi sa rozproszone, a w `locations.js` sa miejsca z niepelna ucieczka danych (`option` z nazwami krajow/typow i reczne `replace(/"/g, '&quot;')`). Wprowadzic zasade: dane uzytkownika zawsze przez `escapeHtml`, atrybuty przez `escapeAttr` albo wspolny renderer.
-7. Jedno zrodlo polityki `no-store`. Lista w Pythonie (`app.py`) i lista w service workerze (`static/sw.js`) moga sie rozjechac. Zrobic endpoint/generowanie konfiguracji dla SW albo inny jeden source of truth.
+6. Audyt XSS w frontendzie - DONE. Dynamiczne opcje selectow i wartosci inputow w miejscach/osobach/podrozach/mapie/kreatorze ida przez `renderSelectOptions()` i `escapeAttr()` zamiast lokalnych template stringow albo recznego `replace(/"/g, '&quot;')`.
+7. Jedno zrodlo polityki `no-store` - DONE. Backendowe listy `NO_STORE_EXACT_API_PATHS` i `NO_STORE_API_PREFIXES` w `app.py` sa zrodlem prawdy, a `/sw.js` wstrzykuje je do service workera przy serwowaniu pliku.
 8. Realniejsze testy integracyjne. Obecne testy kontraktu sa wartosciowe, ale mock SQL nie lapie regresji w zapytaniach. Dodac mala baze testowa, fixture PostgreSQL albo minimalny smoke na prawdziwym schemacie.
-9. Pieniadze jako `Decimal`/`NUMERIC` i CHECK constraints w DB. `amount: float` w Pydantic oraz brak ograniczen typu `rating BETWEEN 0.5 AND 5`, `end_date >= start_date`, `arrival_date <= departure_date` to dlug higieniczny.
+9. Pieniadze jako `Decimal`/`NUMERIC` i CHECK constraints w DB - DONE. `amount` w Pydantic jest `Decimal`, `migrate.py` tworzy schemat z ograniczeniami, a `ensure_schema()` dopina idempotentne CHECK constraints dla kwot, walut, dat, ratingu, lotow, dat pobytu i GPS.
 10. Strukturalne logowanie/Sentry. Przydatne, ale po auth, migracjach, poolingu, indeksach i statystykach.
 
 **Korekty / z czym nie zgadzam sie wprost:**

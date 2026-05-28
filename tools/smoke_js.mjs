@@ -188,6 +188,26 @@ const selectOptionsHtml = context.renderSelectOptions(
 );
 assert.match(selectOptionsHtml, /value="gps" selected/, 'renderSelectOptions marks selected object option');
 assert.match(selectOptionsHtml, /GPS \(2\)/, 'renderSelectOptions renders option counts');
+const unsafeSelectHtml = context.renderSelectOptions(
+  [{ id: '1" autofocus', name: '<img src=x onerror=alert(1)>' }],
+  '',
+  { valueKey: 'id', labelKey: 'name' },
+);
+assert.match(unsafeSelectHtml, /value="1&quot; autofocus"/, 'renderSelectOptions escapes option values');
+assert.match(unsafeSelectHtml, /&lt;img src=x onerror=alert\(1\)&gt;/, 'renderSelectOptions escapes option labels');
+
+const locationFormUnsafeHtml = context.locationFormHtml({
+  prefix: 'xss',
+  countries: [{ id: '7" selected', name: '<b>Country</b>' }],
+  locTypes: [{ id: 2, name: '<script>Type</script>' }],
+  parentChangeHandler: 'noop()',
+  saveBtnId: 'save-xss',
+  saveBtnOnclick: 'saveXss()',
+  saveBtnLabel: 'Zapisz',
+});
+assert.doesNotMatch(locationFormUnsafeHtml, /<b>Country<\/b>/, 'location form escapes country option HTML');
+assert.doesNotMatch(locationFormUnsafeHtml, /<script>Type<\/script>/, 'location form escapes type option HTML');
+assert.match(locationFormUnsafeHtml, /value="7&quot; selected"/, 'location form escapes option attributes');
 
 const filterPanelHtml = context.renderFilterPanel({
   controls: [{
@@ -643,8 +663,10 @@ assert.match(todoView.innerHTML, /worklist-list/, 'travel todo uses worklist car
 
 const swSource = fs.readFileSync(swPath, 'utf8');
 assert.match(swSource, /NO_STORE_API_PREFIXES/, 'service worker declares no-store API prefixes');
-assert.match(swSource, /\/api\/travels/, 'service worker treats travel cost data as no-store');
-assert.match(swSource, /\/api\/stats/, 'service worker treats stats cost and quality data as no-store');
+assert.match(swSource, /__NO_STORE_API_EXACT_PATHS__/, 'service worker receives exact no-store paths from backend');
+assert.match(swSource, /__NO_STORE_API_PREFIXES__/, 'service worker receives no-store prefixes from backend');
+assert.doesNotMatch(swSource, /\/api\/travels/, 'service worker no-store policy is not duplicated as hardcoded paths');
+assert.doesNotMatch(swSource, /\/api\/stats/, 'service worker no-store prefixes are injected from backend');
 assert.match(swSource, /Cache-Control/, 'service worker respects no-store cache headers');
 
 vm.runInContext(fs.readFileSync(wizardPath, 'utf8'), context, { filename: wizardPath });

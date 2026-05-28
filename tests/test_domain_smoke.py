@@ -1,5 +1,6 @@
 import unittest
 from datetime import date
+from decimal import Decimal
 from unittest.mock import patch
 
 from pydantic import ValidationError
@@ -188,6 +189,10 @@ class SchemaValidationSmokeTests(unittest.TestCase):
         travel = TravelCreate(**valid_travel_payload())
         self.assertEqual(travel.rating, 4.5)
         self.assertEqual(travel.currency, 'EUR')
+        self.assertEqual(travel.amount, Decimal('1000.00'))
+
+        travel_with_cents = TravelCreate(**valid_travel_payload(amount='123.455'))
+        self.assertEqual(travel_with_cents.amount, Decimal('123.46'))
 
     def test_travel_rejects_invalid_dates_rating_and_amount(self):
         with self.assertRaises(ValidationError):

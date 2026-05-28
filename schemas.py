@@ -2,6 +2,7 @@
 
 import re
 from datetime import date
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -20,7 +21,7 @@ class TravelCreate(BaseModel):
     end_date: date
     purpose: str = ''
     has_photo_album: bool = False
-    amount: float = 0
+    amount: Decimal = Decimal('0.00')
     currency: str = 'PLN'
     is_description_complete: bool = False
     rating: Optional[float] = None
@@ -58,6 +59,17 @@ class TravelCreate(BaseModel):
         if start and v < start:
             raise ValueError('end_date nie może być wcześniejsza niż start_date')
         return v
+
+    @field_validator('amount', mode='before')
+    @classmethod
+    def _amount_decimal(cls, v):
+        if v in (None, ''):
+            return Decimal('0.00')
+        try:
+            amount = Decimal(str(v).strip())
+        except (InvalidOperation, ValueError):
+            raise ValueError('amount musi być liczbą') from None
+        return amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     @field_validator('amount')
     @classmethod

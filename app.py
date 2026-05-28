@@ -133,6 +133,8 @@ def service_worker():
         content = fh.read()
     content = content.replace("'__VERSION__'", json.dumps(version))
     content = content.replace("'__APP_SHELL__'", json.dumps(shell))
+    content = content.replace("'__NO_STORE_API_EXACT_PATHS__'", json.dumps(sorted(NO_STORE_EXACT_API_PATHS)))
+    content = content.replace("'__NO_STORE_API_PREFIXES__'", json.dumps(list(NO_STORE_API_PREFIXES)))
 
     response = Response(content, mimetype='application/javascript')
     response.headers['Cache-Control'] = 'no-cache'

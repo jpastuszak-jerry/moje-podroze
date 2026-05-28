@@ -265,6 +265,16 @@ class ApiContractSmokeTests(unittest.TestCase):
             todo_response = self.client.get('/api/stats/todo')
         self.assertEqual(todo_response.headers['Cache-Control'], 'no-store')
 
+    def test_service_worker_receives_no_store_policy_from_backend(self):
+        response = self.client.get('/sw.js')
+
+        self.assertEqual(response.status_code, 200)
+        source = response.get_data(as_text=True)
+        self.assertIn('new Set(["/api/export", "/api/locations/todo", "/api/trash"])', source)
+        self.assertIn('const NO_STORE_API_PREFIXES = ["/api/stats", "/api/travels"]', source)
+        self.assertNotIn('__NO_STORE_API_EXACT_PATHS__', source)
+        self.assertNotIn('__NO_STORE_API_PREFIXES__', source)
+
     def test_stats_endpoint_contract(self):
         period = _period_payload()
         with (

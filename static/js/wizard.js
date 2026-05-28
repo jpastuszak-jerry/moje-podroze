@@ -421,8 +421,15 @@ function wizardUpdateParentList() {
   const cSel = document.getElementById('wnl-country');
   const countryName = countryId ? (cSel.options[cSel.selectedIndex]?.text || null) : null;
   const filtered = countryName ? (wizardState.allLocs || []).filter(l => l.country_name === countryName) : [];
-  document.getElementById('wnl-parent').innerHTML = '<option value="">– brak –</option>' +
-    filtered.map(l => `<option value="${l.id}">${escapeHtml(l.name)} (${escapeHtml(l.location_type)})</option>`).join('');
+  const options = filtered.map(l => ({
+    id: l.id,
+    label: `${l.name || ''} (${l.location_type || ''})`,
+  }));
+  document.getElementById('wnl-parent').innerHTML = renderSelectOptions(options, '', {
+    emptyOption: '– brak –',
+    valueKey: 'id',
+    labelKey: 'label',
+  });
 }
 
 async function wizardSaveNewLocation() {
@@ -507,7 +514,11 @@ async function wizardStep2Render(body) {
   const addedHtml = wizardParticipantRowsHtml();
   const pickHtml = wizardAvailableParticipantsHtml(available);
 
-  const relOpts = relTypes.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+  const relOpts = renderSelectOptions(relTypes, '', {
+    emptyOption: '– typ relacji –',
+    valueKey: 'id',
+    labelKey: 'name',
+  });
 
   body.innerHTML = `
     <div class="wizard-section">
@@ -524,7 +535,7 @@ async function wizardStep2Render(body) {
       <div class="form-label wizard-section-label">Dodaj nową osobę</div>
       <input class="form-input" id="wiz-new-person-name" placeholder="Imię i nazwisko">
       <select class="form-input" id="wiz-new-person-rel">
-        <option value="">– typ relacji –</option>${relOpts}
+        ${relOpts}
       </select>
       <button class="form-primary-btn" id="wiz-new-person-btn" onclick="wizardCreatePerson()">
         Dodaj osobę

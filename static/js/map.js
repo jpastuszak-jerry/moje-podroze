@@ -90,9 +90,9 @@ function buildMapFilters(locations) {
   const types = [...new Set(locations.map(l => l.location_type))].sort();
   const countries = [...new Set(locations.map(l => l.country_name))].sort();
   document.getElementById('map-filter-type').innerHTML =
-    '<option value="">Wszystkie typy</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+    renderSelectOptions(types, '', { emptyOption: 'Wszystkie typy' });
   document.getElementById('map-filter-country').innerHTML =
-    '<option value="">Wszystkie kraje</option>' + countries.map(c => `<option value="${c}">${c}</option>`).join('');
+    renderSelectOptions(countries, '', { emptyOption: 'Wszystkie kraje' });
 }
 
 function renderMapMarkers(locations) {

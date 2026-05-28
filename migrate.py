@@ -69,7 +69,10 @@ CREATE TABLE locations (
     location_type_id INTEGER NOT NULL REFERENCES location_types(id),
     parent_location_id INTEGER REFERENCES locations(id),
     address TEXT,
-    notes TEXT
+    notes TEXT,
+    latitude NUMERIC(8,5) CONSTRAINT chk_locations_latitude_bounds CHECK (latitude IS NULL OR (latitude >= -90 AND latitude <= 90)),
+    longitude NUMERIC(8,5) CONSTRAINT chk_locations_longitude_bounds CHECK (longitude IS NULL OR (longitude >= -180 AND longitude <= 180)),
+    CONSTRAINT chk_locations_parent_not_self CHECK (parent_location_id IS NULL OR parent_location_id <> id)
 )""")
 cur.execute("""
 CREATE TABLE persons (
@@ -85,13 +88,19 @@ CREATE TABLE travels (
     end_date DATE NOT NULL,
     purpose TEXT,
     has_photo_album BOOLEAN DEFAULT FALSE,
-    amount NUMERIC(12,2),
-    currency TEXT DEFAULT 'PLN',
+    amount NUMERIC(12,2) CONSTRAINT chk_travels_amount_non_negative CHECK (amount IS NULL OR amount >= 0),
+    currency TEXT DEFAULT 'PLN' CONSTRAINT chk_travels_currency_iso CHECK (currency IS NULL OR currency ~ '^[A-Z]{3}$'),
     is_description_complete BOOLEAN DEFAULT FALSE,
-    rating NUMERIC(2,1),
+    rating NUMERIC(2,1) CONSTRAINT chk_travels_rating_half_step CHECK (
+        rating IS NULL OR (
+            rating >= 0.5 AND rating <= 5
+            AND rating * 2 = ROUND(rating * 2)
+        )
+    ),
     reflections TEXT,
     notes TEXT,
-    number_of_flights INTEGER DEFAULT 0
+    number_of_flights INTEGER DEFAULT 0 CONSTRAINT chk_travels_flights_non_negative CHECK (number_of_flights IS NULL OR number_of_flights >= 0),
+    CONSTRAINT chk_travels_dates_order CHECK (end_date >= start_date)
 )""")
 cur.execute("""
 CREATE TABLE travel_participants (
@@ -106,7 +115,8 @@ CREATE TABLE travel_locations (
     location_id INTEGER NOT NULL REFERENCES locations(id),
     arrival_date DATE NOT NULL,
     departure_date DATE NOT NULL,
-    notes TEXT
+    notes TEXT,
+    CONSTRAINT chk_travel_locations_dates_order CHECK (departure_date >= arrival_date)
 )""")
 
 BOOLEAN_COLUMNS = {'has_photo_album', 'is_description_complete'}

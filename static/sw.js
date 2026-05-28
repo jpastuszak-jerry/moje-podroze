@@ -7,9 +7,9 @@
  *   - POST/PUT/DELETE/PATCH /api/* → fetch; offline zwraca 503 z {error:'offline'}
  *
  * UWAGA: ten plik jest serwowany przez endpoint /sw.js w app.py, który
- * wstrzykuje __VERSION__ (mtime statyk) i __APP_SHELL__ (auto-skan static/).
- * Nie edytuj wartości placeholderów ręcznie — wersja i lista plików
- * generują się same przy każdym deployu.
+ * wstrzykuje __VERSION__ (mtime statyk), __APP_SHELL__ (auto-skan static/)
+ * oraz politykę no-store z backendu. Nie edytuj wartości placeholderów
+ * ręcznie — generują się same przy każdym deployu.
  */
 const CACHE_VERSION = '__VERSION__';
 const STATIC_CACHE = `travel-static-${CACHE_VERSION}`;
@@ -17,16 +17,8 @@ const RUNTIME_CACHE = `travel-runtime-${CACHE_VERSION}`;
 
 const APP_SHELL = '__APP_SHELL__';
 
-const NO_STORE_API_EXACT_PATHS = new Set([
-  '/api/export',
-  '/api/trash',
-  '/api/locations/todo',
-]);
-
-const NO_STORE_API_PREFIXES = [
-  '/api/stats',
-  '/api/travels',
-];
+const NO_STORE_API_EXACT_PATHS = new Set('__NO_STORE_API_EXACT_PATHS__');
+const NO_STORE_API_PREFIXES = '__NO_STORE_API_PREFIXES__';
 
 function isNoStoreApiPath(pathname) {
   return NO_STORE_API_EXACT_PATHS.has(pathname) ||

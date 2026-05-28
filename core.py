@@ -45,6 +45,135 @@ SCHEMA_INDEX_STATEMENTS = (
 )
 
 
+SCHEMA_CONSTRAINT_STATEMENTS = (
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_travels_amount_non_negative'
+      ) THEN
+        ALTER TABLE travels
+          ADD CONSTRAINT chk_travels_amount_non_negative
+          CHECK (amount IS NULL OR amount >= 0) NOT VALID;
+      END IF;
+    END $$;
+    """,
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_travels_currency_iso'
+      ) THEN
+        ALTER TABLE travels
+          ADD CONSTRAINT chk_travels_currency_iso
+          CHECK (currency IS NULL OR currency ~ '^[A-Z]{3}$') NOT VALID;
+      END IF;
+    END $$;
+    """,
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_travels_dates_order'
+      ) THEN
+        ALTER TABLE travels
+          ADD CONSTRAINT chk_travels_dates_order
+          CHECK (end_date >= start_date) NOT VALID;
+      END IF;
+    END $$;
+    """,
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_travels_rating_half_step'
+      ) THEN
+        ALTER TABLE travels
+          ADD CONSTRAINT chk_travels_rating_half_step
+          CHECK (
+            rating IS NULL OR (
+              rating >= 0.5 AND rating <= 5
+              AND rating * 2 = ROUND(rating * 2)
+            )
+          ) NOT VALID;
+      END IF;
+    END $$;
+    """,
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_travels_flights_non_negative'
+      ) THEN
+        ALTER TABLE travels
+          ADD CONSTRAINT chk_travels_flights_non_negative
+          CHECK (number_of_flights IS NULL OR number_of_flights >= 0) NOT VALID;
+      END IF;
+    END $$;
+    """,
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_travel_locations_dates_order'
+      ) THEN
+        ALTER TABLE travel_locations
+          ADD CONSTRAINT chk_travel_locations_dates_order
+          CHECK (
+            arrival_date IS NULL OR departure_date IS NULL
+            OR departure_date >= arrival_date
+          ) NOT VALID;
+      END IF;
+    END $$;
+    """,
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_locations_latitude_bounds'
+      ) THEN
+        ALTER TABLE locations
+          ADD CONSTRAINT chk_locations_latitude_bounds
+          CHECK (latitude IS NULL OR (latitude >= -90 AND latitude <= 90)) NOT VALID;
+      END IF;
+    END $$;
+    """,
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_locations_longitude_bounds'
+      ) THEN
+        ALTER TABLE locations
+          ADD CONSTRAINT chk_locations_longitude_bounds
+          CHECK (longitude IS NULL OR (longitude >= -180 AND longitude <= 180)) NOT VALID;
+      END IF;
+    END $$;
+    """,
+    """
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_locations_parent_not_self'
+      ) THEN
+        ALTER TABLE locations
+          ADD CONSTRAINT chk_locations_parent_not_self
+          CHECK (parent_location_id IS NULL OR parent_location_id <> id) NOT VALID;
+      END IF;
+    END $$;
+    """,
+)
+
+
 def get_db_pool():
     global _db_pool
     if not DATABASE_URL:
@@ -170,6 +299,8 @@ def ensure_schema():
         with conn.cursor() as cur:
             cur.execute("ALTER TABLE travels   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP")
             cur.execute("ALTER TABLE locations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP")
+            cur.execute("ALTER TABLE locations ADD COLUMN IF NOT EXISTS latitude NUMERIC(8,5)")
+            cur.execute("ALTER TABLE locations ADD COLUMN IF NOT EXISTS longitude NUMERIC(8,5)")
             # rating: INTEGER → NUMERIC(2,1) dla półgwiazdek (idempotentne).
             # Trzeba ominąć widoki zależne (np. ręcznie utworzone w bazie travel_summary):
             # zapamiętujemy ich definicje, dropujemy, robimy ALTER, recreate.
@@ -199,9 +330,28 @@ def ensure_schema():
                     print(f'[schema] recreated view: {vname}')
             else:
                 print(f'[schema] rating: typ={row[0] if row else "?"} — migracja niepotrzebna')
+            try:
+                cur.execute("""
+                    SELECT data_type, numeric_precision, numeric_scale
+                    FROM information_schema.columns
+                    WHERE table_name = 'travels' AND column_name = 'amount'
+                """)
+                amount_col = cur.fetchone()
+                if amount_col and amount_col != ('numeric', 12, 2):
+                    cur.execute("""
+                        ALTER TABLE travels
+                        ALTER COLUMN amount TYPE NUMERIC(12,2)
+                        USING ROUND(amount::numeric, 2)
+                    """)
+                    print('[schema] amount: -> NUMERIC(12,2) — migracja wykonana')
+            except Exception as amount_error:
+                print('[schema] amount migration skipped:', amount_error)
             for statement in SCHEMA_INDEX_STATEMENTS:
                 cur.execute(statement)
             print(f'[schema] indexes ensured: {len(SCHEMA_INDEX_STATEMENTS)}')
+            for statement in SCHEMA_CONSTRAINT_STATEMENTS:
+                cur.execute(statement)
+            print(f'[schema] constraints ensured: {len(SCHEMA_CONSTRAINT_STATEMENTS)}')
         conn.close()
     except Exception as e:
         print('[schema] migration failed:', e)
