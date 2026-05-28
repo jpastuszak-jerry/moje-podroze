@@ -29,33 +29,43 @@ def _env_int(name, default):
 
 STATS_CACHE_TTL_SECONDS = max(0, _env_int('STATS_CACHE_TTL_SECONDS', 60))
 _stats_payload_cache = {}
+_stats_overview_cache = {}
 
 
 def clear_stats_cache():
     _stats_payload_cache.clear()
+    _stats_overview_cache.clear()
 
 
 def _cache_key(year):
     return (year, get_db_write_version())
 
 
-def _stats_payload(year):
+def _cached_payload(cache, year, builder):
     if STATS_CACHE_TTL_SECONDS <= 0:
-        return _build_stats_payload(year)
+        return builder(year)
 
     now = time.monotonic()
     key = _cache_key(year)
-    cached = _stats_payload_cache.get(key)
+    cached = cache.get(key)
     if cached and cached['expires_at'] > now:
         return copy.deepcopy(cached['payload'])
 
-    payload = _build_stats_payload(year)
-    _stats_payload_cache.clear()
-    _stats_payload_cache[key] = {
+    payload = builder(year)
+    cache.clear()
+    cache[key] = {
         'expires_at': now + STATS_CACHE_TTL_SECONDS,
         'payload': copy.deepcopy(payload),
     }
     return payload
+
+
+def _stats_payload(year):
+    return _cached_payload(_stats_payload_cache, year, _build_stats_payload)
+
+
+def _stats_overview_payload(year):
+    return _cached_payload(_stats_overview_cache, year, _build_stats_overview_payload)
 
 
 def _date_from_value(value):
@@ -209,8 +219,28 @@ def _period_base(year=None):
     return period, travels, t_clause, t_params
 
 
-def _period_overview(year=None):
-    period, _, _, _ = _period_base(year)
+def _period_by_month(year, t_clause, t_params):
+    trip_day_series = _day_series('t.start_date', 't.end_date', year)
+    trip_series_params = _series_params(year) + t_params
+    by_month = [dict(r) for r in query(f"""
+        SELECT EXTRACT(MONTH FROM d)::int AS month,
+               COUNT(DISTINCT d::date) AS days,
+               COUNT(DISTINCT t.id) AS count
+        FROM travels t
+        CROSS JOIN LATERAL {trip_day_series} d
+        WHERE {t_clause}
+        GROUP BY month ORDER BY month
+    """, trip_series_params)]
+    for month in by_month:
+        month['days'] = int(month['days'])
+        month['count'] = int(month['count'])
+    return by_month
+
+
+def _period_overview(year=None, include_months=False):
+    period, _, t_clause, t_params = _period_base(year)
+    if include_months:
+        period['by_month'] = _period_by_month(year, t_clause, t_params)
     return period
 
 
@@ -283,20 +313,7 @@ def _period_stats(year=None):
         if p.get('lon') is not None:
             p['lon'] = float(p['lon'])
 
-    trip_day_series = _day_series('t.start_date', 't.end_date', year)
-    trip_series_params = _series_params(year) + t_params
-    by_month = [dict(r) for r in query(f"""
-        SELECT EXTRACT(MONTH FROM d)::int AS month,
-               COUNT(DISTINCT d::date) AS days,
-               COUNT(DISTINCT t.id) AS count
-        FROM travels t
-        CROSS JOIN LATERAL {trip_day_series} d
-        WHERE {t_clause}
-        GROUP BY month ORDER BY month
-    """, trip_series_params)]
-    for m in by_month:
-        m['days'] = int(m['days'])
-        m['count'] = int(m['count'])
+    by_month = _period_by_month(year, t_clause, t_params)
 
     return {
         **period,
@@ -363,36 +380,17 @@ def _heatmap_data():
     return [{'year': r['year'], 'month': r['month'], 'days': int(r['days'])} for r in rows]
 
 
-@bp.route('/api/stats')
-def get_stats():
+def _parse_stats_year():
     raw_year = request.args.get('year')
-    year = int(raw_year) if raw_year and raw_year.isdigit() else None
-    return etag_json(_stats_payload(year))
+    return int(raw_year) if raw_year and raw_year.isdigit() else None
 
 
-def _build_stats_payload(year):
-    period = _period_stats(year)
+def _locations_count():
+    return query("SELECT COUNT(*) AS cnt FROM locations WHERE deleted_at IS NULL", one=True)['cnt']
 
-    prev_period = None
-    if year:
-        prev = _period_overview(year - 1)
-        prev_period = {
-            'year': year - 1,
-            'total_trips': prev['total_trips'],
-            'total_days': prev['total_days'],
-            'countries': prev['countries'],
-            'visited_locations': prev['visited_locations'],
-            'flights': prev['flights'],
-            'albums': prev['albums'],
-            'avg_rating': prev['avg_rating'],
-            'avg_trip_days': prev['avg_trip_days'],
-            'amount_by_currency': prev['amount_by_currency'],
-            'progress_described': prev['progress']['described'],
-        }
 
-    locations_count = query("SELECT COUNT(*) AS cnt FROM locations WHERE deleted_at IS NULL", one=True)['cnt']
-
-    by_year = [dict(r) for r in query("""
+def _by_year():
+    rows = [dict(r) for r in query("""
         SELECT EXTRACT(YEAR FROM d)::int AS year,
                COUNT(DISTINCT t.id) AS count,
                COUNT(DISTINCT d::date) AS days
@@ -401,17 +399,87 @@ def _build_stats_payload(year):
         WHERE t.deleted_at IS NULL
         GROUP BY year ORDER BY year
     """)]
-    for y in by_year:
-        y['count'] = int(y['count'])
-        y['days'] = int(y['days'])
+    for year_row in rows:
+        year_row['count'] = int(year_row['count'])
+        year_row['days'] = int(year_row['days'])
+    return rows
+
+
+def _previous_period(year):
+    if not year:
+        return None
+    prev = _period_overview(year - 1)
+    return {
+        'year': year - 1,
+        'total_trips': prev['total_trips'],
+        'total_days': prev['total_days'],
+        'countries': prev['countries'],
+        'visited_locations': prev['visited_locations'],
+        'flights': prev['flights'],
+        'albums': prev['albums'],
+        'avg_rating': prev['avg_rating'],
+        'avg_trip_days': prev['avg_trip_days'],
+        'amount_by_currency': prev['amount_by_currency'],
+        'progress_described': prev['progress']['described'],
+    }
+
+
+OVERVIEW_PERIOD_KEYS = (
+    'total_trips',
+    'total_days',
+    'countries',
+    'visited_locations',
+    'flights',
+    'albums',
+    'avg_rating',
+    'avg_trip_days',
+    'amount_by_currency',
+    'purposes',
+    'progress',
+)
+
+
+@bp.route('/api/stats')
+def get_stats():
+    year = _parse_stats_year()
+    return etag_json(_stats_payload(year))
+
+
+@bp.route('/api/stats/overview')
+def get_stats_overview():
+    year = _parse_stats_year()
+    return etag_json(_stats_overview_payload(year))
+
+
+def _build_stats_overview_payload(year):
+    period = _period_overview(year, include_months=bool(year))
+    payload = {key: period[key] for key in OVERVIEW_PERIOD_KEYS}
+    if year:
+        payload['by_month'] = period.get('by_month', [])
+    else:
+        payload['heatmap'] = _heatmap_data()
+    return {
+        **payload,
+        'locations': _locations_count(),
+        'by_year': _by_year(),
+        'hall_of_fame': _hall_of_fame(),
+        'year': year,
+        'prev_period': _previous_period(year),
+        'current_trip': None if year else _current_trip(),
+        'streak_months': 0 if year else _streak_months(),
+    }
+
+
+def _build_stats_payload(year):
+    period = _period_stats(year)
 
     return {
         **period,
-        'locations': locations_count,
-        'by_year': by_year,
+        'locations': _locations_count(),
+        'by_year': _by_year(),
         'hall_of_fame': _hall_of_fame(),
         'year': year,
-        'prev_period': prev_period,
+        'prev_period': _previous_period(year),
         'current_trip': _current_trip(),
         'streak_months': _streak_months(),
         'heatmap': _heatmap_data(),

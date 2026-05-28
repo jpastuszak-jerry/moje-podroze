@@ -515,6 +515,44 @@ class ApiContractSmokeTests(unittest.TestCase):
             set(data['country_history']['countries'][0]),
         )
 
+    def test_stats_overview_endpoint_contract_is_lightweight(self):
+        period = _period_payload()
+
+        def overview_payload(year=None, include_months=False):
+            payload = copy.deepcopy(period)
+            if include_months:
+                payload['by_month'] = [{'month': 7, 'days': 11, 'count': 1}]
+            return payload
+
+        with (
+            patch.object(stats, '_period_overview', side_effect=overview_payload),
+            patch.object(stats, '_hall_of_fame', return_value=copy.deepcopy(_hall_of_fame_payload())),
+            patch.object(stats, '_current_trip', return_value=None),
+            patch.object(stats, '_streak_months', return_value=0),
+            patch.object(stats, '_heatmap_data', return_value=[{'year': 2025, 'month': 7, 'days': 11}]),
+            patch.object(stats, 'query', side_effect=fake_stats_query),
+        ):
+            response = self.client.get('/api/stats/overview?year=2025')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        data = response.get_json()
+        expected_keys = {
+            'total_trips', 'total_days', 'countries', 'visited_locations', 'flights',
+            'albums', 'avg_rating', 'avg_trip_days', 'amount_by_currency', 'purposes',
+            'progress', 'locations', 'by_year', 'hall_of_fame', 'year', 'prev_period',
+            'current_trip', 'streak_months', 'by_month',
+        }
+        self.assertEqual(expected_keys, set(data))
+        self.assertEqual(data['year'], 2025)
+        self.assertEqual(data['locations'], 4)
+        self.assertEqual(data['by_month'][0], {'month': 7, 'days': 11, 'count': 1})
+        self.assertEqual(data['prev_period']['year'], 2024)
+        self.assertNotIn('participants', data)
+        self.assertNotIn('data_quality', data)
+        self.assertNotIn('country_history', data)
+        self.assertNotIn('yearbook', data)
+
     def test_period_overview_reuses_base_rows_without_detail_queries(self):
         captured = []
 
