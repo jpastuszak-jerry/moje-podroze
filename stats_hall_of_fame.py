@@ -1,129 +1,218 @@
 """Hall of Fame aggregations for the stats dashboard."""
 
+from datetime import date
+
 from core import query
 
 
-def _hof_row(sql):
-    r = query(sql, one=True)
-    return dict(r) if r else None
+def _date_or_none(value):
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value)[:10])
 
 
-def _hall_of_fame():
-    hof_longest = _hof_row("""
-        SELECT id, name, (end_date - start_date + 1) AS days
-        FROM travels
-        WHERE deleted_at IS NULL
-        ORDER BY days DESC, start_date DESC, id DESC LIMIT 1
-    """)
-    hof_priciest = _hof_row("""
-        SELECT id, name, amount, currency
-        FROM travels
-        WHERE deleted_at IS NULL AND amount > 0
-        ORDER BY amount DESC, start_date DESC, id DESC LIMIT 1
-    """)
-    hof_best_rated = _hof_row("""
-        SELECT id, name, rating
-        FROM travels
-        WHERE deleted_at IS NULL AND rating IS NOT NULL
-        ORDER BY rating DESC, start_date DESC, id DESC LIMIT 1
-    """)
-    hof_most_places = _hof_row("""
-        SELECT t.id, t.name, COUNT(DISTINCT tl.location_id) AS loc_count
-        FROM travels t
-        JOIN travel_locations tl ON tl.travel_id = t.id
-        JOIN locations l ON l.id = tl.location_id
-        WHERE t.deleted_at IS NULL AND l.deleted_at IS NULL
-        GROUP BY t.id, t.name, t.start_date
-        ORDER BY loc_count DESC, t.start_date DESC, t.id DESC LIMIT 1
-    """)
-    hof_most_flights = _hof_row("""
-        SELECT id, name, number_of_flights
-        FROM travels
-        WHERE deleted_at IS NULL AND number_of_flights > 0
-        ORDER BY number_of_flights DESC, start_date DESC, id DESC LIMIT 1
-    """)
-    hof_most_countries = _hof_row("""
-        SELECT t.id, t.name, COUNT(DISTINCT c.id) AS country_count
+def _inclusive_days(start, end):
+    if not start or not end or end < start:
+        return 0
+    return (end - start).days + 1
+
+
+def _travel_days(travel):
+    return _inclusive_days(travel.get('start_date'), travel.get('end_date'))
+
+
+def _travel_item(row):
+    item = dict(row)
+    item['start_date'] = _date_or_none(item.get('start_date'))
+    item['end_date'] = _date_or_none(item.get('end_date'))
+    item['amount'] = float(item.get('amount') or 0)
+    item['rating'] = float(item['rating']) if item.get('rating') is not None else None
+    item['number_of_flights'] = int(item.get('number_of_flights') or 0)
+    return item
+
+
+def _travel_sort_date(travel):
+    return travel.get('start_date') or date.min
+
+
+def _best(rows, key):
+    return max(rows, key=key) if rows else None
+
+
+def _longest_gap(travels):
+    ordered = sorted(
+        [t for t in travels if t.get('start_date') and t.get('end_date')],
+        key=lambda t: (t['start_date'], t['end_date'], t['id']),
+    )
+    rows = []
+    prev_end = None
+    for travel in ordered:
+        if prev_end is not None:
+            rows.append({
+                'id': travel['id'],
+                'name': travel['name'],
+                'start_date': travel['start_date'],
+                'gap_days': max((travel['start_date'] - prev_end).days - 1, 0),
+            })
+            prev_end = max(prev_end, travel['end_date'])
+        else:
+            prev_end = travel['end_date']
+    return _best(rows, lambda row: (row['gap_days'], row['start_date'], row['id']))
+
+
+def _day_sets(travels):
+    days = set()
+    months = {}
+    for travel in travels:
+        start = travel.get('start_date')
+        end = travel.get('end_date')
+        day_count = _inclusive_days(start, end)
+        for offset in range(day_count):
+            day = date.fromordinal(start.toordinal() + offset)
+            days.add(day)
+            months.setdefault((day.year, day.month), set()).add(day)
+    return days, months
+
+
+def _longest_streak(days):
+    if not days:
+        return None
+    groups = []
+    start = None
+    previous = None
+    for day in sorted(days):
+        if start is None:
+            start = previous = day
+            continue
+        if (day - previous).days == 1:
+            previous = day
+            continue
+        groups.append((start, previous, (previous - start).days + 1))
+        start = previous = day
+    groups.append((start, previous, (previous - start).days + 1))
+    best = max(groups, key=lambda item: (item[2], item[0]))
+    return {'start_date': best[0], 'end_date': best[1], 'days': best[2]}
+
+
+def _best_month(months):
+    if not months:
+        return None
+    (year, month), days = max(
+        months.items(),
+        key=lambda item: (len(item[1]), item[0][0], item[0][1]),
+    )
+    return {'year': year, 'month': month, 'days': len(days)}
+
+
+def _location_aggregates(travels_by_id):
+    rows = [dict(r) for r in query("""
+        SELECT t.id AS travel_id,
+               COUNT(DISTINCT tl.location_id) AS loc_count,
+               COUNT(DISTINCT c.id) AS country_count
         FROM travels t
         JOIN travel_locations tl ON tl.travel_id = t.id
         JOIN locations l ON l.id = tl.location_id
         JOIN countries c ON c.id = l.country_id
         WHERE t.deleted_at IS NULL AND l.deleted_at IS NULL
-        GROUP BY t.id, t.name
-        ORDER BY country_count DESC, t.start_date DESC LIMIT 1
-    """)
-    hof_top_country = _hof_row("""
-        SELECT c.name, COUNT(DISTINCT tl.travel_id) AS visits,
-               COUNT(DISTINCT d::date) AS days
+        GROUP BY t.id
+    """)]
+    aggregates = {}
+    for row in rows:
+        travel = travels_by_id.get(row['travel_id'])
+        if not travel:
+            continue
+        aggregates[row['travel_id']] = {
+            **travel,
+            'loc_count': int(row.get('loc_count') or 0),
+            'country_count': int(row.get('country_count') or 0),
+        }
+    return aggregates
+
+
+def _top_country():
+    rows = [dict(r) for r in query("""
+        SELECT c.name,
+               tl.travel_id,
+               tl.arrival_date,
+               tl.departure_date
         FROM travel_locations tl
         JOIN locations l ON l.id = tl.location_id
         JOIN countries c ON c.id = l.country_id
         JOIN travels t ON t.id = tl.travel_id
-        LEFT JOIN LATERAL generate_series(tl.arrival_date::timestamp, tl.departure_date::timestamp, interval '1 day') d
-          ON tl.arrival_date IS NOT NULL AND tl.departure_date IS NOT NULL
         WHERE t.deleted_at IS NULL AND l.deleted_at IS NULL
-        GROUP BY c.name
-        ORDER BY visits DESC, days DESC, c.name LIMIT 1
-    """)
-    hof_longest_gap = _hof_row("""
-        WITH ordered AS (
-            SELECT id, name, start_date,
-                   MAX(end_date) OVER (
-                       ORDER BY start_date, end_date, id
-                       ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-                   ) AS prev_end_date
-            FROM travels
-            WHERE deleted_at IS NULL
-        )
-        SELECT id, name, GREATEST(start_date - prev_end_date - 1, 0) AS gap_days
-        FROM ordered
-        WHERE prev_end_date IS NOT NULL
-        ORDER BY gap_days DESC, start_date DESC, id DESC LIMIT 1
-    """)
-    hof_longest_streak = _hof_row("""
-        WITH days AS (
-            SELECT DISTINCT d::date AS day
-            FROM travels t,
-                 generate_series(t.start_date::timestamp, t.end_date::timestamp, interval '1 day') d
-            WHERE t.deleted_at IS NULL
-        ),
-        numbered AS (
-            SELECT day, day - (ROW_NUMBER() OVER (ORDER BY day))::int AS grp
-            FROM days
-        )
-        SELECT MIN(day) AS start_date, MAX(day) AS end_date, COUNT(*) AS days
-        FROM numbered
-        GROUP BY grp
-        ORDER BY days DESC, start_date DESC LIMIT 1
-    """)
-    hof_best_month = _hof_row("""
-        SELECT EXTRACT(YEAR FROM d)::int AS year,
-               EXTRACT(MONTH FROM d)::int AS month,
-               COUNT(DISTINCT d::date) AS days
-        FROM travels t,
-             generate_series(t.start_date::timestamp, t.end_date::timestamp, interval '1 day') d
-        WHERE t.deleted_at IS NULL
-        GROUP BY year, month
-        ORDER BY days DESC, year DESC, month DESC LIMIT 1
-    """)
+    """)]
+    countries = {}
+    for row in rows:
+        item = countries.setdefault(row['name'], {'name': row['name'], 'visits': set(), 'days': set()})
+        item['visits'].add(row['travel_id'])
+        start = _date_or_none(row.get('arrival_date'))
+        end = _date_or_none(row.get('departure_date'))
+        day_count = _inclusive_days(start, end)
+        for offset in range(day_count):
+            item['days'].add(date.fromordinal(start.toordinal() + offset))
+    if not countries:
+        return None
+    return sorted(
+        countries.values(),
+        key=lambda item: (-len(item['visits']), -len(item['days']), item['name']),
+    )[0]
+
+
+def _hall_of_fame():
+    travels = [_travel_item(r) for r in query("""
+        SELECT id, name, start_date, end_date, amount, currency, rating, number_of_flights
+        FROM travels
+        WHERE deleted_at IS NULL
+    """)]
+    travels_by_id = {travel['id']: travel for travel in travels}
+    location_aggregates = _location_aggregates(travels_by_id)
+    top_country = _top_country()
+    travel_days, month_days = _day_sets(travels)
+
+    longest = _best(travels, lambda t: (_travel_days(t), _travel_sort_date(t), t['id']))
+    priciest = _best(
+        [t for t in travels if t['amount'] > 0],
+        lambda t: (t['amount'], _travel_sort_date(t), t['id']),
+    )
+    best_rated = _best(
+        [t for t in travels if t['rating'] is not None],
+        lambda t: (t['rating'], _travel_sort_date(t), t['id']),
+    )
+    most_places = _best(
+        list(location_aggregates.values()),
+        lambda t: (t['loc_count'], _travel_sort_date(t), t['id']),
+    )
+    most_flights = _best(
+        [t for t in travels if t['number_of_flights'] > 0],
+        lambda t: (t['number_of_flights'], _travel_sort_date(t), t['id']),
+    )
+    most_countries = _best(
+        list(location_aggregates.values()),
+        lambda t: (t['country_count'], _travel_sort_date(t), t['id']),
+    )
+    longest_gap = _longest_gap(travels)
+    longest_streak = _longest_streak(travel_days)
+    best_month = _best_month(month_days)
 
     return {
-        'longest': {'id': hof_longest['id'], 'name': hof_longest['name'], 'value': int(hof_longest['days'])} if hof_longest else None,
-        'priciest': {'id': hof_priciest['id'], 'name': hof_priciest['name'], 'value': float(hof_priciest['amount']), 'currency': hof_priciest['currency']} if hof_priciest else None,
-        'best_rated': {'id': hof_best_rated['id'], 'name': hof_best_rated['name'], 'value': float(hof_best_rated['rating'])} if hof_best_rated else None,
-        'most_places': {'id': hof_most_places['id'], 'name': hof_most_places['name'], 'value': int(hof_most_places['loc_count'])} if hof_most_places else None,
-        'most_flights': {'id': hof_most_flights['id'], 'name': hof_most_flights['name'], 'value': int(hof_most_flights['number_of_flights'])} if hof_most_flights else None,
-        'most_countries': {'id': hof_most_countries['id'], 'name': hof_most_countries['name'], 'value': int(hof_most_countries['country_count'])} if hof_most_countries else None,
-        'top_country': {'name': hof_top_country['name'], 'visits': int(hof_top_country['visits']), 'days': int(hof_top_country['days'] or 0)} if hof_top_country else None,
-        'longest_gap': {'id': hof_longest_gap['id'], 'name': hof_longest_gap['name'], 'value': int(hof_longest_gap['gap_days'])} if hof_longest_gap else None,
+        'longest': {'id': longest['id'], 'name': longest['name'], 'value': _travel_days(longest)} if longest else None,
+        'priciest': {'id': priciest['id'], 'name': priciest['name'], 'value': priciest['amount'], 'currency': priciest['currency']} if priciest else None,
+        'best_rated': {'id': best_rated['id'], 'name': best_rated['name'], 'value': best_rated['rating']} if best_rated else None,
+        'most_places': {'id': most_places['id'], 'name': most_places['name'], 'value': most_places['loc_count']} if most_places else None,
+        'most_flights': {'id': most_flights['id'], 'name': most_flights['name'], 'value': most_flights['number_of_flights']} if most_flights else None,
+        'most_countries': {'id': most_countries['id'], 'name': most_countries['name'], 'value': most_countries['country_count']} if most_countries else None,
+        'top_country': {'name': top_country['name'], 'visits': len(top_country['visits']), 'days': len(top_country['days'])} if top_country else None,
+        'longest_gap': {'id': longest_gap['id'], 'name': longest_gap['name'], 'value': longest_gap['gap_days']} if longest_gap else None,
         'longest_streak': {
-            'start_date': str(hof_longest_streak['start_date']),
-            'end_date': str(hof_longest_streak['end_date']),
-            'value': int(hof_longest_streak['days']),
-        } if hof_longest_streak else None,
+            'start_date': str(longest_streak['start_date']),
+            'end_date': str(longest_streak['end_date']),
+            'value': longest_streak['days'],
+        } if longest_streak else None,
         'best_month': {
-            'year': int(hof_best_month['year']),
-            'month': int(hof_best_month['month']),
-            'value': int(hof_best_month['days']),
-        } if hof_best_month else None,
+            'year': best_month['year'],
+            'month': best_month['month'],
+            'value': best_month['days'],
+        } if best_month else None,
     }

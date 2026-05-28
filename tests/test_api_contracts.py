@@ -184,6 +184,49 @@ def _yearbook_payload():
 def fake_stats_query(sql, params=(), one=False):
     normalized = ' '.join(sql.split())
     if not one:
+        if 'SELECT id, name, start_date, end_date, amount, currency, rating, number_of_flights' in normalized:
+            return [
+                {
+                    'id': 1,
+                    'name': 'Longest trip',
+                    'start_date': date(2025, 7, 18),
+                    'end_date': date(2025, 7, 28),
+                    'amount': 1000.0,
+                    'currency': 'EUR',
+                    'rating': 4.5,
+                    'number_of_flights': 4,
+                },
+                {
+                    'id': 2,
+                    'name': 'After break',
+                    'start_date': date(2025, 11, 26),
+                    'end_date': date(2025, 11, 28),
+                    'amount': 200.0,
+                    'currency': 'PLN',
+                    'rating': 4.0,
+                    'number_of_flights': 0,
+                },
+            ]
+        if 'COUNT(DISTINCT tl.location_id) AS loc_count' in normalized:
+            return [
+                {'travel_id': 1, 'loc_count': 7, 'country_count': 3},
+                {'travel_id': 2, 'loc_count': 1, 'country_count': 1},
+            ]
+        if 'SELECT c.name, tl.travel_id, tl.arrival_date, tl.departure_date' in normalized:
+            return [
+                {
+                    'name': 'Finland',
+                    'travel_id': 1,
+                    'arrival_date': date(2025, 7, 18),
+                    'departure_date': date(2025, 7, 22),
+                },
+                {
+                    'name': 'Finland',
+                    'travel_id': 2,
+                    'arrival_date': date(2025, 11, 26),
+                    'departure_date': date(2025, 11, 26),
+                },
+            ]
         if 'GROUP BY year ORDER BY year' in normalized:
             return [{'year': 2025, 'count': 1, 'days': 11}]
         raise AssertionError(f'Unexpected list query: {normalized}')
@@ -331,6 +374,7 @@ class ApiContractSmokeTests(unittest.TestCase):
         period = _period_payload()
         with (
             patch.object(stats, '_period_stats', side_effect=lambda year=None: copy.deepcopy(period)),
+            patch.object(stats, '_period_overview', side_effect=lambda year=None: copy.deepcopy(period)),
             patch.object(stats, '_data_quality', return_value=copy.deepcopy(_data_quality_payload())),
             patch.object(stats, '_country_history', return_value=copy.deepcopy(_country_history_payload())),
             patch.object(stats, '_country_milestones', return_value={
@@ -430,6 +474,40 @@ class ApiContractSmokeTests(unittest.TestCase):
             set(data['country_history']['countries'][0]),
         )
 
+    def test_period_overview_reuses_base_rows_without_detail_queries(self):
+        captured = []
+
+        def period_query(sql, params=(), one=False):
+            normalized = ' '.join(sql.split())
+            captured.append((normalized, one))
+            if 'SELECT * FROM travels' in normalized:
+                return [{
+                    'id': 1,
+                    'name': 'Helsinki',
+                    'start_date': date(2025, 7, 18),
+                    'end_date': date(2025, 7, 28),
+                    'amount': 1100.0,
+                    'currency': 'EUR',
+                    'rating': 4.5,
+                    'number_of_flights': 2,
+                    'has_photo_album': True,
+                    'purpose': 'Urlop',
+                    'is_description_complete': True,
+                }]
+            if 'COUNT(DISTINCT c.id) AS countries' in normalized:
+                return {'countries': 2, 'visited_locations': 4}
+            raise AssertionError(f'Unexpected period query: {normalized}')
+
+        with patch.object(stats, 'query', side_effect=period_query):
+            overview = stats._period_overview(2025)
+
+        self.assertEqual(len(captured), 2)
+        self.assertEqual(overview['total_trips'], 1)
+        self.assertEqual(overview['countries'], 2)
+        self.assertEqual(overview['progress']['described'], 1)
+        self.assertEqual(overview['top_expensive'][0]['name'], 'Helsinki')
+        self.assertEqual(overview['cost_per_day'][0]['cost_per_day'], 100)
+
     def test_hall_of_fame_contract(self):
         with patch.object(stats_hall_of_fame, 'query', side_effect=fake_stats_query):
             hall_of_fame = stats_hall_of_fame._hall_of_fame()
@@ -448,20 +526,20 @@ class ApiContractSmokeTests(unittest.TestCase):
         captured = []
 
         def capture_hof_query(sql, params=(), one=False):
-            captured.append(' '.join(sql.split()))
+            captured.append((' '.join(sql.split()), one))
             return fake_stats_query(sql, params, one)
 
         with patch.object(stats_hall_of_fame, 'query', side_effect=capture_hof_query):
-            stats_hall_of_fame._hall_of_fame()
+            hall_of_fame = stats_hall_of_fame._hall_of_fame()
 
-        most_places_sql = next(sql for sql in captured if 'AS loc_count' in sql)
+        self.assertEqual(len(captured), 3)
+        self.assertTrue(all(one is False for _, one in captured))
+        most_places_sql = next(sql for sql, _ in captured if 'AS loc_count' in sql)
         self.assertIn('COUNT(DISTINCT tl.location_id) AS loc_count', most_places_sql)
         self.assertIn('JOIN locations l ON l.id = tl.location_id', most_places_sql)
         self.assertIn('l.deleted_at IS NULL', most_places_sql)
-
-        gap_sql = next(sql for sql in captured if 'AS gap_days' in sql)
-        self.assertIn('MAX(end_date) OVER', gap_sql)
-        self.assertIn('ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING', gap_sql)
+        self.assertEqual(hall_of_fame['most_places']['value'], 7)
+        self.assertEqual(hall_of_fame['longest_gap']['value'], 120)
 
     def test_stats_todo_endpoint_contract(self):
         payload = _data_quality_payload()

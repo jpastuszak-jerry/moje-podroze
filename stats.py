@@ -4,6 +4,7 @@ import copy
 import os
 import time
 from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 from statistics import median
 
 from flask import Blueprint, request
@@ -57,30 +58,33 @@ def _stats_payload(year):
     return payload
 
 
-def _period_stats(year=None):
-    """Stats for all time or for activity overlapping the selected calendar year."""
+def _date_from_value(value):
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value))
+
+
+def _round_half_up(value):
+    return int(Decimal(str(value)).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+
+
+def _period_base(year=None):
+    """Shared period summary and source rows for detailed stats."""
     period_start, period_end = _period_bounds(year)
     main_clause, main_params = _travel_period_clause(year)
     t_clause, t_params = _travel_period_clause(year, 't')
 
     travels = [dict(r) for r in query(f"SELECT * FROM travels WHERE {main_clause}", main_params)]
 
-    countries_count = query(f"""
-        SELECT COUNT(DISTINCT c.id) AS cnt
+    geography = query(f"""
+        SELECT COUNT(DISTINCT c.id) AS countries,
+               COUNT(DISTINCT l.id) AS visited_locations
         FROM travel_locations tl
         JOIN locations l ON l.id = tl.location_id
         JOIN countries c ON c.id = l.country_id
         JOIN travels t ON t.id = tl.travel_id
         WHERE l.deleted_at IS NULL AND {t_clause}
-    """, t_params, one=True)['cnt']
-
-    visited_locations_count = query(f"""
-        SELECT COUNT(DISTINCT l.id) AS cnt
-        FROM travel_locations tl
-        JOIN locations l ON l.id = tl.location_id
-        JOIN travels t ON t.id = tl.travel_id
-        WHERE l.deleted_at IS NULL AND {t_clause}
-    """, t_params, one=True)['cnt']
+    """, t_params, one=True)
 
     total_days_set = set()
     trip_days = []
@@ -90,20 +94,27 @@ def _period_stats(year=None):
     flights = 0
     albums = 0
     purposes = {}
+    described = 0
+    paid_trips = []
 
     for t in travels:
         days = 0
+        full_days = 0
+        start = None
+        end = None
         try:
-            start = t['start_date'] if isinstance(t['start_date'], date) else date.fromisoformat(str(t['start_date']))
-            end = t['end_date'] if isinstance(t['end_date'], date) else date.fromisoformat(str(t['end_date']))
-            if period_start:
-                start = max(start, period_start)
-            if period_end:
-                end = min(end, period_end)
-            if end >= start:
-                days = (end - start).days + 1
+            start = _date_from_value(t['start_date'])
+            end = _date_from_value(t['end_date'])
+            full_days = max((end - start).days + 1, 0)
+            clipped_start = max(start, period_start) if period_start else start
+            clipped_end = min(end, period_end) if period_end else end
+            if clipped_end >= clipped_start:
+                days = (clipped_end - clipped_start).days + 1
                 trip_days.append(days)
-                total_days_set.update(date.fromordinal(start.toordinal() + i) for i in range(days))
+                total_days_set.update(
+                    date.fromordinal(clipped_start.toordinal() + i)
+                    for i in range(days)
+                )
         except Exception:
             pass
 
@@ -114,13 +125,98 @@ def _period_stats(year=None):
             bucket = cost_buckets.setdefault(cur, {'amounts': [], 'days': 0})
             bucket['amounts'].append(amount)
             bucket['days'] += days
+            if start and end and full_days > 0:
+                paid_trips.append({
+                    'name': t.get('name'),
+                    'amount': round(amount, 2),
+                    'currency': cur,
+                    'start_date': str(start),
+                    'end_date': str(end),
+                    'days': full_days,
+                    'cost_per_day': _round_half_up(amount / full_days),
+                    '_sort_amount': amount,
+                })
         if t.get('rating'):
             ratings.append(float(t['rating']))
         flights += int(t.get('number_of_flights') or 0)
         if t.get('has_photo_album'):
             albums += 1
+        if t.get('is_description_complete'):
+            described += 1
         purpose = t.get('purpose') or 'Inne'
         purposes[purpose] = purposes.get(purpose, 0) + 1
+
+    avg_trip_days = round(sum(trip_days) / len(trip_days), 1) if trip_days else 0
+    cost_summary = []
+    for cur, bucket in cost_buckets.items():
+        amounts = bucket['amounts']
+        total = sum(amounts)
+        days = bucket['days']
+        cost_summary.append({
+            'currency': cur,
+            'trip_count': len(amounts),
+            'days': days,
+            'total': round(total, 2),
+            'avg_trip': round(total / len(amounts), 2),
+            'median_trip': round(median(amounts), 2),
+            'avg_per_day': round(total / days, 2) if days else None,
+        })
+    cost_summary.sort(key=lambda item: item['total'], reverse=True)
+
+    top_expensive = [
+        {k: trip[k] for k in ('name', 'amount', 'currency', 'start_date', 'end_date', 'days')}
+        for trip in sorted(
+            paid_trips,
+            key=lambda item: (item['_sort_amount'], item['start_date']),
+            reverse=True,
+        )[:10]
+    ]
+    cost_per_day = [
+        {k: trip[k] for k in ('name', 'amount', 'currency', 'days', 'cost_per_day')}
+        for trip in sorted(
+            paid_trips,
+            key=lambda item: (item['cost_per_day'], item['_sort_amount']),
+            reverse=True,
+        )[:5]
+    ]
+
+    period = {
+        'total_trips': len(travels),
+        'total_days': len(total_days_set),
+        'countries': int(geography['countries'] or 0),
+        'visited_locations': int(geography['visited_locations'] or 0),
+        'flights': flights,
+        'albums': albums,
+        'avg_rating': round(sum(ratings) / len(ratings), 1) if ratings else 0,
+        'avg_trip_days': avg_trip_days,
+        'amount_by_currency': {
+            cur: round(amt, 2)
+            for cur, amt in sorted(amount_by_currency.items(), key=lambda x: -x[1])
+        },
+        'cost_summary': cost_summary,
+        'purposes': sorted(
+            [{'name': k, 'count': v} for k, v in purposes.items()],
+            key=lambda x: -x['count'],
+        ),
+        'top_expensive': top_expensive,
+        'cost_per_day': cost_per_day,
+        'progress': {
+            'total': len(travels),
+            'described': described,
+            'with_album': albums,
+        },
+    }
+    return period, travels, t_clause, t_params
+
+
+def _period_overview(year=None):
+    period, _, _, _ = _period_base(year)
+    return period
+
+
+def _period_stats(year=None):
+    """Stats for all time or for activity overlapping the selected calendar year."""
+    period, _travels, t_clause, t_params = _period_base(year)
 
     participant_day_series = _day_series('t.start_date', 't.end_date', year)
     participant_params = _series_params(year) + t_params
@@ -141,18 +237,6 @@ def _period_stats(year=None):
     for p in participants:
         p['trips'] = int(p['trips'])
         p['days'] = int(p['days'])
-
-    top_expensive = [dict(r) for r in query(f"""
-        SELECT name, amount, currency, start_date, end_date,
-               (end_date - start_date + 1) AS days
-        FROM travels
-        WHERE amount > 0 AND {main_clause}
-        ORDER BY amount DESC LIMIT 10
-    """, main_params)]
-    for t in top_expensive:
-        for k in ('start_date', 'end_date'):
-            if t.get(k):
-                t[k] = str(t[k])
 
     visit_day_series = _day_series('tl.arrival_date', 'tl.departure_date', year)
     visit_series_params = _series_params(year) + t_params
@@ -214,68 +298,12 @@ def _period_stats(year=None):
         m['days'] = int(m['days'])
         m['count'] = int(m['count'])
 
-    avg_trip_days = round(sum(trip_days) / len(trip_days), 1) if trip_days else 0
-    cost_summary = []
-    for cur, bucket in cost_buckets.items():
-        amounts = bucket['amounts']
-        total = sum(amounts)
-        days = bucket['days']
-        cost_summary.append({
-            'currency': cur,
-            'trip_count': len(amounts),
-            'days': days,
-            'total': round(total, 2),
-            'avg_trip': round(total / len(amounts), 2),
-            'median_trip': round(median(amounts), 2),
-            'avg_per_day': round(total / days, 2) if days else None,
-        })
-    cost_summary.sort(key=lambda item: item['total'], reverse=True)
-
-    cost_per_day = [dict(r) for r in query(f"""
-        SELECT name, amount, currency,
-               (end_date - start_date + 1) AS days,
-               ROUND(amount / (end_date - start_date + 1), 0) AS cost_per_day
-        FROM travels
-        WHERE amount > 0 AND {main_clause}
-        ORDER BY cost_per_day DESC LIMIT 5
-    """, main_params)]
-
-    progress = query(f"""
-        SELECT COUNT(*) AS total,
-               SUM(CASE WHEN is_description_complete THEN 1 ELSE 0 END) AS described,
-               SUM(CASE WHEN has_photo_album THEN 1 ELSE 0 END) AS with_album
-        FROM travels WHERE {main_clause}
-    """, main_params, one=True)
-
     return {
-        'total_trips': len(travels),
-        'total_days': len(total_days_set),
-        'countries': countries_count,
-        'visited_locations': visited_locations_count,
-        'flights': flights,
-        'albums': albums,
-        'avg_rating': round(sum(ratings) / len(ratings), 1) if ratings else 0,
-        'avg_trip_days': avg_trip_days,
-        'amount_by_currency': {
-            cur: round(amt, 2)
-            for cur, amt in sorted(amount_by_currency.items(), key=lambda x: -x[1])
-        },
-        'cost_summary': cost_summary,
-        'purposes': sorted(
-            [{'name': k, 'count': v} for k, v in purposes.items()],
-            key=lambda x: -x['count'],
-        ),
+        **period,
         'participants': participants,
-        'top_expensive': top_expensive,
         'top_countries': top_countries,
         'top_places': top_places,
         'by_month': by_month,
-        'cost_per_day': cost_per_day,
-        'progress': {
-            'total': int(progress['total'] or 0),
-            'described': int(progress['described'] or 0),
-            'with_album': int(progress['with_album'] or 0),
-        },
     }
 
 
@@ -347,7 +375,7 @@ def _build_stats_payload(year):
 
     prev_period = None
     if year:
-        prev = _period_stats(year - 1)
+        prev = _period_overview(year - 1)
         prev_period = {
             'year': year - 1,
             'total_trips': prev['total_trips'],
