@@ -13,7 +13,7 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 2. Connection pooling - DONE. `core.get_db()` korzysta z `psycopg2.pool.ThreadedConnectionPool` zamiast otwierac nowe polaczenie per request. Rozmiar puli mozna ustawic przez `DB_POOL_MINCONN` i `DB_POOL_MAXCONN`.
 3. Migracje wersjonowane - DONE. `ensure_schema()` nadal zachowuje zasade "no manual steps after deploy", ale deleguje prace do `schema_migrations.py`: migracje maja wersje, nazwy i zapis w tabeli `schema_migrations`. Wybrany zostal prosty wlasny system zamiast Alembic, bo pasuje do malej aplikacji i deployu na Renderze bez dodatkowych komend.
 4. Indeksy FK i partial indexes - DONE. `ensure_schema()` tworzy idempotentnie indeksy pod relacje i aktywne rekordy, szczegolnie `travel_locations(travel_id)`, `travel_locations(location_id)`, `travel_participants(travel_id/person_id)`, `locations(parent_location_id)`, `locations(country_id)`, `travels(start_date) WHERE deleted_at IS NULL` i `locations(country_id) WHERE deleted_at IS NULL`.
-5. Budzet zapytan dla `/api/stats` - PARTIAL. Endpoint nadal sklada wiele agregatow w jednym kontrakcie, ale ma teraz krotki cache TTL (`STATS_CACHE_TTL_SECONDS`, domyslnie 60s) z uniewaznianiem po zapisach. Dodatkowo w `Optimize stats query budget` zimny budzet `/api/stats?year=...` zostal obnizony orientacyjnie z ok. 42 do ok. 23 zapytan: poprzedni rok liczy lekki overview, rankingi kosztow korzystaja z pobranych juz podrozy, a Hall of Fame spadl z 10 do 3 zapytan. Kolejny krok: realny pomiar czasow na produkcji i ewentualne materialized views dla najciezszych sekcji.
+5. Budzet zapytan dla `/api/stats` - PARTIAL. Endpoint nadal sklada wiele agregatow w jednym kontrakcie, ale ma teraz krotki cache TTL (`STATS_CACHE_TTL_SECONDS`, domyslnie 60s) z uniewaznianiem po zapisach. Dodatkowo w `Optimize stats query budget` zimny budzet `/api/stats?year=...` zostal obnizony orientacyjnie z ok. 42 do ok. 23 zapytan: poprzedni rok liczy lekki overview, rankingi kosztow korzystaja z pobranych juz podrozy, a Hall of Fame spadl z 10 do 3 zapytan. W `Add stats overview endpoint` i `Load stats overview first` dodany zostal lekki `/api/stats/overview`, a frontend uzywa go dla pierwszej sekcji Podsumowanie. Kolejny krok: sekcyjne endpointy dla kosztow/krajow/jakosci oraz realny pomiar czasow na produkcji.
 6. Audyt XSS w frontendzie - DONE. Dynamiczne opcje selectow i wartosci inputow w miejscach/osobach/podrozach/mapie/kreatorze ida przez `renderSelectOptions()` i `escapeAttr()` zamiast lokalnych template stringow albo recznego `replace(/"/g, '&quot;')`.
 7. Jedno zrodlo polityki `no-store` - DONE. Backendowe listy `NO_STORE_EXACT_API_PATHS` i `NO_STORE_API_PREFIXES` w `app.py` sa zrodlem prawdy, a `/sw.js` wstrzykuje je do service workera przy serwowaniu pliku.
 8. Realniejsze testy integracyjne. Obecne testy kontraktu sa wartosciowe, ale mock SQL nie lapie regresji w zapytaniach. Dodac mala baze testowa, fixture PostgreSQL albo minimalny smoke na prawdziwym schemacie.
@@ -320,6 +320,8 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - wspolne renderowanie metryk miejsc,
 - wspolne renderowanie sekcji modalowych.
 
+**Dopiete pozniej:** `Load stats overview first` zaczyna rozbijanie ekranu Statystyk od warstwy danych: sekcja Podsumowanie pobiera lekki `/api/stats/overview`, a pozostale sekcje nadal korzystaja z pelnego `/api/stats`. To pilot pod dalszy podzial `stats.js` bez rewolucji w calym frontendzie.
+
 **Weryfikacja:** `stats.js`, `todo.js`, `locations.js` i `travels.js` maja mniej duplikacji, a wyglad kart/filtrow pozostaje spojny.
 
 ### 11. Kontrakty API dla widokow - PARTIAL
@@ -413,6 +415,7 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Do rozwazenia pozniej:**
 - zrobione w `Optimize stats query budget`: lekki `_period_overview(year - 1)` dla porownania rok do roku, wspolna baza danych okresu w `_period_base()`, kosztowe rankingi bez dodatkowych SQL i Hall of Fame liczony z trzech zapytan zamiast dziesieciu,
+- zrobione w `Add stats overview endpoint` i `Load stats overview first`: osobny lekki endpoint dla Podsumowania i frontendowe overview-first loading,
 - polaczyc albo wspoldzielic dane miedzy `country_history` i `country_milestones`,
 - uproscic `/api/locations` przez CTE albo osobny maly SELECT agregujacy wizyty,
 - dodac krotkotrwaly cache w request-scope dla pozostalych wspolnych agregatow, jesli pojawia sie realne lagi.

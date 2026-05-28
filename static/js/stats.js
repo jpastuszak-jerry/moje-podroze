@@ -113,6 +113,11 @@ function setStatsSection(sectionId) {
   renderStats();
 }
 
+function statsApiPath() {
+  const endpoint = currentStatsSection === 'overview' ? '/api/stats/overview' : '/api/stats';
+  return endpoint + (currentStatsYear ? '?year=' + currentStatsYear : '');
+}
+
 function pluralTrips(n) {
   if (n === 1) return 'podróż';
   const mod10 = n % 10;
@@ -644,8 +649,7 @@ function renderOverviewMetrics(s, prev, currentYear, currencies) {
 async function renderStats() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
-  const url = '/api/stats' + (currentStatsYear ? '?year=' + currentStatsYear : '');
-  const s = await api(url);
+  const s = await api(statsApiPath());
   if (s.error) {
     view.innerHTML = emptyState({ icon: '📊', title: 'Nie udało się wczytać statystyk', message: s.error });
     return;

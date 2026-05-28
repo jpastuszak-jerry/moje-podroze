@@ -922,6 +922,7 @@ async function renderStatsSection(section, { year = null, payload = statsPayload
 }
 
 const overviewStats = await renderStatsSection('overview');
+assert.equal(apiCalls.at(-1), '/api/stats/overview', 'overview section uses the lightweight stats endpoint');
 assert.match(overviewStats, /Podsumowanie/, 'stats render section tabs');
 assert.match(overviewStats, /Hall of Fame/, 'overview keeps hall of fame records');
 assert.match(overviewStats, /hof-grid/, 'overview shows hall of fame as a grid');
