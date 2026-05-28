@@ -259,15 +259,26 @@ function renderYearbook(yearbook, selectedYear) {
   });
 }
 
+function formatYoyNumber(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return escapeHtml(value);
+  if (Number.isInteger(numeric)) return String(numeric);
+  return numeric.toLocaleString('pl-PL', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  });
+}
+
 function yoyDelta(current, prev, lowerBetter = false) {
   if (prev == null) return '';
-  const delta = current - prev;
-  if (delta === 0) return `<div class="yoy yoy-flat">= ${prev}</div>`;
+  const delta = Number(current) - Number(prev);
+  if (!Number.isFinite(delta)) return '';
+  if (delta === 0) return `<div class="yoy yoy-flat">= ${formatYoyNumber(prev)}</div>`;
   const arrow = delta > 0 ? '↑' : '↓';
   const isGood = lowerBetter ? delta < 0 : delta > 0;
   const cls = isGood ? 'yoy-up' : 'yoy-down';
   const sign = delta > 0 ? '+' : '';
-  return `<div class="yoy ${cls}">${arrow} ${sign}${delta}</div>`;
+  return `<div class="yoy ${cls}">${arrow} ${sign}${formatYoyNumber(delta)}</div>`;
 }
 
 function simpleBar(val, max, color) {

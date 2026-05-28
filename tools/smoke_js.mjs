@@ -891,6 +891,11 @@ context.createColorIcon = () => null;
 context.L = undefined;
 vm.runInContext(fs.readFileSync(statsPath, 'utf8'), context, { filename: statsPath });
 
+const roundedRatingDelta = context.yoyDelta(4.4, 4.1);
+assert.match(roundedRatingDelta, /\+0,3/, 'stats YoY delta rounds decimal averages');
+assert.doesNotMatch(roundedRatingDelta, /000000000/, 'stats YoY delta hides floating-point noise');
+assert.match(context.yoyDelta(12, 10), /\+2/, 'stats YoY delta keeps integer changes compact');
+
 const hofRecords = context.hallOfFameRecords(statsPayload().hall_of_fame, ['', 'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip']);
 assert.equal(hofRecords.length, 10, 'hall of fame includes all available record categories');
 assert.equal(hofRecords.filter(r => r.id).length, 7, 'hall of fame marks only trip records as clickable');
