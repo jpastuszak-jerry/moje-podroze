@@ -8,6 +8,7 @@ import locations
 import stats
 import stats_hall_of_fame
 import travels
+from werkzeug.security import generate_password_hash
 
 
 def _period_payload():
@@ -227,10 +228,61 @@ def fake_export_query(sql, params=(), one=False):
     raise AssertionError(f'Unexpected export query: {normalized}')
 
 
+def authenticate_client(client):
+    with client.session_transaction() as sess:
+        sess[app_module.AUTH_SESSION_KEY] = True
+
+
+class AdminAuthSmokeTests(unittest.TestCase):
+    def setUp(self):
+        self.client = app_module.app.test_client()
+
+    def test_private_api_requires_admin_session(self):
+        response = self.client.get('/api/travels')
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        self.assertEqual(response.get_json()['error'], 'unauthorized')
+
+    def test_admin_login_status_and_logout_flow(self):
+        with (
+            patch.object(app_module, 'ADMIN_PASSWORD_HASH', generate_password_hash('secret')),
+            patch.object(app_module, 'ADMIN_PASSWORD', None),
+        ):
+            wrong = self.client.post('/api/auth/login', json={'password': 'bad'})
+            self.assertEqual(wrong.status_code, 401)
+
+            login = self.client.post('/api/auth/login', json={'password': 'secret'})
+            self.assertEqual(login.status_code, 200)
+            self.assertEqual(login.get_json()['role'], 'admin')
+
+            status = self.client.get('/api/auth/status')
+            self.assertEqual(status.get_json()['authenticated'], True)
+            self.assertEqual(status.get_json()['role'], 'admin')
+
+            logout = self.client.post('/api/auth/logout')
+            self.assertEqual(logout.status_code, 200)
+
+            status_after_logout = self.client.get('/api/auth/status')
+            self.assertEqual(status_after_logout.get_json()['authenticated'], False)
+
+    def test_index_renders_login_until_session_is_authenticated(self):
+        login_page = self.client.get('/')
+        self.assertEqual(login_page.status_code, 200)
+        self.assertIn('Logowanie administratora', login_page.get_data(as_text=True))
+
+        authenticate_client(self.client)
+        app_page = self.client.get('/')
+        html = app_page.get_data(as_text=True)
+        self.assertIn('id="tabs"', html)
+        self.assertIn('logoutAdmin()', html)
+
+
 class ApiContractSmokeTests(unittest.TestCase):
     def setUp(self):
         stats.clear_stats_cache()
         self.client = app_module.app.test_client()
+        authenticate_client(self.client)
 
     def test_export_contract_has_metadata_filename_and_no_store(self):
         now = datetime(2026, 5, 23, 7, 30, tzinfo=timezone.utc)
@@ -271,7 +323,7 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         source = response.get_data(as_text=True)
         self.assertIn('new Set(["/api/export", "/api/locations/todo", "/api/trash"])', source)
-        self.assertIn('const NO_STORE_API_PREFIXES = ["/api/stats", "/api/travels"]', source)
+        self.assertIn('const NO_STORE_API_PREFIXES = ["/api/auth", "/api/stats", "/api/travels"]', source)
         self.assertNotIn('__NO_STORE_API_EXACT_PATHS__', source)
         self.assertNotIn('__NO_STORE_API_PREFIXES__', source)
 

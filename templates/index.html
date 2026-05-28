@@ -24,13 +24,15 @@
   })();
 </script>
 </head>
-<body>
+<body{% if not is_authenticated %} class="auth-page"{% endif %}>
 <div id="offline-banner" role="status" aria-live="polite">
   <span>Tryb offline</span><span id="offline-banner-sync"></span>
 </div>
+{% if is_authenticated %}
 <button id="theme-toggle" onclick="toggleTheme()" aria-label="Przełącz motyw" title="Przełącz motyw">
   <svg id="theme-icon" viewBox="0 0 24 24" width="18" height="18"></svg>
 </button>
+<button id="logout-button" onclick="logoutAdmin()" type="button" title="Wyloguj">Wyloguj</button>
 <div id="app">
   <div id="view"></div>
   <nav id="tabs">
@@ -76,6 +78,79 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+async function clearPrivateOfflineData() {
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(function(key) {
+      return key.indexOf('travel-') === 0;
+    }).map(function(key) { return caches.delete(key); }));
+  }
+  if ('indexedDB' in window) {
+    await new Promise(function(resolve) {
+      var req = indexedDB.deleteDatabase('travel-mirror');
+      req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+    });
+  }
+}
+async function logoutAdmin() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    await clearPrivateOfflineData();
+  } finally {
+    window.location.reload();
+  }
+}
 </script>
+{% else %}
+<main class="login-shell">
+  <section class="login-panel" aria-labelledby="login-title">
+    <div class="login-brand">Moje Podróże</div>
+    <h1 id="login-title">Logowanie administratora</h1>
+    {% if auth_configured %}
+    <form class="login-form" onsubmit="submitLogin(event)">
+      <label for="admin-password">Hasło</label>
+      <input id="admin-password" name="password" type="password" autocomplete="current-password" autofocus>
+      <button id="login-submit" type="submit">Zaloguj</button>
+      <div id="login-error" class="login-error" role="alert" aria-live="polite"></div>
+    </form>
+    {% else %}
+    <div class="login-error visible">Brak konfiguracji logowania. Ustaw `ADMIN_PASSWORD_HASH` albo `ADMIN_PASSWORD` w zmiennych środowiskowych.</div>
+    {% endif %}
+  </section>
+</main>
+<script>
+async function submitLogin(event) {
+  event.preventDefault();
+  var input = document.getElementById('admin-password');
+  var button = document.getElementById('login-submit');
+  var error = document.getElementById('login-error');
+  error.textContent = '';
+  error.classList.remove('visible');
+  button.disabled = true;
+  button.textContent = 'Loguję...';
+  try {
+    var response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: input.value })
+    });
+    var body = await response.json().catch(function() { return {}; });
+    if (!response.ok) {
+      error.textContent = body.error || 'Nie udało się zalogować';
+      error.classList.add('visible');
+      button.disabled = false;
+      button.textContent = 'Zaloguj';
+      return;
+    }
+    window.location.reload();
+  } catch (err) {
+    error.textContent = 'Błąd sieci. Spróbuj ponownie.';
+    error.classList.add('visible');
+    button.disabled = false;
+    button.textContent = 'Zaloguj';
+  }
+}
+</script>
+{% endif %}
 </body>
 </html>

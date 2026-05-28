@@ -79,6 +79,8 @@ class RecordingDb:
 class WizardSaveEndpointTests(unittest.TestCase):
     def setUp(self):
         self.client = app_module.app.test_client()
+        with self.client.session_transaction() as sess:
+            sess[app_module.AUTH_SESSION_KEY] = True
 
     def test_wizard_save_commits_travel_locations_and_participants(self):
         db = RecordingDb()

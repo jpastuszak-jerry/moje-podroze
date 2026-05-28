@@ -11,10 +11,12 @@ Wspólne narzędzia w core.py, walidatory w schemas.py.
 
 import json
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from hmac import compare_digest
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, session
 from flask.json.provider import DefaultJSONProvider
+from werkzeug.security import check_password_hash
 
 import dicts
 import locations
@@ -35,6 +37,19 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 app.json_provider_class = CustomJSONProvider
 app.json = CustomJSONProvider(app)
 app.teardown_appcontext(close_db)
+app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(32)
+app.permanent_session_lifetime = timedelta(days=14)
+_secure_cookie_env = os.environ.get('SESSION_COOKIE_SECURE')
+_secure_cookie = (
+    _secure_cookie_env.lower() in ('1', 'true', 'yes')
+    if _secure_cookie_env is not None
+    else bool(os.environ.get('RENDER'))
+)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=_secure_cookie,
+)
 
 ensure_schema()
 
@@ -64,14 +79,91 @@ NO_STORE_EXACT_API_PATHS = {
 }
 
 NO_STORE_API_PREFIXES = (
+    '/api/auth',
     '/api/stats',
     '/api/travels',
 )
 
+ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+AUTH_SESSION_KEY = 'admin_authenticated'
+PUBLIC_ENDPOINTS = {
+    'index',
+    'service_worker',
+    'healthz',
+    'auth_status',
+    'auth_login',
+    'auth_logout',
+    'static',
+}
+
 
 @app.route('/')
 def index():
-    return render_template('index.html', asset_version=static_asset_version())
+    return render_template(
+        'index.html',
+        asset_version=static_asset_version(),
+        is_authenticated=is_admin_authenticated(),
+        auth_configured=is_auth_configured(),
+    )
+
+
+def is_auth_configured():
+    return bool(ADMIN_PASSWORD_HASH or ADMIN_PASSWORD)
+
+
+def is_admin_authenticated():
+    return bool(session.get(AUTH_SESSION_KEY))
+
+
+def check_admin_password(password):
+    if not password or not is_auth_configured():
+        return False
+    if ADMIN_PASSWORD_HASH:
+        try:
+            return check_password_hash(ADMIN_PASSWORD_HASH, password)
+        except ValueError:
+            return False
+    return compare_digest(password, ADMIN_PASSWORD or '')
+
+
+@app.before_request
+def require_admin_auth():
+    if request.endpoint in PUBLIC_ENDPOINTS or request.path.startswith('/static/'):
+        return None
+    if is_admin_authenticated():
+        return None
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'unauthorized'}), 401
+    return None
+
+
+@app.route('/api/auth/status')
+def auth_status():
+    return jsonify({
+        'authenticated': is_admin_authenticated(),
+        'configured': is_auth_configured(),
+        'role': 'admin' if is_admin_authenticated() else None,
+    })
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    if not is_auth_configured():
+        return jsonify({'error': 'Logowanie nie jest skonfigurowane'}), 503
+    payload = request.get_json(silent=True) or {}
+    if not check_admin_password(str(payload.get('password') or '')):
+        return jsonify({'error': 'Nieprawidłowe hasło'}), 401
+    session.clear()
+    session.permanent = True
+    session[AUTH_SESSION_KEY] = True
+    return jsonify({'ok': True, 'role': 'admin'})
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def auth_logout():
+    session.clear()
+    return jsonify({'ok': True})
 
 
 def is_no_store_api_path(path):
@@ -80,7 +172,13 @@ def is_no_store_api_path(path):
 
 @app.after_request
 def add_sensitive_cache_headers(response):
-    if is_no_store_api_path(request.path):
+    if is_no_store_api_path(request.path) or (
+        request.path.startswith('/api/') and response.status_code in (401, 403)
+    ):
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    elif request.endpoint == 'index' and not is_admin_authenticated():
         response.headers['Cache-Control'] = 'no-store'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
