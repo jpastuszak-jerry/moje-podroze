@@ -11,8 +11,11 @@ Wspólne narzędzia w core.py, walidatory w schemas.py.
 
 import json
 import os
+import time
 from datetime import date, datetime, timedelta, timezone
 from hmac import compare_digest
+from math import ceil
+from threading import Lock
 
 from flask import Flask, Response, jsonify, render_template, request, session
 from flask.json.provider import DefaultJSONProvider
@@ -61,6 +64,13 @@ app.register_blueprint(stats.bp)
 
 BACKUP_SCHEMA_VERSION = '2.0'
 
+
+def _env_int(name, default):
+    try:
+        return int(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+
 EXPORT_TABLE_ORDERS = {
     'countries':           'id',
     'location_types':      'id',
@@ -87,6 +97,11 @@ NO_STORE_API_PREFIXES = (
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 AUTH_SESSION_KEY = 'admin_authenticated'
+AUTH_MAX_FAILED_ATTEMPTS = max(1, _env_int('AUTH_MAX_FAILED_ATTEMPTS', 5))
+AUTH_LOCKOUT_SECONDS = max(1, _env_int('AUTH_LOCKOUT_SECONDS', 15 * 60))
+AUTH_FAILURE_WINDOW_SECONDS = max(1, _env_int('AUTH_FAILURE_WINDOW_SECONDS', 15 * 60))
+_auth_failures = {}
+_auth_failures_lock = Lock()
 PUBLIC_ENDPOINTS = {
     'index',
     'service_worker',
@@ -127,6 +142,73 @@ def check_admin_password(password):
     return compare_digest(password, ADMIN_PASSWORD or '')
 
 
+def auth_rate_limit_key():
+    return request.remote_addr or 'unknown'
+
+
+def auth_rate_limited_response(retry_after):
+    response = jsonify({
+        'error': 'Za dużo błędnych prób logowania. Spróbuj ponownie później.',
+        'retry_after_seconds': retry_after,
+    })
+    response.status_code = 429
+    response.headers['Retry-After'] = str(retry_after)
+    return response
+
+
+def auth_retry_after():
+    key = auth_rate_limit_key()
+    now = time.monotonic()
+    with _auth_failures_lock:
+        state = _auth_failures.get(key)
+        if not state:
+            return None
+        locked_until = state.get('locked_until') or 0
+        if locked_until > now:
+            return max(1, ceil(locked_until - now))
+        if locked_until:
+            _auth_failures.pop(key, None)
+            return None
+
+        first_failed_at = state.get('first_failed_at') or now
+        if now - first_failed_at > AUTH_FAILURE_WINDOW_SECONDS:
+            _auth_failures.pop(key, None)
+    return None
+
+
+def record_failed_login():
+    key = auth_rate_limit_key()
+    now = time.monotonic()
+    with _auth_failures_lock:
+        state = _auth_failures.get(key) or {'count': 0, 'locked_until': 0}
+        locked_until = state.get('locked_until') or 0
+        if locked_until > now:
+            return max(1, ceil(locked_until - now))
+        if locked_until:
+            state = {'count': 0, 'locked_until': 0, 'first_failed_at': now}
+
+        first_failed_at = state.get('first_failed_at') or now
+        if now - first_failed_at > AUTH_FAILURE_WINDOW_SECONDS:
+            state = {'count': 0, 'locked_until': 0, 'first_failed_at': now}
+            first_failed_at = now
+
+        state['count'] = int(state.get('count') or 0) + 1
+        state['first_failed_at'] = first_failed_at
+        if state['count'] >= AUTH_MAX_FAILED_ATTEMPTS:
+            state['locked_until'] = now + AUTH_LOCKOUT_SECONDS
+            _auth_failures[key] = state
+            return AUTH_LOCKOUT_SECONDS
+
+        _auth_failures[key] = state
+    return None
+
+
+def clear_failed_logins():
+    key = auth_rate_limit_key()
+    with _auth_failures_lock:
+        _auth_failures.pop(key, None)
+
+
 @app.before_request
 def require_admin_auth():
     if request.endpoint in PUBLIC_ENDPOINTS or request.path.startswith('/static/'):
@@ -151,9 +233,17 @@ def auth_status():
 def auth_login():
     if not is_auth_configured():
         return jsonify({'error': 'Logowanie nie jest skonfigurowane'}), 503
+    retry_after = auth_retry_after()
+    if retry_after:
+        return auth_rate_limited_response(retry_after)
+
     payload = request.get_json(silent=True) or {}
     if not check_admin_password(str(payload.get('password') or '')):
+        retry_after = record_failed_login()
+        if retry_after:
+            return auth_rate_limited_response(retry_after)
         return jsonify({'error': 'Nieprawidłowe hasło'}), 401
+    clear_failed_logins()
     session.clear()
     session.permanent = True
     session[AUTH_SESSION_KEY] = True

@@ -279,6 +279,10 @@ def authenticate_client(client):
 class AdminAuthSmokeTests(unittest.TestCase):
     def setUp(self):
         self.client = app_module.app.test_client()
+        app_module._auth_failures.clear()
+
+    def tearDown(self):
+        app_module._auth_failures.clear()
 
     def test_private_api_requires_admin_session(self):
         response = self.client.get('/api/travels')
@@ -308,6 +312,43 @@ class AdminAuthSmokeTests(unittest.TestCase):
 
             status_after_logout = self.client.get('/api/auth/status')
             self.assertEqual(status_after_logout.get_json()['authenticated'], False)
+
+    def test_admin_login_rate_limit_blocks_repeated_bad_passwords(self):
+        with (
+            patch.object(app_module, 'ADMIN_PASSWORD_HASH', generate_password_hash('secret')),
+            patch.object(app_module, 'ADMIN_PASSWORD', None),
+            patch.object(app_module, 'AUTH_MAX_FAILED_ATTEMPTS', 2),
+            patch.object(app_module, 'AUTH_LOCKOUT_SECONDS', 120),
+        ):
+            first_wrong = self.client.post('/api/auth/login', json={'password': 'bad'})
+            self.assertEqual(first_wrong.status_code, 401)
+
+            second_wrong = self.client.post('/api/auth/login', json={'password': 'still-bad'})
+            self.assertEqual(second_wrong.status_code, 429)
+            self.assertEqual(second_wrong.headers['Retry-After'], '120')
+            self.assertEqual(second_wrong.get_json()['retry_after_seconds'], 120)
+
+            correct_while_locked = self.client.post('/api/auth/login', json={'password': 'secret'})
+            self.assertEqual(correct_while_locked.status_code, 429)
+
+    def test_successful_admin_login_clears_previous_failures(self):
+        with (
+            patch.object(app_module, 'ADMIN_PASSWORD_HASH', generate_password_hash('secret')),
+            patch.object(app_module, 'ADMIN_PASSWORD', None),
+            patch.object(app_module, 'AUTH_MAX_FAILED_ATTEMPTS', 2),
+            patch.object(app_module, 'AUTH_LOCKOUT_SECONDS', 120),
+        ):
+            first_wrong = self.client.post('/api/auth/login', json={'password': 'bad'})
+            self.assertEqual(first_wrong.status_code, 401)
+
+            login = self.client.post('/api/auth/login', json={'password': 'secret'})
+            self.assertEqual(login.status_code, 200)
+
+            logout = self.client.post('/api/auth/logout')
+            self.assertEqual(logout.status_code, 200)
+
+            wrong_after_success = self.client.post('/api/auth/login', json={'password': 'bad'})
+            self.assertEqual(wrong_after_success.status_code, 401)
 
     def test_index_renders_login_until_session_is_authenticated(self):
         login_page = self.client.get('/')
