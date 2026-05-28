@@ -2,6 +2,38 @@
 
 Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupelnienia" i poprawkami stabilnosci. Priorytety sa praktyczne: najpierw rzeczy, ktore zwiekszaja wiarygodnosc danych i wygode pracy, potem wieksze zmiany architektoniczne.
 
+## P0 - Pilne po audycie architektury
+
+### 0. Audyt Claude Code 2026-05-28: bezpieczenstwo i fundamenty - NEW
+
+**Status:** dopisane po analizie zrzutow `Co jest dobrze/slabe/Rekomendacja i ocena 2026-05-28` oraz szybkim sprawdzeniu aktualnego kodu.
+
+**Z czym sie zgadzam i podnosze do najwyzszego priorytetu:**
+1. Auth natychmiast. Aplikacja nie ma warstwy logowania/autoryzacji, a `/api/export`, kosz i mutacje API sa dostepne tak samo jak zwykle odczyty. Istniejacy punkt "Role uzytkownikow: admin i viewer" zostaje podniesiony do P0.
+2. Connection pooling. `core.get_db()` otwiera nowe `psycopg2.connect()` per request, co na Neon moze dawac niepotrzebny koszt i lagi. Wdrozyc `psycopg2.pool.ThreadedConnectionPool` albo konfiguracje zgodna z PgBouncer.
+3. Migracje wersjonowane. `ensure_schema()` dobrze wspiera zasade "no manual steps after deploy", ale przy kolejnych zmianach schematu potrzebny jest Alembic albo prosty wlasny system migracji wersjonowanych. Istniejacy punkt migracji zostaje podniesiony do P0.
+4. Indeksy FK i partial indexes. Dodac indeksy pod relacje i aktywne rekordy, szczegolnie `travel_locations(travel_id)`, `travel_locations(location_id)`, `locations(parent_location_id)`, `locations(country_id)`, `travels(start_date) WHERE deleted_at IS NULL` i `locations(country_id) WHERE deleted_at IS NULL`.
+5. Budzet zapytan dla `/api/stats`. Endpoint sklada wiele agregatow w jednym request i juz teraz wykonuje duzo zapytan. Najpierw zmierzyc, potem ograniczyc koszt przez cache TTL, request-scope cache dla powtarzalnych agregatow albo rozbicie ciezszych sekcji na osobne endpointy.
+6. Audyt XSS w frontendzie. Template stringi sa rozproszone, a w `locations.js` sa miejsca z niepelna ucieczka danych (`option` z nazwami krajow/typow i reczne `replace(/"/g, '&quot;')`). Wprowadzic zasade: dane uzytkownika zawsze przez `escapeHtml`, atrybuty przez `escapeAttr` albo wspolny renderer.
+7. Jedno zrodlo polityki `no-store`. Lista w Pythonie (`app.py`) i lista w service workerze (`static/sw.js`) moga sie rozjechac. Zrobic endpoint/generowanie konfiguracji dla SW albo inny jeden source of truth.
+8. Realniejsze testy integracyjne. Obecne testy kontraktu sa wartosciowe, ale mock SQL nie lapie regresji w zapytaniach. Dodac mala baze testowa, fixture PostgreSQL albo minimalny smoke na prawdziwym schemacie.
+9. Pieniadze jako `Decimal`/`NUMERIC` i CHECK constraints w DB. `amount: float` w Pydantic oraz brak ograniczen typu `rating BETWEEN 0.5 AND 5`, `end_date >= start_date`, `arrival_date <= departure_date` to dlug higieniczny.
+10. Strukturalne logowanie/Sentry. Przydatne, ale po auth, migracjach, poolingu, indeksach i statystykach.
+
+**Korekty / z czym nie zgadzam sie wprost:**
+- `/api/stats` jest realnym dlugiem wydajnosciowym, ale nie powinien wyprzedzic auth. Brak autoryzacji ma wiekszy koszt ryzyka niz wolniejszy ekran statystyk.
+- Alembic jest najlepszym standardowym wyborem, ale nie narzucam go jako jedynej opcji. Dla tej aplikacji akceptowalny bylby tez maly, wersjonowany system migracji, jesli zachowa deterministyczne uruchamianie na Renderze.
+- Frontend ESM + bundler to dobry kierunek, ale nie P0. Migracja globalnych skryptow na moduly moze wygenerowac duzy churn, wiec najpierw warto domknac security i backendowe fundamenty.
+- `migrate.py` w katalogu glownym jest do uporzadkowania, ale nie traktuje tego jako krytycznego ryzyka. `connection string.txt` jest wpisany w `.gitignore`, wiec na tym etapie to glownie temat higieny repo i lokalnych plikow.
+- Sentry/structured logging popieram, ale jako nizszy priorytet niz blokady dostepu, migracje, pooling i indeksy.
+
+**Smoke testy po realizacji pierwszej partii P0:**
+1. Wejsc bez zalogowania w `/`, `/api/export`, `/api/trash` i dowolna mutacje API; prywatne endpointy powinny wymagac logowania albo zwracac 401/403.
+2. Zalogowac sie jako admin i sprawdzic: lista podrozy, szczegoly podrozy, edycja, kosz, backup.
+3. Zalogowac sie jako viewer i sprawdzic: brak kosztow w UI i JSON API, brak mozliwosci mutacji, brak widokow administracyjnych.
+4. Po zmianach DB odpalic migracje na pustej bazie i na istniejacej bazie; oba przebiegi powinny byc idempotentne.
+5. Otworzyc Statystyki na cieplym i zimnym starcie; porownac liczbe/czas zapytan przed i po optymalizacji.
+
 ## P1 - Najblizsze
 
 ### 1. Szybka edycja z listy "Do uzupelnienia" - DONE
