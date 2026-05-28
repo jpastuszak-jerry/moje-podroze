@@ -31,8 +31,8 @@ Nie commitowac sekretow. Lokalny plik `connection string.txt`, `.env`, archiwa z
 Przed commitem, zaleznnie od zakresu zmiany:
 
 ```powershell
-python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py
-python -m py_compile stats_common.py stats_countries.py stats_quality.py stats_hall_of_fame.py
+python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py schema_migrations.py
+python -m py_compile stats_common.py stats_countries.py stats_quality.py stats_hall_of_fame.py stats_yearbook.py
 python -m ruff check .
 python -m unittest discover -s tests
 git diff --check
@@ -72,7 +72,8 @@ Przy kazdej zmianie typu refactoring agent musi:
 | File | Responsibility |
 |------|----------------|
 | `app.py` | bootstrap Flask, blueprints, `/`, `/sw.js`, `/api/trash`, `/api/export`, `/healthz` |
-| `core.py` | DB connection, `query()`, `execute()`, ETag JSON, validation errors, idempotent schema migrations |
+| `core.py` | DB connection, `query()`, `execute()`, ETag JSON, validation errors, startup migration runner |
+| `schema_migrations.py` | wersjonowane migracje schematu uruchamiane przez `ensure_schema()` |
 | `schemas.py` | Pydantic validation schemas |
 | `travels.py` | `/api/travels`, CRUD podrozy, miejsca w podrozy, uczestnicy |
 | `locations.py` | `/api/locations`, miejsca, hierarchia miejsc, GPS, restore, mapa |
@@ -84,7 +85,7 @@ Przy kazdej zmianie typu refactoring agent musi:
 | `stats_hall_of_fame.py` | agregaty Hall of Fame dla statystyk |
 | `migrate.py` | pomocnicze migracje/utrzymanie bazy |
 
-`ensure_schema()` w `core.py` uruchamia idempotentne migracje przy starcie procesu, zeby deploy na Render nie wymagal recznych krokow.
+`ensure_schema()` w `core.py` uruchamia wersjonowane migracje z `schema_migrations.py` przy starcie procesu, zeby deploy na Render nie wymagal recznych krokow.
 
 **Frontend** - vanilla JS SPA bez frameworka. `templates/index.html` jest shellem z dolna nawigacja i tagami `<script>`.
 

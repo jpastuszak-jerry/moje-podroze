@@ -31,7 +31,8 @@ Backend is Flask + PostgreSQL split into modules:
 | File | Responsibility |
 |------|----------------|
 | `app.py` | Flask app setup, static shell, service worker, trash/export endpoints |
-| `core.py` | DB connection, query helpers, validation/error helpers, schema migrations |
+| `core.py` | DB connection, query helpers, validation/error helpers, startup migration runner |
+| `schema_migrations.py` | versioned schema migrations run by `ensure_schema()` |
 | `travels.py` | travel CRUD, travel locations, travel participants |
 | `locations.py` | location CRUD, location detail, map data, location completion worklist |
 | `dicts.py` | countries, location types, relation types, persons |
@@ -101,8 +102,8 @@ Locations support hierarchy through `parent_location_id`.
 Current checks used during development:
 
 ```bash
-python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py
-python -m py_compile stats_common.py stats_countries.py stats_quality.py stats_hall_of_fame.py
+python -m py_compile app.py core.py travels.py locations.py dicts.py stats.py schemas.py migrate.py schema_migrations.py
+python -m py_compile stats_common.py stats_countries.py stats_quality.py stats_hall_of_fame.py stats_yearbook.py
 python -m ruff check .
 python -m unittest discover -s tests
 ```

@@ -4,6 +4,7 @@ from unittest.mock import patch
 from flask import Flask
 
 import core
+import schema_migrations
 
 
 class FakeDb:
@@ -59,6 +60,23 @@ class FakeCursor:
 
     def fetchone(self):
         return (42,)
+
+
+class MigrationCursor:
+    def __init__(self, applied=()):
+        self.applied = set(applied)
+        self.executed = []
+        self._fetchall = []
+
+    def execute(self, sql, params=()):
+        self.executed.append((sql, params))
+        if 'SELECT version FROM schema_migrations' in sql:
+            self._fetchall = [(version,) for version in sorted(self.applied)]
+        if 'INSERT INTO schema_migrations' in sql:
+            self.applied.add(params[0])
+
+    def fetchall(self):
+        return self._fetchall
 
 
 class CoreInfrastructureTests(unittest.TestCase):
@@ -130,6 +148,40 @@ class CoreInfrastructureTests(unittest.TestCase):
             'chk_locations_parent_not_self',
         ):
             self.assertIn(fragment, statements)
+
+    def test_schema_migrations_are_versioned_and_ordered(self):
+        versions = [version for version, _, _ in core.SCHEMA_MIGRATIONS]
+
+        self.assertEqual(len(versions), len(set(versions)))
+        self.assertEqual(versions, sorted(versions))
+        self.assertIn('20260528_001_soft_delete_coordinates', versions)
+        self.assertIn('20260528_005_domain_constraints', versions)
+
+    def test_schema_migration_runner_skips_applied_versions(self):
+        calls = []
+
+        def first_migration(cur):
+            calls.append('first')
+
+        def second_migration(cur):
+            calls.append('second')
+
+        cursor = MigrationCursor(applied={'001'})
+        migrations = (
+            ('001', 'Already applied', first_migration),
+            ('002', 'New migration', second_migration),
+        )
+
+        with (
+            patch.object(schema_migrations, 'SCHEMA_MIGRATIONS', migrations),
+            patch('builtins.print'),
+        ):
+            applied_now = schema_migrations.run_schema_migrations(cursor)
+
+        self.assertEqual(calls, ['second'])
+        self.assertEqual(applied_now, ['002'])
+        self.assertIn('002', cursor.applied)
+        self.assertTrue(any('CREATE TABLE IF NOT EXISTS schema_migrations' in sql for sql, _ in cursor.executed))
 
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 **Z czym sie zgadzam i podnosze do najwyzszego priorytetu:**
 1. Auth natychmiast - PARTIAL (admin-only DONE). Aplikacja ma juz logowanie admin-only, sesje i blokade prywatnego API. Do zrobienia pozniej: pelne role admin/viewer, redakcja kosztow dla viewerow i ukrywanie widokow administracyjnych.
 2. Connection pooling - DONE. `core.get_db()` korzysta z `psycopg2.pool.ThreadedConnectionPool` zamiast otwierac nowe polaczenie per request. Rozmiar puli mozna ustawic przez `DB_POOL_MINCONN` i `DB_POOL_MAXCONN`.
-3. Migracje wersjonowane. `ensure_schema()` dobrze wspiera zasade "no manual steps after deploy", ale przy kolejnych zmianach schematu potrzebny jest Alembic albo prosty wlasny system migracji wersjonowanych. Istniejacy punkt migracji zostaje podniesiony do P0.
+3. Migracje wersjonowane - DONE. `ensure_schema()` nadal zachowuje zasade "no manual steps after deploy", ale deleguje prace do `schema_migrations.py`: migracje maja wersje, nazwy i zapis w tabeli `schema_migrations`. Wybrany zostal prosty wlasny system zamiast Alembic, bo pasuje do malej aplikacji i deployu na Renderze bez dodatkowych komend.
 4. Indeksy FK i partial indexes - DONE. `ensure_schema()` tworzy idempotentnie indeksy pod relacje i aktywne rekordy, szczegolnie `travel_locations(travel_id)`, `travel_locations(location_id)`, `travel_participants(travel_id/person_id)`, `locations(parent_location_id)`, `locations(country_id)`, `travels(start_date) WHERE deleted_at IS NULL` i `locations(country_id) WHERE deleted_at IS NULL`.
 5. Budzet zapytan dla `/api/stats` - PARTIAL. Endpoint nadal sklada wiele agregatow w jednym kontrakcie, ale ma teraz krotki cache TTL (`STATS_CACHE_TTL_SECONDS`, domyslnie 60s) z uniewaznianiem po zapisach. Dodatkowo w `Optimize stats query budget` zimny budzet `/api/stats?year=...` zostal obnizony orientacyjnie z ok. 42 do ok. 23 zapytan: poprzedni rok liczy lekki overview, rankingi kosztow korzystaja z pobranych juz podrozy, a Hall of Fame spadl z 10 do 3 zapytan. Kolejny krok: realny pomiar czasow na produkcji i ewentualne materialized views dla najciezszych sekcji.
 6. Audyt XSS w frontendzie - DONE. Dynamiczne opcje selectow i wartosci inputow w miejscach/osobach/podrozach/mapie/kreatorze ida przez `renderSelectOptions()` i `escapeAttr()` zamiast lokalnych template stringow albo recznego `replace(/"/g, '&quot;')`.
@@ -370,14 +370,18 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** klik `Miejsca -> Backup`; pobrany JSON powinien zawierac `metadata`, `schema_version` i `tables`, a nazwa pliku powinna zaczynac sie od `moje-podroze-backup-`.
 
-### 13. Migracje bazy danych
+### 13. Migracje bazy danych - DONE
 
-**Problem:** obecnie schemat jest utrzymywany przez helpery startowe i `migrate.py`. Przy rolach, ustawieniach, albumach albo kolejnych tabelach bedzie potrzebny bezpieczniejszy mechanizm zmian schematu.
+**Problem:** schemat byl utrzymywany przez helpery startowe i `migrate.py`. Przy rolach, ustawieniach, albumach albo kolejnych tabelach potrzebny byl bezpieczniejszy mechanizm zmian schematu.
 
-**Propozycja:**
-- wprowadzic Alembic albo prosty wlasny system migracji wersjonowanych,
-- zostawic `migrate.py --force` tylko do pelnej migracji SQLite -> PostgreSQL,
-- dokumentowac migracje w repo.
+**Status:** zrobione w `Add versioned schema migrations`.
+
+**Zrobione:**
+- dodany `schema_migrations.py` z rejestrem `SCHEMA_MIGRATIONS`,
+- dodana tabela `schema_migrations(version, name, applied_at)`,
+- dotychczasowe startowe zmiany schematu zostaly rozbite na wersje: soft delete/GPS, rating numeric, amount numeric, indeksy, CHECK constraints,
+- `core.ensure_schema()` zostal uproszczony do transakcyjnego uruchomienia migracji przy starcie,
+- `migrate.py --force` zostaje tylko do pelnej migracji SQLite -> PostgreSQL.
 
 **Weryfikacja:** zmiana schematu moze byc odpalona deterministycznie na lokalnym srodowisku i Renderze.
 
