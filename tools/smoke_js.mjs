@@ -111,6 +111,8 @@ assert.match(appCssSource, /#view\.map-view-mode\s*\{\s*overflow:\s*hidden;/, 'm
 assert.match(appCssSource, /\.map-screen-shell[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/, 'map screen uses a dedicated flex shell');
 assert.match(appCssSource, /\.app-menu\s*\{[\s\S]*position:\s*fixed[\s\S]*top:\s*calc\(env\(safe-area-inset-top/, 'mobile app menu respects the iPhone safe area');
 assert.match(appCssSource, /@media\s*\(min-width:\s*900px\)[\s\S]*\.app-menu[\s\S]*bottom:\s*calc\(env\(safe-area-inset-bottom/, 'desktop app menu moves into the sidebar');
+assert.match(appCssSource, /@media\s*\(max-width:\s*600px\)[\s\S]*body\.auth-page[\s\S]*place-items:\s*start center/, 'mobile login starts above the iOS keyboard accessory area');
+assert.match(appCssSource, /\.modal\s*\{[\s\S]*scroll-padding-bottom:\s*calc\(170px \+ var\(--safe-bottom\)\)/, 'modal forms keep focused fields above the iOS keyboard accessory area');
 assert.match(appCssSource, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)\s*34px\s*34px/, 'mobile map toolbar keeps filters and buttons in a fixed grid');
 
 const originalGetElementById = context.document.getElementById;

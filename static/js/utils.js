@@ -267,6 +267,22 @@ async function readInputValue(id) {
   return (el.value || '').trim();
 }
 
+function keepMobileFormControlVisible(target) {
+  if (!target || typeof target.matches !== 'function') return;
+  if (!target.matches('input, textarea, select')) return;
+  if (typeof window === 'undefined' || !window.visualViewport || window.innerWidth > 700) return;
+  if (typeof target.closest === 'function' && !target.closest('.modal, .login-shell')) return;
+  setTimeout(() => {
+    if (typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    }
+  }, 120);
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('focusin', event => keepMobileFormControlVisible(event.target));
+}
+
 /* ── Toasts / snackbars ──────────────────────────────────── */
 const TOAST_ICONS = { success: '✓', error: '!', info: 'i' };
 

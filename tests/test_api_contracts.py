@@ -351,15 +351,23 @@ class AdminAuthSmokeTests(unittest.TestCase):
             self.assertEqual(wrong_after_success.status_code, 401)
 
     def test_index_renders_login_until_session_is_authenticated(self):
-        login_page = self.client.get('/')
+        with (
+            patch.object(app_module, 'ADMIN_PASSWORD_HASH', generate_password_hash('secret')),
+            patch.object(app_module, 'ADMIN_PASSWORD', None),
+        ):
+            login_page = self.client.get('/')
         self.assertEqual(login_page.status_code, 200)
-        self.assertIn('Logowanie administratora', login_page.get_data(as_text=True))
+        login_html = login_page.get_data(as_text=True)
+        self.assertIn('Logowanie administratora', login_html)
+        self.assertIn('enterkeyhint="go"', login_html)
+        self.assertNotIn('autofocus', login_html)
 
         authenticate_client(self.client)
         app_page = self.client.get('/')
         html = app_page.get_data(as_text=True)
         self.assertIn('id="tabs"', html)
         self.assertIn('id="app-menu"', html)
+        self.assertIn('aria-label="Konto i wygląd"', html)
         self.assertIn('logoutAdmin()', html)
 
 
