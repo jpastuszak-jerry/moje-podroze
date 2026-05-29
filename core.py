@@ -163,9 +163,12 @@ def ensure_schema():
         else:
             print(f'[schema] migrations up to date: {len(SCHEMA_MIGRATIONS)}')
     except Exception as e:
-        if conn:
-            conn.rollback()
+        if conn and not getattr(conn, 'closed', False):
+            try:
+                conn.rollback()
+            except Exception as rollback_error:
+                print('[schema] rollback failed:', rollback_error)
         print('[schema] migration failed:', e)
     finally:
-        if conn:
+        if conn and not getattr(conn, 'closed', False):
             conn.close()

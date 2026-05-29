@@ -183,6 +183,30 @@ class CoreInfrastructureTests(unittest.TestCase):
         self.assertIn('002', cursor.applied)
         self.assertTrue(any('CREATE TABLE IF NOT EXISTS schema_migrations' in sql for sql, _ in cursor.executed))
 
+    def test_ensure_schema_does_not_crash_when_migration_connection_is_closed(self):
+        class ClosedMigrationDb(FakeDb):
+            def cursor(self):
+                self.closed = 1
+                raise RuntimeError('connection lost during migration')
+
+            def rollback(self):
+                raise AssertionError('rollback should not run on a closed connection')
+
+        db = ClosedMigrationDb()
+
+        with (
+            patch.object(core, 'DATABASE_URL', 'postgresql://example'),
+            patch.object(core.psycopg2, 'connect', return_value=db),
+            patch('builtins.print') as printed,
+        ):
+            core.ensure_schema()
+
+        self.assertEqual(db.closed, 1)
+        self.assertTrue(any(
+            call.args[:1] == ('[schema] migration failed:',)
+            for call in printed.call_args_list
+        ))
+
 
 if __name__ == '__main__':
     unittest.main()
