@@ -164,7 +164,7 @@ body.auth-page {
 #logout-button:hover {
   color: var(--text);
 }
-.page-header { background: var(--card); padding: 52px 16px 12px;
+.page-header { background: var(--card); padding: calc(env(safe-area-inset-top, 0px) + 56px) 16px 12px;
   border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
 .page-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
 .locations-title-row {
