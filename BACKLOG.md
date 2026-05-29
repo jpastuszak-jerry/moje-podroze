@@ -484,3 +484,14 @@ Wspolne komponenty dla kart, paskow filtrow, rankingow i pustych stanow, zeby zm
 Pierwszy etap zrobiony w `Add stats yearbook`: backend zwraca `yearbook`, a Statystyki maja sekcje Rocznik z latami jako rozdzialami, najwazniejszymi podrozami roku, nowymi krajami, powrotami i najbardziej wypelnionym miesiacem.
 
 Do dopracowania pozniej: bardziej narracyjne opisy roczne, dluzsze przerwy miedzy powrotami oraz ewentualne porownania rok do roku w ramach rocznika.
+
+### 18. Menu aplikacji dla ustawien sesji
+
+**Kontekst:** po dodaniu logowania przyciski `Wyloguj` i przelacznik motywu sa globalnymi kontrolkami nakladanymi na widoki. Po poprawkach nie powinny blokowac `Narzedzi`, ale na iPhonie i w przyszlych widokach taki uklad nadal bedzie wygladal jak techniczny dodatek.
+
+**Propozycja:** zastapic osobne plywajace przyciski jednym malym menu aplikacji, np. ikona/profil w naglowku albo pozycja w narzedziach. Menu moze zawierac:
+- przelacznik motywu,
+- wylogowanie,
+- w przyszlosci backup/status synchronizacji/informacje o aplikacji.
+
+**Weryfikacja:** na iPhonie i desktopie globalne akcje sesji sa dostepne, ale nie nachodza na akcje konkretnych widokow, np. `Miejsca -> Narzedzia`.
