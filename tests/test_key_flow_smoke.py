@@ -154,6 +154,7 @@ class KeyFlowSmokeTests(unittest.TestCase):
 
         self.assertEqual(shell.status_code, 200)
         self.assertIn('/static/js/travels.js?v=smoke', shell.get_data(as_text=True))
+        self.assertIn('id="app-menu"', shell.get_data(as_text=True))
         self.assertIn('logoutAdmin()', shell.get_data(as_text=True))
 
         self.assertEqual(health.status_code, 200)

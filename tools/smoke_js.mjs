@@ -52,6 +52,10 @@ function elementStub() {
     remove() { this.removed = true; },
     addEventListener() {},
     appendChild() {},
+    attributes: {},
+    contains(node) { return node === this; },
+    getAttribute(name) { return this.attributes[name]; },
+    setAttribute(name, value) { this.attributes[name] = String(value); },
     querySelector() { return null; },
     querySelectorAll() { return []; },
   };
@@ -105,8 +109,33 @@ function count(haystack, needle) {
 const appCssSource = fs.readFileSync(appCssPath, 'utf8');
 assert.match(appCssSource, /#view\.map-view-mode\s*\{\s*overflow:\s*hidden;/, 'mobile map view disables page scroll');
 assert.match(appCssSource, /\.map-screen-shell[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/, 'map screen uses a dedicated flex shell');
-assert.match(appCssSource, /@media\s*\(max-width:\s*899px\)[\s\S]*#theme-toggle[\s\S]*bottom:\s*calc\(72px \+ var\(--safe-bottom\)\)/, 'mobile theme toggle is anchored away from map toolbar controls');
+assert.match(appCssSource, /\.app-menu\s*\{[\s\S]*position:\s*fixed[\s\S]*top:\s*calc\(env\(safe-area-inset-top/, 'mobile app menu respects the iPhone safe area');
+assert.match(appCssSource, /@media\s*\(min-width:\s*900px\)[\s\S]*\.app-menu[\s\S]*bottom:\s*calc\(env\(safe-area-inset-bottom/, 'desktop app menu moves into the sidebar');
 assert.match(appCssSource, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)\s*34px\s*34px/, 'mobile map toolbar keeps filters and buttons in a fixed grid');
+
+const originalGetElementById = context.document.getElementById;
+const originalLocalStorageGetItem = context.localStorage.getItem;
+const appMenu = elementStub();
+const appMenuButton = elementStub();
+const themeIcon = elementStub();
+const themeLabel = elementStub();
+context.document.getElementById = id => ({
+  'app-menu': appMenu,
+  'app-menu-button': appMenuButton,
+  'theme-icon': themeIcon,
+  'theme-menu-label': themeLabel,
+}[id] || null);
+context.localStorage.getItem = () => 'dark';
+context.setThemeIcon();
+assert.equal(themeLabel.textContent, 'Ciemny', 'theme menu label follows the active theme');
+assert.match(themeIcon.innerHTML, /M12 7a5/, 'theme menu icon renders the alternate theme action');
+context.setAppMenuOpen(true);
+assert.equal(appMenu.classList.contains('open'), true, 'app menu can be opened programmatically');
+assert.equal(appMenuButton.getAttribute('aria-expanded'), 'true', 'app menu exposes expanded state');
+context.toggleAppMenu({ stopPropagation() {} });
+assert.equal(appMenu.classList.contains('open'), false, 'app menu button toggles the menu closed');
+context.document.getElementById = originalGetElementById;
+context.localStorage.getItem = originalLocalStorageGetItem;
 
 assert.equal(context.daysCount('2025-07-11', '2025-07-12'), 2, 'travel days are inclusive');
 assert.equal(context.daysCount('2025-07-11', '2025-07-11'), 1, 'same-day trip is one day');

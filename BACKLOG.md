@@ -498,7 +498,9 @@ Pierwszy etap zrobiony w `Add stats yearbook`: backend zwraca `yearbook`, a Stat
 
 Do dopracowania pozniej: bardziej narracyjne opisy roczne, dluzsze przerwy miedzy powrotami oraz ewentualne porownania rok do roku w ramach rocznika.
 
-### 18. Menu aplikacji dla ustawien sesji
+### 18. Menu aplikacji dla ustawien sesji - DONE
+
+**Status:** zrobione w `Add app session menu`.
 
 **Kontekst:** po dodaniu logowania przyciski `Wyloguj` i przelacznik motywu sa globalnymi kontrolkami nakladanymi na widoki. Po poprawkach nie powinny blokowac `Narzedzi`, ale na iPhonie i w przyszlych widokach taki uklad nadal bedzie wygladal jak techniczny dodatek.
 

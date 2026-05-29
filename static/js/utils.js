@@ -463,15 +463,53 @@ function getActiveTheme() {
   return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 function setThemeIcon() {
+  const theme = getActiveTheme();
   const icon = document.getElementById('theme-icon');
-  if (!icon) return;
-  icon.innerHTML = getActiveTheme() === 'dark' ? THEME_ICONS.sun : THEME_ICONS.moon;
+  if (icon) icon.innerHTML = theme === 'dark' ? THEME_ICONS.sun : THEME_ICONS.moon;
+  const label = document.getElementById('theme-menu-label');
+  if (label) label.textContent = theme === 'dark' ? 'Ciemny' : 'Jasny';
 }
 function toggleTheme() {
   const next = getActiveTheme() === 'dark' ? 'light' : 'dark';
   localStorage.setItem('theme', next);
   document.documentElement.setAttribute('data-theme', next);
   setThemeIcon();
+}
+
+function setAppMenuOpen(open) {
+  const menu = document.getElementById('app-menu');
+  if (!menu) return;
+  menu.classList.toggle('open', Boolean(open));
+  const button = document.getElementById('app-menu-button');
+  if (button && typeof button.setAttribute === 'function') {
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+}
+
+function closeAppMenu() {
+  setAppMenuOpen(false);
+}
+
+function toggleAppMenu(event) {
+  if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+  const menu = document.getElementById('app-menu');
+  if (!menu) return;
+  setAppMenuOpen(!menu.classList.contains('open'));
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('click', event => {
+    const menu = document.getElementById('app-menu');
+    if (!menu || !menu.classList.contains('open')) return;
+    if (typeof menu.contains === 'function' && event.target && menu.contains(event.target)) return;
+    closeAppMenu();
+  });
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeAppMenu();
+  });
 }
 
 /* ── Empty state ─────────────────────────────────────────── */
@@ -644,6 +682,7 @@ function worklistCountLabel(count) {
 }
 
 function showTab(tab) {
+  closeAppMenu();
   currentTab = tab;
   const view = setMapViewMode(tab === 'map');
   resetViewScroll(view);

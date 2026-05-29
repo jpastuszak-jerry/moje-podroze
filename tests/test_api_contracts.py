@@ -359,6 +359,7 @@ class AdminAuthSmokeTests(unittest.TestCase):
         app_page = self.client.get('/')
         html = app_page.get_data(as_text=True)
         self.assertIn('id="tabs"', html)
+        self.assertIn('id="app-menu"', html)
         self.assertIn('logoutAdmin()', html)
 
 
