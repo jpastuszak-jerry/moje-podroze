@@ -301,15 +301,17 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** GitHub Actions uruchamia testy przy pushu i lapie regresje w statystykach.
 
-### 9a. Produkcyjny smoke po deployu
+### 9a. Produkcyjny smoke po deployu - DONE
 
 **Problem:** GitHub Actions potwierdza jakosc kodu przed deployem, ale po stronie Rendera nadal mozna miec osobny problem operacyjny: port, start procesu, konfiguracja env, DB albo cache PWA. Ostatni blad `Port scan timeout reached` pokazal, ze warto miec jednoznaczny test "czy produkcja zyje".
 
-**Propozycja:**
-- dodac `tools/smoke_prod.py` przyjmujacy URL bazowy, domyslnie `https://moje-podroze.onrender.com`,
-- sprawdzac publiczne endpointy bez sekretow: `/healthz`, `/`, `/api/auth/status`, `/api/travels` jako 401 bez sesji, `/sw.js`, `/static/manifest.json` i kluczowe ikony,
-- zwracac czytelny raport OK/FAIL z kodami HTTP i krotkim opisem,
-- opisac uzycie w `AGENTS.md` jako reczny smoke po deployu Rendera.
+**Status:** zrobione w `Add production smoke test`.
+
+**Zrobione:**
+- dodany `tools/smoke_prod.py` przyjmujacy URL bazowy, domyslnie `https://moje-podroze.onrender.com`,
+- sprawdza publiczne endpointy bez sekretow: `/healthz`, `/`, `/api/auth/status`, `/api/travels` jako 401 bez sesji, `/sw.js`, `/static/manifest.json` i kluczowe ikony,
+- zwraca czytelny raport OK/FAIL z kodami HTTP, czasem requestu i krotkim opisem,
+- opisane uzycie w `AGENTS.md` jako reczny smoke po deployu Rendera.
 
 **Weryfikacja:** po kazdym deployu jedna komenda potwierdza, ze aplikacja wystawia port, DB odpowiada, auth jest skonfigurowany, prywatne API jest zablokowane bez sesji, a shell/PWA assety sa dostepne.
 

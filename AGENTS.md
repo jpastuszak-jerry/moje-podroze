@@ -58,6 +58,14 @@ Przy zmianach wspolnych helperow frontendu uruchomic:
 node tools/smoke_js.mjs
 ```
 
+Po deployu na Renderze uruchomic bezsekretowy smoke produkcji:
+
+```powershell
+python tools/smoke_prod.py
+```
+
+Skrypt domyslnie sprawdza `https://moje-podroze.onrender.com`: `/healthz`, shell aplikacji, status auth, blokade `/api/travels` bez sesji, `/sw.js`, manifest PWA i kluczowe ikony.
+
 Pelnych testow automatycznych jeszcze nie ma, ale repo ma pierwszy pakiet smoke testow Python/JS. Dla zmian UI nadal konieczna jest krotka weryfikacja reczna w przegladarce po deployu.
 
 Przy kazdej zmianie typu refactoring agent musi:
