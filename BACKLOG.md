@@ -512,3 +512,20 @@ Do dopracowania pozniej: bardziej narracyjne opisy roczne, dluzsze przerwy miedz
 - w przyszlosci backup/status synchronizacji/informacje o aplikacji.
 
 **Weryfikacja:** na iPhonie i desktopie globalne akcje sesji sa dostepne, ale nie nachodza na akcje konkretnych widokow, np. `Miejsca -> Narzedzia`.
+
+### 19. Lagodne prowadzenie nowego uzytkownika
+
+**Status:** pomysl na pozniej, bez pilnej implementacji.
+
+**Kontekst:** aplikacja jest narzedziem osobistym i nie potrzebuje marketingowego onboardingu ani samouczka krok-po-kroku. Dla osoby, ktora pierwszy raz zaczyna wprowadzac dane, przydaloby sie jednak kilka dyskretnych podpowiedzi w pustych albo niepelnych widokach.
+
+**Kierunek:**
+- puste `Podroze`: komunikat "Dodaj pierwsza podroz" z akcja otwarcia kreatora,
+- puste `Miejsca`: wyjasnienie, ze miejsca mozna dodawac osobno albo w trakcie tworzenia podrozy,
+- szczegoly podrozy bez miejsc/uczestnikow/notatek: mala karta "nastepny sensowny krok",
+- puste sekcje statystyk: konkretne informacje, jakie dane trzeba uzupelnic, zeby statystyka zaczela miec sens,
+- podpowiedzi powinny znikac, gdy dane juz istnieja.
+
+**Zasada:** nie dodawac modali onboardingowych, checklist na sile ani rozbudowanych samouczkow. Ma to byc lekkie prowadzenie w miejscu pracy, widoczne tylko wtedy, gdy realnie pomaga.
+
+**Weryfikacja:** nowy uzytkownik z pusta baza powinien zrozumiec, od czego zaczac, bez czytania dokumentacji i bez poczucia, ze aplikacja prowadzi go przez niepotrzebny kurs.
