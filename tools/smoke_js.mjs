@@ -15,6 +15,7 @@ const mapPath = path.join(repoRoot, 'static', 'js', 'map.js');
 const travelsPath = path.join(repoRoot, 'static', 'js', 'travels.js');
 const todoPath = path.join(repoRoot, 'static', 'js', 'todo.js');
 const statsPath = path.join(repoRoot, 'static', 'js', 'stats.js');
+const statsYearbookPath = path.join(repoRoot, 'static', 'js', 'stats_yearbook.js');
 const swPath = path.join(repoRoot, 'static', 'sw.js');
 const wizardPath = path.join(repoRoot, 'static', 'js', 'wizard.js');
 
@@ -920,6 +921,7 @@ context.openTodoView = () => {};
 context.showTravelOnMap = () => {};
 context.createColorIcon = () => null;
 context.L = undefined;
+vm.runInContext(fs.readFileSync(statsYearbookPath, 'utf8'), context, { filename: statsYearbookPath });
 vm.runInContext(fs.readFileSync(statsPath, 'utf8'), context, { filename: statsPath });
 
 const roundedRatingDelta = context.yoyDelta(4.4, 4.1);

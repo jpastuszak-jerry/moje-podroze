@@ -315,6 +315,30 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** po kazdym deployu jedna komenda potwierdza, ze aplikacja wystawia port, DB odpowiada, auth jest skonfigurowany, prywatne API jest zablokowane bez sesji, a shell/PWA assety sa dostepne.
 
+### 9b. Realistyczny test integracyjny na schemacie testowym
+
+**Status:** kierunek po audycie 2026-06-02, bez pilnej implementacji.
+
+**Problem:** obecne testy kontraktowe i smoke sa wartosciowe, ale duza czesc backendu jest sprawdzana przez mockowane `query()`. To chroni kontrakt JSON i podstawowa logike, ale slabiej lapie regresje w prawdziwych zapytaniach PostgreSQL.
+
+**Propozycja:** dodac maly test integracyjny na osobnym schemacie albo testowej bazie z realistycznym zestawem danych: kilka podrozy, kraje, miejsca nadrzedne/podrzedne, uczestnicy, kosz i jakosc danych. Test powinien sprawdzac m.in. `/api/stats`, `/api/locations`, szczegoly podrozy, szczegoly miejsca i `/api/trash`.
+
+**Zasada:** nie budowac ciezkiego frameworka testowego. Wystarczy jeden stabilny fixture i kilka przeplywow o wysokiej wartosci.
+
+**Weryfikacja:** test lapie blad w SQL albo joinach, ktorego nie zlapalby sam mock kontraktu.
+
+### 9c. Browser smoke / E2E po naprawie Node
+
+**Status:** kierunek po audycie 2026-06-02, zalezne od dostepnego Node w PATH.
+
+**Problem:** lokalne `node` wskazuje obecnie na runtime z WindowsApps Codexa i zwraca `Odmowa dostepu`, przez co nie da sie stabilnie uruchamiac `node --check` ani docelowo lekkich testow browserowych.
+
+**Propozycja:** po zapewnieniu zwyklego Node LTS w PATH dodac maly browser smoke dla kluczowych widokow: logowanie/shell, lista podrozy, szczegoly podrozy, Statystyki -> Rocznik, Statystyki -> Kraje i miejsca oraz Mapa.
+
+**Zasada:** E2E ma lapac regresje widokow, nie testowac kazdego przycisku. Na start wystarczy kilka ekranow i sprawdzenie, ze kluczowe sekcje renderuja sie bez bledow.
+
+**Weryfikacja:** po zmianach frontendowych test potwierdza, ze aplikacja renderuje najwazniejsze widoki w przegladarce.
+
 ### 10. Wspolne komponenty frontendu
 
 **Problem:** frontend coraz czesciej sklada podobne elementy recznie w template stringach. Powtarzaja sie karty, badge, paski filtrow, puste stany, metryki i rankingowe belki.
@@ -492,7 +516,16 @@ Lepsze komunikaty, kiedy dane pochodza z cache, oraz reczne "odswiez dane".
 
 ### 16. Dalsze porzadkowanie kodu frontendu
 
-Wspolne komponenty dla kart, paskow filtrow, rankingow i pustych stanow, zeby zmniejszyc duplikacje w `travels.js`, `stats.js`, `todo.js` i `locations.js`.
+**Status:** czesciowo zaczete. W `Split stats yearbook renderer` rocznik statystyk zostal przeniesiony ze `stats.js` do `static/js/stats_yearbook.js`, bez zmiany UI i bez migracji na moduly.
+
+**Kierunek:** robic tylko selektywne, male ciecia tam, gdzie plik ma wyrazna sekcje odpowiedzialnosci:
+- w `stats.js`: dalsze sekcje typu kraje/koszty/jakosc, jesli zaczna przeszkadzac w utrzymaniu,
+- w `locations.js`: osobno lista/filtrowanie, szczegoly miejsca, formularze/modale i kosz/narzedzia,
+- w `components.js`: tylko helpery naprawde uzywane w wielu miejscach.
+
+**Zasada:** nie migrowac na framework i nie budowac duzego systemu komponentow. Refaktor ma zmniejszac rozmiar plikow i liczbe rzeczy trzymanych w glowie, a nie produkowac abstrakcje uzywane w kilku przypadkach.
+
+**Weryfikacja:** po kazdym malym podziale wyglad UI zostaje bez zmian, a smoke JS/testy kontraktowe przechodza.
 
 ### 17. Historia / Rocznik podrozy - PARTIAL
 
