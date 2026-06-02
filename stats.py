@@ -237,6 +237,58 @@ def _period_by_month(year, t_clause, t_params):
     return by_month
 
 
+def _geography_rankings(year, t_clause, t_params):
+    visit_day_series = _day_series('tl.arrival_date', 'tl.departure_date', year)
+    visit_series_params = _series_params(year) + t_params
+
+    top_countries = [dict(r) for r in query(f"""
+        SELECT c.name AS country,
+               COUNT(DISTINCT tl.travel_id) AS visits,
+               COUNT(DISTINCT d::date) AS days_spent
+        FROM travel_locations tl
+        JOIN locations l ON l.id = tl.location_id
+        JOIN countries c ON c.id = l.country_id
+        JOIN travels t ON t.id = tl.travel_id
+        LEFT JOIN LATERAL {visit_day_series} d ON tl.arrival_date IS NOT NULL AND tl.departure_date IS NOT NULL
+        WHERE l.deleted_at IS NULL AND {t_clause}
+        GROUP BY c.name ORDER BY visits DESC, days_spent DESC LIMIT 5
+    """, visit_series_params)]
+    for country in top_countries:
+        country['visits'] = int(country['visits'])
+        country['days_spent'] = int(country['days_spent'] or 0)
+
+    top_places = [dict(r) for r in query(f"""
+        SELECT l.id, l.name AS location_name, c.name AS country,
+               lt.name AS location_type,
+               l.latitude AS lat, l.longitude AS lon,
+               COUNT(DISTINCT tl.travel_id) AS visit_count,
+               COUNT(DISTINCT d::date) AS days_spent
+        FROM locations l
+        JOIN countries c ON l.country_id = c.id
+        JOIN location_types lt ON l.location_type_id = lt.id
+        JOIN locations child ON (child.id = l.id OR child.parent_location_id = l.id)
+        JOIN travel_locations tl ON tl.location_id = child.id
+        JOIN travels t ON t.id = tl.travel_id
+        LEFT JOIN LATERAL {visit_day_series} d ON tl.arrival_date IS NOT NULL AND tl.departure_date IS NOT NULL
+        WHERE LOWER(lt.name) IN ('miasto', 'wyspa')
+          AND l.deleted_at IS NULL AND child.deleted_at IS NULL AND {t_clause}
+        GROUP BY l.id, l.name, c.name, lt.name, l.latitude, l.longitude
+        ORDER BY visit_count DESC, days_spent DESC LIMIT 10
+    """, visit_series_params)]
+    for place in top_places:
+        place['visit_count'] = int(place['visit_count'])
+        place['days_spent'] = int(place['days_spent'] or 0)
+        if place.get('lat') is not None:
+            place['lat'] = float(place['lat'])
+        if place.get('lon') is not None:
+            place['lon'] = float(place['lon'])
+
+    return {
+        'top_countries': top_countries,
+        'top_places': top_places,
+    }
+
+
 def _period_overview(year=None, include_months=False):
     period, _, t_clause, t_params = _period_base(year)
     if include_months:
@@ -268,58 +320,13 @@ def _period_stats(year=None):
         p['trips'] = int(p['trips'])
         p['days'] = int(p['days'])
 
-    visit_day_series = _day_series('tl.arrival_date', 'tl.departure_date', year)
-    visit_series_params = _series_params(year) + t_params
-
-    top_countries = [dict(r) for r in query(f"""
-        SELECT c.name AS country,
-               COUNT(DISTINCT tl.travel_id) AS visits,
-               COUNT(DISTINCT d::date) AS days_spent
-        FROM travel_locations tl
-        JOIN locations l ON l.id = tl.location_id
-        JOIN countries c ON c.id = l.country_id
-        JOIN travels t ON t.id = tl.travel_id
-        LEFT JOIN LATERAL {visit_day_series} d ON tl.arrival_date IS NOT NULL AND tl.departure_date IS NOT NULL
-        WHERE l.deleted_at IS NULL AND {t_clause}
-        GROUP BY c.name ORDER BY visits DESC, days_spent DESC LIMIT 5
-    """, visit_series_params)]
-    for c in top_countries:
-        c['visits'] = int(c['visits'])
-        c['days_spent'] = int(c['days_spent'] or 0)
-
-    top_places = [dict(r) for r in query(f"""
-        SELECT l.id, l.name AS location_name, c.name AS country,
-               lt.name AS location_type,
-               l.latitude AS lat, l.longitude AS lon,
-               COUNT(DISTINCT tl.travel_id) AS visit_count,
-               COUNT(DISTINCT d::date) AS days_spent
-        FROM locations l
-        JOIN countries c ON l.country_id = c.id
-        JOIN location_types lt ON l.location_type_id = lt.id
-        JOIN locations child ON (child.id = l.id OR child.parent_location_id = l.id)
-        JOIN travel_locations tl ON tl.location_id = child.id
-        JOIN travels t ON t.id = tl.travel_id
-        LEFT JOIN LATERAL {visit_day_series} d ON tl.arrival_date IS NOT NULL AND tl.departure_date IS NOT NULL
-        WHERE LOWER(lt.name) IN ('miasto', 'wyspa')
-          AND l.deleted_at IS NULL AND child.deleted_at IS NULL AND {t_clause}
-        GROUP BY l.id, l.name, c.name, lt.name, l.latitude, l.longitude
-        ORDER BY visit_count DESC, days_spent DESC LIMIT 10
-    """, visit_series_params)]
-    for p in top_places:
-        p['visit_count'] = int(p['visit_count'])
-        p['days_spent'] = int(p['days_spent'] or 0)
-        if p.get('lat') is not None:
-            p['lat'] = float(p['lat'])
-        if p.get('lon') is not None:
-            p['lon'] = float(p['lon'])
-
+    geography_rankings = _geography_rankings(year, t_clause, t_params)
     by_month = _period_by_month(year, t_clause, t_params)
 
     return {
         **period,
         'participants': participants,
-        'top_countries': top_countries,
-        'top_places': top_places,
+        **geography_rankings,
         'by_month': by_month,
     }
 
