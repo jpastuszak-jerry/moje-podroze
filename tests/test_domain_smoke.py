@@ -51,10 +51,46 @@ class DateLogicSmokeTests(unittest.TestCase):
 
     def test_country_history_groups_returns_and_single_visit_countries(self):
         rows = [
-            {'id': 1, 'name': 'Finland', 'travel_id': 10, 'visit_start': date(2022, 7, 1), 'visit_end': date(2022, 7, 3)},
-            {'id': 1, 'name': 'Finland', 'travel_id': 11, 'visit_start': date(2025, 7, 18), 'visit_end': date(2025, 7, 20)},
-            {'id': 1, 'name': 'Finland', 'travel_id': 11, 'visit_start': date(2025, 7, 25), 'visit_end': date(2025, 7, 26)},
-            {'id': 2, 'name': 'Estonia', 'travel_id': 11, 'visit_start': date(2025, 7, 22), 'visit_end': date(2025, 7, 24)},
+            {
+                'id': 1,
+                'name': 'Finland',
+                'travel_id': 10,
+                'location_id': 100,
+                'location_name': 'Helsinki',
+                'location_type': 'miasto',
+                'visit_start': date(2022, 7, 1),
+                'visit_end': date(2022, 7, 3),
+            },
+            {
+                'id': 1,
+                'name': 'Finland',
+                'travel_id': 11,
+                'location_id': 100,
+                'location_name': 'Helsinki',
+                'location_type': 'miasto',
+                'visit_start': date(2025, 7, 18),
+                'visit_end': date(2025, 7, 20),
+            },
+            {
+                'id': 1,
+                'name': 'Finland',
+                'travel_id': 11,
+                'location_id': 101,
+                'location_name': 'Saimaa',
+                'location_type': 'jezioro',
+                'visit_start': date(2025, 7, 25),
+                'visit_end': date(2025, 7, 26),
+            },
+            {
+                'id': 2,
+                'name': 'Estonia',
+                'travel_id': 11,
+                'location_id': 200,
+                'location_name': 'Tallinn',
+                'location_type': 'miasto',
+                'visit_start': date(2025, 7, 22),
+                'visit_end': date(2025, 7, 24),
+            },
         ]
         with patch.object(stats_countries, 'query', return_value=rows):
             history = stats_countries._country_history(2025)
@@ -63,11 +99,22 @@ class DateLogicSmokeTests(unittest.TestCase):
         self.assertEqual(history['summary']['active_countries'], 2)
         self.assertEqual(history['summary']['returning_countries'], 1)
         self.assertEqual(history['summary']['single_visit_countries'], 1)
+        self.assertEqual(history['summary']['locations'], 3)
+        self.assertEqual(history['summary']['location_types'], 2)
         self.assertEqual(history['summary']['avg_days_per_country'], 4.0)
         self.assertEqual(history['top_returns'][0]['name'], 'Finland')
         self.assertEqual(history['top_returns'][0]['trips'], 2)
         self.assertEqual(history['top_returns'][0]['days_spent'], 8)
         self.assertEqual(history['top_returns'][0]['period_days'], 5)
+        self.assertEqual(history['top_returns'][0]['location_count'], 2)
+        self.assertEqual(history['top_returns'][0]['period_location_count'], 2)
+        self.assertEqual(history['top_returns'][0]['location_types'][0]['location_type'], 'miasto')
+        self.assertEqual(history['top_time_countries'][0]['name'], 'Finland')
+        self.assertEqual(history['top_location_countries'][0]['name'], 'Finland')
+        self.assertEqual(history['top_location_types'][0]['location_type'], 'miasto')
+        self.assertEqual(history['top_location_types'][0]['locations'], 2)
+        self.assertEqual(history['longest_places'][0]['name'], 'Helsinki')
+        self.assertEqual(history['longest_places'][0]['days_spent'], 3)
         self.assertEqual(history['only_once'][0]['name'], 'Estonia')
         self.assertEqual(history['top_returns'][0]['period_trips'], 1)
         self.assertGreater(history['top_returns'][0]['longest_gap_days'], 0)

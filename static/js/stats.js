@@ -361,15 +361,35 @@ function countryDurationLabel(days) {
   return `${(n / 365).toFixed(1).replace('.', ',')} lat`;
 }
 
-function countryHistoryRows(rows, { title, value, sub, empty }) {
+function countryActiveDays(country, year) {
+  return year ? (country.period_days || 0) : (country.days_spent || 0);
+}
+
+function countryActiveLocationCount(country, year) {
+  return year ? (country.period_location_count || 0) : (country.location_count || 0);
+}
+
+function locationTypeSummary(types) {
+  if (!types || !types.length) return 'brak rozbicia typów miejsc';
+  return types.slice(0, 3)
+    .map(type => `${type.location_type || 'Inne'}: ${type.locations || 0}`)
+    .join(' · ');
+}
+
+function countryHistoryRows(rows, { title, name, value, sub, empty, onclick }) {
   const body = rows && rows.length
-    ? rows.slice(0, 5).map(c => `<div class="country-history-row">
+    ? rows.slice(0, 5).map(c => {
+      const action = onclick ? onclick(c) : '';
+      const rowClass = action ? 'country-history-row clickable' : 'country-history-row';
+      const rowAction = action ? ` onclick="${escapeAttr(action)}"` : '';
+      return `<div class="${escapeAttr(rowClass)}"${rowAction}>
         <div class="country-history-main">
-          <div class="country-history-name">${escapeHtml(c.name)}</div>
+          <div class="country-history-name">${escapeHtml(name ? name(c) : c.name)}</div>
           <div class="country-history-sub">${escapeHtml(sub(c))}</div>
         </div>
         <div class="country-history-value">${value(c)}</div>
-      </div>`).join('')
+      </div>`;
+    }).join('')
     : `<div class="country-history-empty">${escapeHtml(empty)}</div>`;
   return `<div class="country-history-panel">
     <div class="country-history-panel-title">${escapeHtml(title)}</div>
@@ -384,6 +404,8 @@ function renderCountryHistory(history, year) {
   const scopeLabel = year ? `kraje aktywne w ${year}` : 'kraje w historii podróży';
   const firstMetricLabel = year ? `W ${year}` : 'W historii';
   const avgDays = Number(summary.avg_days_per_country || 0).toLocaleString('pl-PL', { maximumFractionDigits: 1 });
+  const locationMetric = summary.locations || 0;
+  const typeMetric = summary.location_types || 0;
 
   return renderSectionCard({
     title: '🌍 Historia krajów',
@@ -391,11 +413,38 @@ function renderCountryHistory(history, year) {
     body: `<div class="country-history-subtitle">${escapeHtml(scopeLabel)}</div>
       <div class="country-history-metrics">
         <div><strong>${shownCountries || 0}</strong><span>${escapeHtml(firstMetricLabel)}</span></div>
-        <div><strong>${summary.returning_countries || 0}</strong><span>z powrotami</span></div>
-        <div><strong>${summary.single_visit_countries || 0}</strong><span>tylko raz</span></div>
+        <div><strong>${locationMetric}</strong><span>miejsc</span></div>
+        <div><strong>${typeMetric}</strong><span>typów miejsc</span></div>
         <div><strong>${avgDays}</strong><span>śr. dni/kraj</span></div>
       </div>
       <div class="country-history-grid">
+        ${countryHistoryRows(history.top_time_countries || [], {
+        title: 'Najwięcej czasu w krajach',
+        value: c => countryDurationLabel(countryActiveDays(c, year)),
+        sub: c => `${countryActiveLocationCount(c, year)} miejsc · ${locationTypeSummary(c.location_types)}`,
+        empty: 'Brak policzalnych dni pobytu w krajach.',
+      })}
+      ${countryHistoryRows(history.top_location_countries || [], {
+        title: 'Najwięcej różnych miejsc',
+        value: c => `${countryActiveLocationCount(c, year)} miejsc`,
+        sub: c => `${countryDurationLabel(countryActiveDays(c, year))} · ${locationTypeSummary(c.location_types)}`,
+        empty: 'Brak miejsc przypisanych do krajów.',
+      })}
+      ${countryHistoryRows(history.longest_places || [], {
+        title: 'Najdłużej w konkretnych miejscach',
+        name: p => p.name,
+        value: p => countryDurationLabel(p.days_spent),
+        sub: p => `${p.country || 'bez kraju'} · ${p.location_type || 'miejsce'} · ${p.visit_count || 0}×`,
+        empty: 'Brak miejsc z policzalnymi datami pobytu.',
+        onclick: p => p.id ? `openLocation(${p.id})` : '',
+      })}
+      ${countryHistoryRows(history.top_location_types || [], {
+        title: 'Typy odwiedzonych miejsc',
+        name: t => t.location_type || 'Inne',
+        value: t => `${t.locations || 0} miejsc`,
+        sub: t => `${t.countries || 0} krajów · ${t.visits || 0} wizyt · ${t.days_spent || 0} dni`,
+        empty: 'Brak rozbicia miejsc po typach.',
+      })}
         ${countryHistoryRows(history.top_returns || [], {
         title: 'Najczęstsze powroty',
         value: c => `${c.trips}×`,

@@ -101,6 +101,8 @@ def _country_history_payload():
             'active_countries': 2,
             'returning_countries': 1,
             'single_visit_countries': 1,
+            'locations': 3,
+            'location_types': 2,
             'avg_days_per_country': 8.0,
         },
         'countries': [
@@ -114,6 +116,12 @@ def _country_history_payload():
                 'years_visited': 2,
                 'period_trips': 1,
                 'period_days': 5,
+                'location_count': 2,
+                'period_location_count': 2,
+                'location_types': [
+                    {'location_type': 'miasto', 'locations': 1, 'countries': 1, 'visits': 1, 'days_spent': 3},
+                    {'location_type': 'jezioro', 'locations': 1, 'countries': 1, 'visits': 1, 'days_spent': 2},
+                ],
                 'days_since_last_visit': 300,
                 'longest_gap_days': 1100,
                 'longest_gap_from': '2022-07-03',
@@ -129,10 +137,38 @@ def _country_history_payload():
                 'years_visited': 1,
                 'period_trips': 1,
                 'period_days': 5,
+                'location_count': 1,
+                'period_location_count': 1,
+                'location_types': [
+                    {'location_type': 'miasto', 'locations': 1, 'countries': 1, 'visits': 1, 'days_spent': 5},
+                ],
                 'days_since_last_visit': 300,
                 'longest_gap_days': 0,
                 'longest_gap_from': None,
                 'longest_gap_to': None,
+            },
+        ],
+        'top_time_countries': [
+            {'name': 'Finland', 'period_days': 5, 'days_spent': 11, 'period_location_count': 2},
+        ],
+        'top_location_countries': [
+            {'name': 'Finland', 'period_days': 5, 'days_spent': 11, 'period_location_count': 2},
+        ],
+        'top_location_types': [
+            {'location_type': 'miasto', 'locations': 2, 'countries': 2, 'visits': 2, 'days_spent': 8},
+            {'location_type': 'jezioro', 'locations': 1, 'countries': 1, 'visits': 1, 'days_spent': 2},
+        ],
+        'longest_places': [
+            {
+                'id': 10,
+                'name': 'Helsinki',
+                'country_id': 1,
+                'country': 'Finland',
+                'location_type': 'miasto',
+                'visit_count': 1,
+                'days_spent': 3,
+                'total_visit_count': 2,
+                'total_days_spent': 11,
             },
         ],
         'top_returns': [],
@@ -515,13 +551,26 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertLessEqual({'new', 'returning'}, set(data['country_milestones']))
         self.assertLessEqual({'id', 'name', 'first_visit', 'trips'}, set(data['country_milestones']['new'][0]))
         self.assertEqual(data['country_history']['summary']['returning_countries'], 1)
+        self.assertEqual(data['country_history']['summary']['locations'], 3)
         self.assertLessEqual(
             {
                 'id', 'name', 'first_visit', 'last_visit', 'trips',
                 'days_spent', 'years_visited', 'period_trips', 'period_days',
+                'location_count', 'period_location_count', 'location_types',
                 'days_since_last_visit', 'longest_gap_days',
             },
             set(data['country_history']['countries'][0]),
+        )
+        self.assertLessEqual(
+            {'location_type', 'locations', 'countries', 'visits', 'days_spent'},
+            set(data['country_history']['top_location_types'][0]),
+        )
+        self.assertLessEqual(
+            {
+                'id', 'name', 'country', 'location_type',
+                'visit_count', 'days_spent', 'total_days_spent',
+            },
+            set(data['country_history']['longest_places'][0]),
         )
 
     def test_stats_overview_endpoint_contract_is_lightweight(self):

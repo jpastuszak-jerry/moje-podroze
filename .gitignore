@@ -11,6 +11,7 @@ travel.sqlite
 tools/import_drafts/*.json
 
 # Lokalne podglady i logi robocze
+.codex_pdf_libs/
 icon-previews/
 server.*.log
 
