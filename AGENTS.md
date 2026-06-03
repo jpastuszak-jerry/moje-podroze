@@ -11,6 +11,20 @@ Potem, jesli trzeba szczegolow historycznych albo wyboru nastepnego tematu,
 sprawdz `BACKLOG.md`. Aktualnie sensowne kierunki sa zapisane w
 `CURRENT_STATE.md`.
 
+## Current State Maintenance
+
+Przed koncowa odpowiedzia po zakonczonej pracy, commicie, pushu, deployu albo
+zmianie priorytetow sprawdz, czy `CURRENT_STATE.md` wymaga aktualizacji.
+Aktualizuj go zawsze, gdy zmienily sie:
+- ostatnio domknieta praca albo commit,
+- wynik CI/deployu/smoke produkcji,
+- lokalny dirty state istotny dla nastepnej sesji,
+- najlepsze nastepne tematy,
+- znane blokery, np. Node w PATH albo brak testowej bazy.
+
+Nie przepisuj historii z `BACKLOG.md`; `CURRENT_STATE.md` ma byc krotkim
+stanem operacyjnym na start kolejnego czatu.
+
 ## Local Run
 
 PowerShell:

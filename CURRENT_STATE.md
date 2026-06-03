@@ -10,9 +10,17 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
 - Aktualny glowny kierunek: stabilizacja testami smoke przed kolejnymi refaktorami.
-- Ostatnio domkniete: `Add key flow smoke coverage`.
+- Ostatnio domkniete: `Add current state maintenance rule`.
 - GitHub Actions dla ostatniego commita byly zielone.
 - Produkcyjny smoke po deployu przeszedl: `python tools/smoke_prod.py`, 11/11 OK.
+
+## Maintenance Rule
+
+- Po zakonczonej pracy, commicie, pushu, deployu albo zmianie priorytetow agent
+  ma przed finalna odpowiedzia sprawdzic, czy ten plik wymaga aktualizacji.
+- Aktualizowac tylko stan operacyjny: ostatnia praca, CI/deploy/smoke,
+  istotny dirty state, kolejne tematy i znane blokery.
+- Nie dopisywac dlugiej historii. Szczegoly i roadmapa zostaja w `BACKLOG.md`.
 
 ## Current Dirty State
 
