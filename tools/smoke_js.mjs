@@ -63,6 +63,19 @@ function elementStub() {
   return el;
 }
 
+function mountAwareElementStub(onInnerHTML) {
+  const el = elementStub();
+  let html = '';
+  Object.defineProperty(el, 'innerHTML', {
+    get() { return html; },
+    set(value) {
+      html = String(value ?? '');
+      if (onInnerHTML) onInnerHTML(html);
+    },
+  });
+  return el;
+}
+
 const context = {
   console,
   setTimeout,
@@ -368,6 +381,8 @@ const cardListHtml = context.renderCardList([{ id: 1 }, { id: 2 }], item => `<ar
 assert.match(cardListHtml, /test-list/, 'renderCardList keeps custom list class');
 assert.equal(count(cardListHtml, '<article>'), 2, 'renderCardList renders each item');
 
+const criticalScreens = new Set();
+
 vm.runInContext(fs.readFileSync(mapPath, 'utf8'), context, { filename: mapPath });
 const mapView = elementStub();
 mapView.scrollTop = 260;
@@ -409,6 +424,7 @@ assert.match(mapView.innerHTML, /id="map-toolbar"/, 'map render exposes toolbar 
 assert.equal(context.__mapOptions.options.zoomControl, true, 'map render keeps Leaflet zoom controls enabled');
 assert.equal(context.__mapInvalidated, true, 'map render invalidates Leaflet size after layout changes');
 assert.equal(context.__mapLoadCalled, true, 'map render still loads map locations');
+criticalScreens.add('map');
 
 const tabMap = elementStub();
 const tabTravels = elementStub();
@@ -667,6 +683,72 @@ const detailHtml = context.renderTravelDetail(sampleTravelDetail);
 assert.match(detailHtml, /travel-hero-stats/, 'travel detail renders the compact hero metrics');
 assert.match(detailHtml, /Notatki dzienne/, 'travel detail turns imported notes into daily blocks');
 assert.match(detailHtml, /travel-day-card/, 'travel detail renders daily notes as collapsible cards');
+
+let travelScreenMounted = false;
+const travelScreenView = mountAwareElementStub(html => {
+  if (html.includes('id="travel-list"')) travelScreenMounted = true;
+});
+const travelScreenList = elementStub();
+const travelScreenControls = elementStub();
+const travelScreenSearch = elementStub();
+travelScreenSearch.value = '';
+context.document.getElementById = id => {
+  if (id === 'view') return travelScreenView;
+  if (!travelScreenMounted) return null;
+  if (id === 'travel-list') return travelScreenList;
+  if (id === 'travel-controls') return travelScreenControls;
+  if (id === 'travel-search') return travelScreenSearch;
+  return null;
+};
+const travelScreenApiCalls = [];
+context.api = async path => {
+  travelScreenApiCalls.push(path);
+  assert.equal(path, '/api/travels', 'travel list fetches the expected endpoint');
+  return [{
+    id: 7,
+    name: 'Workation test',
+    start_date: '2025-05-08',
+    end_date: '2025-05-10',
+    purpose: 'Wakacje',
+    rating: 4.5,
+    amount: 1200,
+    currency: 'EUR',
+    has_photo_album: 1,
+    is_description_complete: 1,
+  }, {
+    id: 8,
+    name: 'Tallinn',
+    start_date: '2024-07-01',
+    end_date: '2024-07-03',
+    purpose: 'Miasto',
+    rating: null,
+    amount: 0,
+    currency: 'EUR',
+    has_photo_album: 0,
+    is_description_complete: 0,
+  }];
+};
+vm.runInContext('currentSearch = ""; currentTravelYear = null; currentSort = "date_desc"', context);
+await context.renderTravels();
+assert.deepEqual(travelScreenApiCalls, ['/api/travels'], 'travel list screen performs one list request');
+assert.match(travelScreenView.innerHTML, /page-title/, 'travel list screen renders a page header');
+assert.match(travelScreenControls.innerHTML, /travel-filter-grid/, 'travel list screen renders filters');
+assert.match(travelScreenList.innerHTML, /Workation test/, 'travel list screen renders trip cards');
+assert.match(travelScreenList.innerHTML, /openTravel\(7\)/, 'travel list cards link to trip detail');
+criticalScreens.add('travels-list');
+
+const travelDetailView = elementStub();
+context.document.getElementById = id => (id === 'view' ? travelDetailView : null);
+context.api = async path => {
+  assert.equal(path, '/api/travels/7', 'travel detail fetches the selected trip');
+  return sampleTravelDetail;
+};
+await context.openTravel(7);
+assert.match(travelDetailView.innerHTML, /travel-detail-hero/, 'travel detail screen renders the hero');
+assert.match(travelDetailView.innerHTML, /Trasa i miejsca/, 'travel detail screen renders route section');
+assert.match(travelDetailView.innerHTML, /Uczestnicy/, 'travel detail screen renders participants section');
+assert.match(travelDetailView.innerHTML, /Notatki dzienne/, 'travel detail screen renders daily notes');
+criticalScreens.add('travel-detail');
 
 vm.runInContext(fs.readFileSync(todoPath, 'utf8'), context, { filename: todoPath });
 const todoView = elementStub();
@@ -969,6 +1051,7 @@ assert.match(overviewStats, /hof-grid/, 'overview shows hall of fame as a grid')
 assert.doesNotMatch(overviewStats, /hof-scroll/, 'overview avoids horizontal hall of fame scroller');
 assert.match(overviewStats, /Cel podr/, 'overview keeps purpose chart');
 assert.doesNotMatch(overviewStats, /Koszty wed/, 'overview does not show cost section details');
+criticalScreens.add('stats-overview');
 
 const costsStats = await renderStatsSection('costs');
 assert.match(costsStats, /Koszty wed/, 'costs section shows cost summary');
@@ -992,6 +1075,7 @@ assert.match(yearbookStats, /Rocznik/, 'yearbook section renders the travel year
 assert.match(yearbookStats, /Helsinki/, 'yearbook section renders highlighted trips');
 assert.match(yearbookStats, /Nowe kraje/, 'yearbook section renders country chapter details');
 assert.doesNotMatch(yearbookStats, /Koszty wed/, 'yearbook section stays focused on the yearbook');
+criticalScreens.add('stats-yearbook');
 
 const filteredYearbookStats = await renderStatsSection('yearbook', { year: 2025 });
 assert.equal(apiCalls.at(-1), '/api/stats?year=2025', 'yearbook section keeps year filter requests');
@@ -1006,5 +1090,11 @@ const emptyParticipantsStats = await renderStatsSection('participants', {
   payload: statsPayload({ participants: [] }),
 });
 assert.match(emptyParticipantsStats, /Brak uczestnik/, 'empty stats section shows an explicit empty state');
+
+assert.deepEqual(
+  [...criticalScreens].sort(),
+  ['map', 'stats-overview', 'stats-yearbook', 'travel-detail', 'travels-list'].sort(),
+  'critical UI smoke covers the main app screens',
+);
 
 console.log('JS smoke tests passed');
