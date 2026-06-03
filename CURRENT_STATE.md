@@ -9,9 +9,14 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   uczestnikami, mapa i statystykami.
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
-- Aktualny glowny kierunek: stabilizacja testami smoke przed kolejnymi refaktorami.
-- Ostatnio domkniete: wzmocniony JS/UI smoke dla kluczowych ekranow
-  (lista podrozy, szczegoly podrozy, Statystyki/Podsumowanie, Rocznik, Mapa).
+- Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza brakujace GPS,
+  przy zachowaniu stabilizacji smoke przed wiekszymi refaktorami.
+- Ostatnio domkniete: uzupelniono GPS dla 151 aktywnych miejsc w bazie Neon.
+  Przed praca bylo 293 aktywnych miejsc bez GPS, po pracy zostalo 142.
+  Szczegoly sa w lokalnych raportach:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_geocode\db_geocode_applied_20260603_135807.json`
+  i
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_geocode\db_geocode_remaining_20260603_135807.csv`.
 - GitHub Actions dla ostatniego commita byly zielone.
 - Produkcyjny smoke po deployu przeszedl: `python tools/smoke_prod.py`, 11/11 OK.
 
@@ -45,12 +50,15 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Prawdziwe browser E2E po naprawie Node/Playwright:
+1. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
+   `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
+   `ambiguous` i `manual_review_excluded`.
+2. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-2. Realistyczny test integracyjny PostgreSQL na malym fixture:
+3. Realistyczny test integracyjny PostgreSQL na malym fixture:
    podroze, miejsca nadrzedne/podrzedne, uczestnicy, kosz, statystyki.
-3. Dopiero potem dalszy refaktor frontendu/statystyk.
-4. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+4. Dopiero potem dalszy refaktor frontendu/statystyk.
+5. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
