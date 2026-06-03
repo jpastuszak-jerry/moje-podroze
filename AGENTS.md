@@ -4,12 +4,12 @@ This file provides guidance to Codex, Claude, and other coding agents when worki
 
 ## Next Start
 
-UI phase 4 zostala zrealizowana w `Unify wizard UI controls`.
+Najpierw przeczytaj `CURRENT_STATE.md`. To jest krotki stan projektu na start
+sesji i ma ograniczac koniecznosc ladowania calego backlogu do kontekstu.
 
-Przy kolejnym uruchomieniu sprawdz najpierw `BACKLOG.md` i wybierz z uzytkownikiem kolejny praktyczny temat. Sensowne kandydaty:
-- automatyczne smoke testy kluczowych przeplywow,
-- podzial ekranu statystyk na czytelniejsze sekcje,
-- dalsze porzadkowanie wspolnych komponentow frontendu.
+Potem, jesli trzeba szczegolow historycznych albo wyboru nastepnego tematu,
+sprawdz `BACKLOG.md`. Aktualnie sensowne kierunki sa zapisane w
+`CURRENT_STATE.md`.
 
 ## Local Run
 
