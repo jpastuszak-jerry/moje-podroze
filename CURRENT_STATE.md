@@ -10,7 +10,7 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
 - Aktualny glowny kierunek: stabilizacja testami smoke przed kolejnymi refaktorami.
-- Ostatnio domkniete: `Add current state maintenance rule`.
+- Ostatnio domkniete: frontend shell smoke dla kontraktu login/app/PWA assetow.
 - GitHub Actions dla ostatniego commita byly zielone.
 - Produkcyjny smoke po deployu przeszedl: `python tools/smoke_prod.py`, 11/11 OK.
 
@@ -34,7 +34,7 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Funkcjonalne pokrycie smoke'ami glownego produktu: ok. 70%.
 - Dobrze pokryte: auth, prywatne API, shell, PWA smoke produkcji, podstawowe
   read/write API, kreator transakcyjny, statystyki, rocznik, mapa, kosz,
-  soft delete/restore, podstawowe helpery UI.
+  soft delete/restore, podstawowe helpery UI, kontrakt startowego shella SPA.
 - Slabiej pokryte: prawdziwe E2E w przegladarce, realne PostgreSQL fixture,
   importy danych.
 - `node` w normalnym PATH jest obecnie problematyczny: alias WindowsApps zwraca
@@ -43,7 +43,7 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Browser smoke / E2E dla kluczowych ekranow:
+1. Pelniejszy browser smoke / E2E dla kluczowych ekranow:
    login/shell, lista podrozy, szczegoly podrozy, Statystyki, Rocznik, Mapa.
 2. Realistyczny test integracyjny PostgreSQL na malym fixture:
    podroze, miejsca nadrzedne/podrzedne, uczestnicy, kosz, statystyki.
