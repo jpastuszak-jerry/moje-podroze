@@ -62,6 +62,21 @@ LOCATION_LIST_ROW = {
     'last_visit': date(2025, 7, 21),
 }
 
+MAP_LOCATION_ROW = {
+    'id': 10,
+    'name': 'Helsinki',
+    'latitude': 60.17,
+    'longitude': 24.94,
+    'address': 'Market Square',
+    'notes': 'Stolica Finlandii',
+    'country_name': 'Finlandia',
+    'location_type': 'miasto',
+    'visit_count': 2,
+    'first_visit': date(2025, 7, 18),
+    'last_visit': date(2025, 7, 21),
+    'travel_names': 'Helsinki',
+}
+
 
 def _normalize_sql(sql):
     return ' '.join(sql.split())
@@ -84,6 +99,8 @@ def fake_travels_query(sql, params=(), one=False):
 
 def fake_locations_query(sql, params=(), one=False):
     normalized = _normalize_sql(sql)
+    if not one and 'WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL' in normalized:
+        return [dict(MAP_LOCATION_ROW)]
     if not one and 'COUNT(DISTINCT t.id) AS visit_count' in normalized:
         return [dict(LOCATION_LIST_ROW)]
     if one and 'WHERE LOWER(l.name) = LOWER(%s)' in normalized:
@@ -127,6 +144,38 @@ def fake_app_query(sql, params=(), one=False):
     raise AssertionError(f'Unexpected app query: {normalized}')
 
 
+class AuthGateKeyFlowSmokeTests(unittest.TestCase):
+    def setUp(self):
+        self.client = app_module.app.test_client()
+
+    def test_private_read_and_write_flows_require_admin_session(self):
+        checks = [
+            ('get', '/api/travels', None),
+            ('post', '/api/travels', {}),
+            ('get', '/api/travels/7', None),
+            ('delete', '/api/travels/7', None),
+            ('get', '/api/locations', None),
+            ('post', '/api/locations', {}),
+            ('get', '/api/map-locations', None),
+            ('get', '/api/stats', None),
+            ('get', '/api/stats/overview', None),
+            ('get', '/api/stats/todo', None),
+            ('get', '/api/locations/todo', None),
+            ('get', '/api/trash', None),
+            ('get', '/api/export', None),
+            ('get', '/api/persons', None),
+        ]
+
+        for method, path, payload in checks:
+            with self.subTest(method=method, path=path):
+                call = getattr(self.client, method)
+                response = call(path, json=payload) if payload is not None else call(path)
+
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(response.headers['Cache-Control'], 'no-store')
+                self.assertEqual(response.get_json(), {'error': 'unauthorized'})
+
+
 class KeyFlowSmokeTests(unittest.TestCase):
     def setUp(self):
         self.client = app_module.app.test_client()
@@ -151,6 +200,7 @@ class KeyFlowSmokeTests(unittest.TestCase):
             relation_types = self.client.get('/api/relation_types')
             persons = self.client.get('/api/persons')
             trash = self.client.get('/api/trash')
+            map_locations = self.client.get('/api/map-locations')
 
         self.assertEqual(shell.status_code, 200)
         self.assertIn('/static/js/travels.js?v=smoke', shell.get_data(as_text=True))
@@ -190,6 +240,13 @@ class KeyFlowSmokeTests(unittest.TestCase):
         self.assertEqual(trash.headers['Cache-Control'], 'no-store')
         self.assertTrue(trash.get_json()['travels'][0]['deleted_at'].startswith('2025-01-10'))
         self.assertEqual(trash.get_json()['locations'][0]['name'], 'Old place')
+
+        self.assertEqual(map_locations.status_code, 200)
+        self.assertEqual(map_locations.headers['Cache-Control'], 'no-cache')
+        self.assertIn('ETag', map_locations.headers)
+        self.assertEqual(map_locations.get_json()[0]['name'], 'Helsinki')
+        self.assertEqual(map_locations.get_json()[0]['first_visit'], '2025-07-18')
+        self.assertEqual(map_locations.get_json()[0]['visit_count'], 2)
 
     def test_admin_can_create_trip_location_and_attach_people(self):
         executed = []
@@ -278,6 +335,67 @@ class KeyFlowSmokeTests(unittest.TestCase):
         self.assertIn('INSERT INTO persons', executed_sql)
         self.assertIn('INSERT INTO travel_locations', executed_sql)
         self.assertIn('INSERT INTO travel_participants', executed_sql)
+
+    def test_admin_can_soft_delete_restore_and_detach_relations(self):
+        executed = []
+
+        def fake_travels_rowcount(sql, params=()):
+            normalized = _normalize_sql(sql)
+            executed.append(('travels_rowcount', normalized, params))
+            if normalized.startswith('UPDATE travels SET deleted_at = NOW()'):
+                return 1
+            if normalized.startswith('UPDATE travels SET deleted_at = NULL'):
+                return 1
+            raise AssertionError(f'Unexpected travel rowcount execute: {normalized}')
+
+        def fake_locations_rowcount(sql, params=()):
+            normalized = _normalize_sql(sql)
+            executed.append(('locations_rowcount', normalized, params))
+            if normalized.startswith('UPDATE locations SET deleted_at = NOW()'):
+                return 1
+            if normalized.startswith('UPDATE locations SET deleted_at = NULL'):
+                return 1
+            raise AssertionError(f'Unexpected location rowcount execute: {normalized}')
+
+        def fake_travels_execute(sql, params=()):
+            normalized = _normalize_sql(sql)
+            executed.append(('travels_execute', normalized, params))
+            if normalized.startswith('DELETE FROM travel_locations'):
+                return None
+            if normalized.startswith('DELETE FROM travel_participants'):
+                return None
+            raise AssertionError(f'Unexpected travel execute: {normalized}')
+
+        with (
+            patch.object(travels, 'execute_rowcount', side_effect=fake_travels_rowcount),
+            patch.object(locations, 'execute_rowcount', side_effect=fake_locations_rowcount),
+            patch.object(travels, 'execute', side_effect=fake_travels_execute),
+        ):
+            deleted_travel = self.client.delete('/api/travels/101')
+            restored_travel = self.client.post('/api/travels/101/restore')
+            deleted_location = self.client.delete('/api/locations/10')
+            restored_location = self.client.post('/api/locations/10/restore')
+            detached_location = self.client.delete('/api/travels/101/locations/201')
+            detached_participant = self.client.delete('/api/travels/101/participants/5')
+
+        for response in (
+            deleted_travel,
+            restored_travel,
+            deleted_location,
+            restored_location,
+            detached_location,
+            detached_participant,
+        ):
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()['ok'], True)
+
+        executed_sql = '\n'.join(sql for _, sql, _ in executed)
+        self.assertIn('UPDATE travels SET deleted_at = NOW()', executed_sql)
+        self.assertIn('UPDATE travels SET deleted_at = NULL', executed_sql)
+        self.assertIn('UPDATE locations SET deleted_at = NOW()', executed_sql)
+        self.assertIn('UPDATE locations SET deleted_at = NULL', executed_sql)
+        self.assertIn('DELETE FROM travel_locations', executed_sql)
+        self.assertIn('DELETE FROM travel_participants', executed_sql)
 
 
 if __name__ == '__main__':

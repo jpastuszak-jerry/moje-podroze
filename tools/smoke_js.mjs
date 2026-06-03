@@ -115,6 +115,8 @@ assert.match(appCssSource, /@media\s*\(min-width:\s*900px\)[\s\S]*\.app-menu[\s\
 assert.match(appCssSource, /@media\s*\(max-width:\s*600px\)[\s\S]*body\.auth-page[\s\S]*place-items:\s*start center/, 'mobile login starts above the iOS keyboard accessory area');
 assert.match(appCssSource, /\.modal\s*\{[\s\S]*scroll-padding-bottom:\s*calc\(170px \+ var\(--safe-bottom\)\)/, 'modal forms keep focused fields above the iOS keyboard accessory area');
 assert.match(appCssSource, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)\s*34px\s*34px/, 'mobile map toolbar keeps filters and buttons in a fixed grid');
+assert.match(appCssSource, /\.yearbook-trip-name\s*\{[\s\S]*min-width:\s*0[\s\S]*overflow-wrap:\s*anywhere/, 'yearbook trip names can wrap instead of overflowing');
+assert.match(appCssSource, /@media\s*\(max-width:\s*620px\)[\s\S]*\.yearbook-trip\s*\{[\s\S]*flex-direction:\s*column/, 'mobile yearbook trips stack long names and metadata');
 
 const originalGetElementById = context.document.getElementById;
 const originalLocalStorageGetItem = context.localStorage.getItem;
