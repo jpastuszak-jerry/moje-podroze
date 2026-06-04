@@ -11,7 +11,15 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza brakujace GPS,
   przy zachowaniu stabilizacji smoke przed wiekszymi refaktorami.
-- Ostatnio domkniete: uzupelniono GPS dla 151 aktywnych miejsc w bazie Neon.
+- Ostatnio domkniete: uzupelniono `address`/`notes` dla 442 aktywnych miejsc
+  w bazie Neon, bez ruszania GPS. Istniejace notatki z importow, np. Revolut,
+  zostaly zachowane, a dopiski `Typ:`/`Region:` dodane na koncu.
+  Przed praca bylo 530 aktywnych miejsc z brakujacym `address` albo `notes`,
+  po pracy zostalo 88. Szczegoly sa w lokalnych raportach:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_notes\notes_address_applied_20260604_121124.json`
+  i
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_notes\notes_address_skipped_20260604_121124.csv`.
+- Poprzednio domkniete: uzupelniono GPS dla 151 aktywnych miejsc w bazie Neon.
   Przed praca bylo 293 aktywnych miejsc bez GPS, po pracy zostalo 142.
   Szczegoly sa w lokalnych raportach:
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_geocode\db_geocode_applied_20260603_135807.json`
@@ -50,15 +58,18 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
+1. Reczna weryfikacja 88 pozostalych miejsc z brakujacym `address`/`notes`
+   z raportu `notes_address_skipped_20260604_121124.csv`, glownie pozycje
+   komercyjne z niepewnymi merchant notes albo kontekstem.
+2. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
    `ambiguous` i `manual_review_excluded`.
-2. Prawdziwe browser E2E po naprawie Node/Playwright:
+3. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-3. Realistyczny test integracyjny PostgreSQL na malym fixture:
+4. Realistyczny test integracyjny PostgreSQL na malym fixture:
    podroze, miejsca nadrzedne/podrzedne, uczestnicy, kosz, statystyki.
-4. Dopiero potem dalszy refaktor frontendu/statystyk.
-5. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+5. Dopiero potem dalszy refaktor frontendu/statystyk.
+6. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
