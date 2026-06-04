@@ -11,15 +11,24 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza brakujace GPS,
   przy zachowaniu stabilizacji smoke przed wiekszymi refaktorami.
-- Ostatnio domkniete: wycofano bledna partie automatycznych uzupelnien
+- Ostatnio domkniete: po wycofaniu blednej masowej partii uzupelniono mala,
+  zaakceptowana probke `address`/`notes` dla 20 konkretnych miejsc. Dla
+  wazniejszych miejsc przyjeto opis dwuakapitowy, a istniejace notatki zostaly
+  zachowane z dopiskiem `Typ:`/`Region:` na koncu. GPS nie byl ruszany.
+  Raport i backup:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_notes\notes_address_20_applied_20260604_125334.json`
+  i
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_notes\notes_address_20_backup_20260604_125334.json`.
+  Po tej probce 510 aktywnych miejsc ma brakujacy `address` albo `notes`.
+- Poprzednio domkniete: wycofano bledna partie automatycznych uzupelnien
   `address`/`notes` dla 442 miejsc, poniewaz opisy byly zbyt generyczne i
   nie opisywaly konkretnych miejsc. Przywrocono wartosci z backupu:
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_notes\notes_address_backup_20260604_121124.json`.
   Raport wycofania:
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_notes\notes_address_revert_20260604_124115.json`.
-  Po wycofaniu znow jest 530 aktywnych miejsc z brakujacym `address` albo
-  `notes`. Wniosek operacyjny: nie robic masowych generycznych opisow; kolejne
-  podejscie musi byc konkretne dla miejsca, male partiami, z akceptacja probek.
+  Po wycofaniu bylo 530 aktywnych miejsc z brakujacym `address` albo `notes`.
+  Wniosek operacyjny: nie robic masowych generycznych opisow; kolejne podejscie
+  musi byc konkretne dla miejsca, male partiami, z akceptacja probek.
 - Poprzednio domkniete: uzupelniono GPS dla 151 aktywnych miejsc w bazie Neon.
   Przed praca bylo 293 aktywnych miejsc bez GPS, po pracy zostalo 142.
   Szczegoly sa w lokalnych raportach:
@@ -61,7 +70,7 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 1. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
    konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
-   probki uzytkownikowi. Aktualnie 530 aktywnych miejsc ma brakujacy
+   probki uzytkownikowi. Aktualnie 510 aktywnych miejsc ma brakujacy
    `address` albo `notes`.
 2. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
