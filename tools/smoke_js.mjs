@@ -570,6 +570,8 @@ assert.equal(context.locationResultLabel(1), 'wynik', 'location filter summary h
 assert.equal(context.locationResultLabel(3), 'wyniki', 'location filter summary handles plural result label');
 assert.equal(context.worklistCountLabel(1), 'pozycja', 'worklist count label handles singular rows');
 assert.equal(context.worklistCountLabel(3), 'pozycje', 'worklist count label handles plural rows');
+assert.equal(context.polishPlural(12, 'wizyta', 'wizyty', 'wizyt'), 'wizyt', 'polishPlural handles teen endings');
+assert.equal(context.polishPlural(22, 'wizyta', 'wizyty', 'wizyt'), 'wizyty', 'polishPlural handles later few endings');
 const locationCardHtml = context.locCardHtml({
   id: 10,
   name: 'Helsinki',
@@ -704,6 +706,7 @@ assert.match(travelControlsHtml, /travel-filter-grid/, 'travel filters render as
 assert.match(travelControlsHtml, /Wyczyść/, 'travel filters expose reset action when active');
 assert.doesNotMatch(travelControlsHtml, /sort-btn/, 'travel filters avoid long horizontal chip bars');
 assert.equal(context.travelResultLabel(2), 'podróże', 'travel filter summary has human-readable count labels');
+assert.equal(context.travelResultLabel(22), 'podróże', 'travel filter summary reuses shared Polish plurals');
 const parsedTravelNotes = context.parseTravelDailyNotes(
   'Test trip --> 2025-05-08 --- 2025-05-10\n\n2025-05-08 - Start w porcie.\n2025-05-09 - Spacer po mieście.',
 );

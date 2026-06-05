@@ -163,6 +163,15 @@ function daysCount(s, e) {
   return Math.max(0, Math.round((end - start) / 86400000) + 1);
 }
 
+function polishPlural(count, one, few, many) {
+  const n = Number(count || 0);
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (n === 1) return one;
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return few;
+  return many;
+}
+
 function purposeIcon(p) {
   if (!p) return '✈️';
   const l = p.toLowerCase();
@@ -692,10 +701,7 @@ function resetViewScroll(view = document.getElementById('view')) {
 }
 
 function worklistCountLabel(count) {
-  count = Number(count || 0);
-  if (count === 1) return 'pozycja';
-  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'pozycje';
-  return 'pozycji';
+  return polishPlural(count, 'pozycja', 'pozycje', 'pozycji');
 }
 
 function decodeRoutePart(part) {

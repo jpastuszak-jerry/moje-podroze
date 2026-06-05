@@ -163,10 +163,7 @@ function setLocSort(sort) {
 }
 
 function locationResultLabel(count) {
-  count = Number(count || 0);
-  if (count === 1) return 'wynik';
-  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'wyniki';
-  return 'wyników';
+  return polishPlural(count, 'wynik', 'wyniki', 'wyników');
 }
 
 function locationFilterActiveLabels() {
@@ -266,9 +263,7 @@ function applyLocationFilters() {
 
 function locVisitCountLabel(count) {
   count = Number(count || 0);
-  if (count === 1) return '1 wizyta';
-  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return `${count} wizyty`;
-  return `${count} wizyt`;
+  return `${count} ${polishPlural(count, 'wizyta', 'wizyty', 'wizyt')}`;
 }
 
 function locVisitSummary(loc) {

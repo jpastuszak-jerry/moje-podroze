@@ -70,10 +70,7 @@ function travelSortLabel(sort) {
 }
 
 function travelResultLabel(count) {
-  count = Number(count || 0);
-  if (count === 1) return 'podróż';
-  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'podróże';
-  return 'podróży';
+  return polishPlural(count, 'podróż', 'podróże', 'podróży');
 }
 
 function hasActiveTravelFilters() {
@@ -154,10 +151,7 @@ function resetTravelFilters() {
 }
 
 function travelPlural(count, one, few, many) {
-  count = Number(count || 0);
-  if (count === 1) return one;
-  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return few;
-  return many;
+  return polishPlural(count, one, few, many);
 }
 
 function travelUniqueValues(items, key) {

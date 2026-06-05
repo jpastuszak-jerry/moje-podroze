@@ -119,17 +119,11 @@ function statsApiPath() {
 }
 
 function pluralTrips(n) {
-  if (n === 1) return 'podróż';
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  return [2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100) ? 'podróże' : 'podróży';
+  return polishPlural(n, 'podróż', 'podróże', 'podróży');
 }
 
 function pluralYears(n) {
-  if (n === 1) return 'rok';
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  return [2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100) ? 'lata' : 'lat';
+  return polishPlural(n, 'rok', 'lata', 'lat');
 }
 
 function formatCost(value, currency, digits = 0) {

@@ -12,6 +12,14 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
   `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
   przed wiekszymi refaktorami.
+- Ostatnio domkniete: maly refaktor wspolnego helpera odmiany liczebnikow w
+  frontendzie. Dodano `polishPlural()` w `static/js/utils.js` i podpieto go w
+  licznikach podrozy, wynikow, wizyt, lat oraz list "Do uzupelnienia" w
+  `stats.js`, `locations.js` i `travels.js`. Korzysc: jedna regule odmiany
+  `1 / 2-4 / reszta` utrzymuje sie w jednym miejscu zamiast powielac ja w
+  kilku widokach. Weryfikacja: skladnia zmienionych JS przez Node REPL MCP,
+  `tools/smoke_js.mjs` przez Node REPL MCP oraz `git diff --check` przeszly.
+  Zwykly `node` w PATH nadal zwraca `Odmowa dostepu`.
 - Ostatnio domkniete: refaktor SPA do hash-routera. `startRouter()` zastapil
   startowe `renderTravels()`, a `showTab()`, `openTravel()` i `openLocation()`
   przechodza przez trasy typu `#/travels`, `#/travels/:id`, `#/locations/:id`,
