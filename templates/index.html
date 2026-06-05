@@ -86,7 +86,7 @@
 <script>
 setThemeIcon();
 updateOfflineBanner();
-renderTravels();
+startRouter();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('/sw.js').catch(function(err) {

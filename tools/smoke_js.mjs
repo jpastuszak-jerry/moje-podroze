@@ -381,6 +381,75 @@ const cardListHtml = context.renderCardList([{ id: 1 }, { id: 2 }], item => `<ar
 assert.match(cardListHtml, /test-list/, 'renderCardList keeps custom list class');
 assert.equal(count(cardListHtml, '<article>'), 2, 'renderCardList renders each item');
 
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.routeFromHash('#/travels/42'))),
+  { name: 'travelDetail', params: { id: 42 } },
+  'router parses travel detail hashes',
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.routeFromHash('#/locations/todo'))),
+  { name: 'locationTodo', params: {} },
+  'router parses auxiliary location todo hashes',
+);
+assert.equal(context.routePath('travelDetail', { id: 42 }), '/travels/42', 'router builds travel detail paths');
+assert.equal(context.routePath('locationDetail', { id: 17 }), '/locations/17', 'router builds location detail paths');
+assert.equal(context.routePath('todo'), '/stats/todo', 'router builds stats todo path');
+
+const originalWindowLocation = context.window.location;
+const originalWindowHistory = context.window.history;
+const originalWindowAddEventListener = context.window.addEventListener;
+const originalRouterGetElementById = context.document.getElementById;
+const originalRouterQuerySelectorAll = context.document.querySelectorAll;
+const routerHashListeners = [];
+const routerTabTravels = elementStub();
+const routerTabStats = elementStub();
+context.window.location = { hash: '' };
+context.window.history = {
+  replaceState(_state, _title, url) {
+    context.window.location.hash = String(url);
+  },
+};
+context.window.addEventListener = (event, handler) => {
+  if (event === 'hashchange') routerHashListeners.push(handler);
+};
+context.document.querySelectorAll = selector => (selector === '.tab' ? [routerTabTravels, routerTabStats] : []);
+context.document.getElementById = id => {
+  if (id === 'view') return elementStub();
+  if (id === 'tab-travels') return routerTabTravels;
+  if (id === 'tab-stats') return routerTabStats;
+  return null;
+};
+context.renderTravels = () => { context.__routerRendered = 'travels'; };
+context.renderStats = () => { context.__routerRendered = 'stats'; };
+context.renderLocations = () => { context.__routerRendered = 'locations'; };
+context.renderMap = () => { context.__routerRendered = 'map'; };
+context.renderTodo = () => { context.__routerRendered = 'todo'; };
+context.renderLocationTodo = () => { context.__routerRendered = 'locationTodo'; };
+context.openTravel = (id, options) => { context.__routerDetail = { type: 'travel', id, options }; };
+context.openLocation = (id, options) => { context.__routerDetail = { type: 'location', id, options }; };
+context.startRouter();
+assert.equal(context.window.location.hash, '#/travels', 'router installs the default route');
+assert.equal(context.__routerRendered, 'travels', 'router renders default route after replace');
+assert.equal(routerTabTravels.classList.contains('active'), true, 'router marks the primary tab active');
+context.navigateTo('travelDetail', { id: 42 });
+assert.equal(context.window.location.hash, '#/travels/42', 'router navigation updates the hash');
+routerHashListeners.at(-1)();
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.__routerDetail)),
+  { type: 'travel', id: 42, options: { fromRouter: true } },
+  'router renders travel details from hash changes',
+);
+context.showTab('stats');
+assert.equal(context.window.location.hash, '#/stats', 'showTab delegates to the router when it is active');
+routerHashListeners.at(-1)();
+assert.equal(vm.runInContext('currentTab', context), 'stats', 'router keeps currentTab in sync with the route');
+delete context.window.__spaRouterStarted;
+context.window.location = originalWindowLocation;
+context.window.history = originalWindowHistory;
+context.window.addEventListener = originalWindowAddEventListener;
+context.document.getElementById = originalRouterGetElementById;
+context.document.querySelectorAll = originalRouterQuerySelectorAll;
+
 const criticalScreens = new Set();
 
 vm.runInContext(fs.readFileSync(mapPath, 'utf8'), context, { filename: mapPath });

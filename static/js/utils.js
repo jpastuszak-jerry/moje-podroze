@@ -14,6 +14,7 @@ const MAP_TYPE_COLORS = {
 
 const HOME_COORDS = [53.1583, 18.0494];
 const HOME_ZOOM = 7;
+const MAIN_ROUTES = ['travels', 'locations', 'map', 'stats'];
 
 async function api(path) {
   try {
@@ -697,14 +698,76 @@ function worklistCountLabel(count) {
   return 'pozycji';
 }
 
-function showTab(tab) {
+function decodeRoutePart(part) {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return part;
+  }
+}
+
+function routeFromHash(hash) {
+  const raw = String(hash || '').replace(/^#/, '').replace(/^\/+/, '').replace(/\/+$/, '');
+  const parts = raw ? raw.split('/').map(decodeRoutePart).filter(Boolean) : [];
+  if (!parts.length) return { name: 'travels', params: {} };
+  if (parts[0] === 'travels' && parts[1] && /^\d+$/.test(parts[1])) {
+    return { name: 'travelDetail', params: { id: parseInt(parts[1], 10) } };
+  }
+  if (parts[0] === 'locations' && parts[1] === 'todo') {
+    return { name: 'locationTodo', params: {} };
+  }
+  if (parts[0] === 'locations' && parts[1] && /^\d+$/.test(parts[1])) {
+    return { name: 'locationDetail', params: { id: parseInt(parts[1], 10) } };
+  }
+  if (parts[0] === 'stats' && parts[1] === 'todo') {
+    return { name: 'todo', params: {} };
+  }
+  if (MAIN_ROUTES.includes(parts[0]) && parts.length === 1) {
+    return { name: parts[0], params: {} };
+  }
+  if (parts[0] === 'todo') return { name: 'todo', params: {} };
+  if (parts[0] === 'locationTodo' || parts[0] === 'location-todo') {
+    return { name: 'locationTodo', params: {} };
+  }
+  return { name: 'travels', params: {} };
+}
+
+function routePath(name, params = {}) {
+  const id = parseInt(params.id, 10);
+  if ((name === 'travel' || name === 'travelDetail') && id) return `/travels/${id}`;
+  if ((name === 'location' || name === 'locationDetail') && id) return `/locations/${id}`;
+  if (name === 'todo') return '/stats/todo';
+  if (name === 'locationTodo') return '/locations/todo';
+  if (MAIN_ROUTES.includes(name)) return `/${name}`;
+  return '/travels';
+}
+
+function primaryTabForRoute(name) {
+  if (name === 'travelDetail') return 'travels';
+  if (name === 'locationDetail' || name === 'locationTodo') return 'locations';
+  if (name === 'todo') return 'stats';
+  if (MAIN_ROUTES.includes(name)) return name;
+  return 'travels';
+}
+
+function setActivePrimaryTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tabButton = document.getElementById('tab-' + tab);
+  if (tabButton) tabButton.classList.add('active');
+}
+
+function canUseHashRouter() {
+  return typeof window !== 'undefined'
+    && Boolean(window.__spaRouterStarted)
+    && Boolean(window.location);
+}
+
+function renderTab(tab) {
   closeAppMenu();
   currentTab = tab;
   const view = setMapViewMode(tab === 'map');
   resetViewScroll(view);
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  const tabButton = document.getElementById('tab-'+tab);
-  if (tabButton) tabButton.classList.add('active');
+  setActivePrimaryTab(primaryTabForRoute(tab));
   if (tab === 'travels') renderTravels();
   else if (tab === 'locations') renderLocations();
   else if (tab === 'map') renderMap();
@@ -717,4 +780,61 @@ function showTab(tab) {
     void view.offsetWidth;
     view.classList.add('view-fade');
   }
+}
+
+function renderRoute(route) {
+  const name = route?.name || 'travels';
+  const params = route?.params || {};
+  closeAppMenu();
+  currentTab = name;
+  setActivePrimaryTab(primaryTabForRoute(name));
+  if (name === 'travelDetail' && params.id) {
+    openTravel(params.id, { fromRouter: true });
+    return;
+  }
+  if (name === 'locationDetail' && params.id) {
+    openLocation(params.id, { fromRouter: true });
+    return;
+  }
+  renderTab(name);
+}
+
+function navigateTo(name, params = {}, options = {}) {
+  const path = routePath(name, params);
+  const hash = '#' + path;
+  if (!canUseHashRouter()) {
+    renderRoute(routeFromHash(hash));
+    return;
+  }
+  if (window.location.hash === hash) {
+    if (options.force !== false) renderRoute(routeFromHash(hash));
+    return;
+  }
+  if (options.replace && window.history && window.history.replaceState) {
+    window.history.replaceState(null, '', hash);
+    renderRoute(routeFromHash(hash));
+    return;
+  }
+  window.location.hash = hash;
+}
+
+function replaceRoute(name, params = {}) {
+  navigateTo(name, params, { replace: true });
+}
+
+function showTab(tab) {
+  navigateTo(tab, {}, { force: true });
+}
+
+function startRouter() {
+  if (typeof window === 'undefined' || !window.location) {
+    renderRoute(routeFromHash(''));
+    return;
+  }
+  if (!window.__spaRouterStarted) {
+    window.__spaRouterStarted = true;
+    window.addEventListener('hashchange', () => renderRoute(routeFromHash(window.location.hash)));
+  }
+  if (!window.location.hash) replaceRoute('travels');
+  else renderRoute(routeFromHash(window.location.hash));
 }

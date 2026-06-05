@@ -503,7 +503,11 @@ async function renderLocationTodo() {
   view.innerHTML = html;
 }
 
-async function openLocation(id) {
+async function openLocation(id, options = {}) {
+  if (!options.fromRouter && canUseHashRouter()) {
+    navigateTo('locationDetail', { id });
+    return;
+  }
   setMapViewMode(false);
   const view = document.getElementById('view');
   resetViewScroll(view);

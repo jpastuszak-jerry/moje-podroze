@@ -418,7 +418,11 @@ function renderTravelReflectionsSection(t) {
   </div>`;
 }
 
-async function openTravel(id) {
+async function openTravel(id, options = {}) {
+  if (!options.fromRouter && canUseHashRouter()) {
+    navigateTo('travelDetail', { id });
+    return;
+  }
   setMapViewMode(false);
   const view = document.getElementById('view');
   resetViewScroll(view);
