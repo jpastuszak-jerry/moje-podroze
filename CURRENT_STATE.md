@@ -12,6 +12,11 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
   `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
   przed wiekszymi refaktorami.
+- Ostatnio domkniete: dodano `ARCHITECTURE_BLUEPRINT.md`, czyli przekrojowy
+  opis aktualnej architektury aplikacji: frontend SPA/PWA, backend Flask,
+  Neon PostgreSQL, Render deploy, CI, smoke testy, model danych, glowne flow i
+  obecne ograniczenia. Dokument ma sluzyc jako mapa dla uzytkownika i kolejnych
+  agentow.
 - Ostatnio domkniete: maly refaktor wspolnego helpera odmiany liczebnikow w
   frontendzie. Dodano `polishPlural()` w `static/js/utils.js` i podpieto go w
   licznikach podrozy, wynikow, wizyt, lat oraz list "Do uzupelnienia" w
