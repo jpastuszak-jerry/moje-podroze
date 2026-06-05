@@ -9,9 +9,19 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   uczestnikami, mapa i statystykami.
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
-- Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza brakujace GPS,
-  przy zachowaniu stabilizacji smoke przed wiekszymi refaktorami.
-- Ostatnio domkniete: po wycofaniu blednej masowej partii uzupelniono mala,
+- Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
+  `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
+  przed wiekszymi refaktorami.
+- Ostatnio domkniete: uzupelniono kolejna losowa partie 30 konkretnych
+  `address`/`notes` zgodnie z zaakceptowanym wzorcem: opis miejsca w
+  `address`, a w `notes` krotkie `Typ:`/`Region:`. Dla wazniejszych miejsc
+  opisy sa dwuakapitowe, istniejace notatki zostaly zachowane z dopiskiem na
+  koncu, a GPS nie byl ruszany. Po tej partii 480 aktywnych miejsc ma brakujacy
+  `address` albo `notes`. Raport i backup:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_notes\notes_address_30_applied_20260605_133850.json`
+  i
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_notes\notes_address_30_backup_20260605_133850.json`.
+- Poprzednio domkniete: po wycofaniu blednej masowej partii uzupelniono mala,
   zaakceptowana probke `address`/`notes` dla 20 konkretnych miejsc. Dla
   wazniejszych miejsc przyjeto opis dwuakapitowy, a istniejace notatki zostaly
   zachowane z dopiskiem `Typ:`/`Region:` na koncu. GPS nie byl ruszany.
@@ -70,7 +80,7 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 1. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
    konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
-   probki uzytkownikowi. Aktualnie 510 aktywnych miejsc ma brakujacy
+   probki uzytkownikowi. Aktualnie 480 aktywnych miejsc ma brakujacy
    `address` albo `notes`.
 2. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
