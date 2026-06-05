@@ -12,16 +12,18 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
   `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
   przed wiekszymi refaktorami.
-- Ostatnio domkniete lokalnie: refaktor SPA do hash-routera. `startRouter()`
-  zastapil startowe `renderTravels()`, a `showTab()`, `openTravel()` i
-  `openLocation()` przechodza przez trasy typu `#/travels`, `#/travels/:id`,
-  `#/locations/:id`, `#/stats/todo` i `#/locations/todo`. Zmiany nie sa jeszcze
-  commitowane.
+- Ostatnio domkniete: refaktor SPA do hash-routera. `startRouter()` zastapil
+  startowe `renderTravels()`, a `showTab()`, `openTravel()` i `openLocation()`
+  przechodza przez trasy typu `#/travels`, `#/travels/:id`, `#/locations/:id`,
+  `#/stats/todo` i `#/locations/todo`. Zaktualizowano tez shell smoke test,
+  zeby oczekiwal startu routera.
 - Weryfikacja po refaktorze SPA: skladnia zmienionych JS sprawdzona przez Node
-  REPL MCP, `tools/smoke_js.mjs` przeszedl przez Node REPL MCP. Zwykly `node`
-  w PATH nadal zwraca `Odmowa dostepu`. Lokalny Flask wystartowal i `/healthz`
-  zwrocil `db=ok`, ale in-app Browser zablokowal `localhost`/`127.0.0.1`
-  (`ERR_BLOCKED_BY_CLIENT`), wiec nie wykonano browser E2E.
+  REPL MCP, `tools/smoke_js.mjs` przeszedl przez Node REPL MCP, a
+  `python -m unittest discover -s tests` przeszedl lokalnie po aktualizacji testu
+  shella. Zwykly `node` w PATH nadal zwraca `Odmowa dostepu`. Lokalny Flask
+  wystartowal i `/healthz` zwrocil `db=ok`, ale in-app Browser zablokowal
+  `localhost`/`127.0.0.1` (`ERR_BLOCKED_BY_CLIENT`), wiec nie wykonano browser
+  E2E.
 - Ostatnio domkniete: uzupelniono kolejna losowa partie 30 konkretnych
   `address`/`notes` zgodnie z zaakceptowanym wzorcem: opis miejsca w
   `address`, a w `notes` krotkie `Typ:`/`Region:`. Dla wazniejszych miejsc
@@ -68,12 +70,6 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Current Dirty State
 
-- W repo sa lokalne, niecommitowane zmiany refaktora SPA routera:
-  - `static/js/utils.js`
-  - `static/js/travels.js`
-  - `static/js/locations.js`
-  - `templates/index.html`
-  - `tools/smoke_js.mjs`
 - W repo sa lokalne, niecommitowane pliki importowe:
   - `tools/import_travel_descriptions.py`
   - `tools/import_revolut_places.py`

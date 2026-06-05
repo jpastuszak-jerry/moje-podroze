@@ -65,7 +65,7 @@ class FrontendShellSmokeTests(unittest.TestCase):
         self.assertIn('id="app-menu"', html)
         self.assertIn('setThemeIcon();', html)
         self.assertIn('updateOfflineBanner();', html)
-        self.assertIn('renderTravels();', html)
+        self.assertIn('startRouter();', html)
         self.assertIn("navigator.serviceWorker.register('/sw.js')", html)
         self.assertNotIn('class="auth-page"', html)
 
@@ -89,6 +89,7 @@ class FrontendShellSmokeTests(unittest.TestCase):
         self.assertNotIn('id="tabs"', html)
         self.assertNotIn('id="app-menu"', html)
         self.assertNotIn('renderTravels();', html)
+        self.assertNotIn('startRouter();', html)
         self.assertNotIn("navigator.serviceWorker.register('/sw.js')", html)
 
 
