@@ -1,4 +1,3 @@
-/* deploy-probe-2026-06-11-7f3a9c2 — test auto-deploy z commitu, do usunięcia */
 const API = '';
 
 /* ── Persisted UI preferences (filtry, sortowanie) ─────────── */
