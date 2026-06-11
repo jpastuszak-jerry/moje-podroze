@@ -541,6 +541,18 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** rozmiar plikow i liczba inline handlerow spada, a wyglad/UX pozostaje bez zmian.
 
+**18d. Krok operacyjny: `SECRET_KEY` w env Rendera**
+
+**Problem:** kod ostrzega w logach, gdy `SECRET_KEY` nie jest ustawiony (`Harden HTTP layer: ...`), ale samo ostrzezenie nie rozwiazuje sprawy. Dopoki zmienna nie jest ustawiona na stala wartosc w Environment na Render, kazdy redeploy/restart losuje nowy klucz i wylogowuje admina.
+
+**Do zrobienia (poza kodem, w panelu Render):**
+- wygenerowac klucz: `python -c "import secrets; print(secrets.token_hex(32))"`,
+- dodac `SECRET_KEY` w Render -> Environment (zapis env-var wyzwala redeploy),
+- ustawic raz i nie zmieniac pozniej (zmiana tez wylogowuje wszystkich),
+- potwierdzic, ze ostrzezenie `[auth] WARNING: SECRET_KEY not set ...` znika z logow startu.
+
+**Weryfikacja:** po ustawieniu zmiennej zalogowana sesja admina przezywa redeploy/restart Rendera bez wylogowania.
+
 ## P4 - Pomysly pozniejsze
 
 ### 13. Import/eksport danych przyjazny dla czlowieka

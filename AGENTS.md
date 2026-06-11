@@ -38,6 +38,13 @@ python app.py                           # http://localhost:5000
 Produkcja: Render.com startuje aplikacje przez `gunicorn app:app` z `Procfile`.
 Zmienna `DATABASE_URL` musi byc ustawiona w Environment na Render.
 
+`SECRET_KEY` musi byc ustawiony na stala wartosc w Environment na Render. Bez
+niego `app.py` losuje klucz przy starcie, co uniewaznia wszystkie sesje przy
+kazdym redeployu/restarcie (admin jest wylogowywany). Kod wypisuje wtedy w
+logach `[auth] WARNING: SECRET_KEY not set ...`. Wygeneruj raz przez
+`python -c "import secrets; print(secrets.token_hex(32))"` i nie zmieniaj
+pozniej (zmiana tez wylogowuje wszystkich).
+
 Nie commitowac sekretow. Lokalny plik `connection string.txt`, `.env`, archiwa zip i `travel.sqlite` sa ignorowane przez Git.
 
 ## Verification

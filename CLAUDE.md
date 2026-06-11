@@ -12,6 +12,8 @@ python app.py                       # http://localhost:5000
 
 Production on Render starts with `gunicorn app:app` from `Procfile`. `DATABASE_URL` must be configured in Render environment variables.
 
+`SECRET_KEY` must also be set to a fixed value in Render env vars. Without it `app.py` generates a random key at startup, which invalidates every session on each redeploy/restart (the admin gets logged out) and logs `[auth] WARNING: SECRET_KEY not set ...`. Generate it once with `python -c "import secrets; print(secrets.token_hex(32))"` and do not change it afterwards (changing it also logs everyone out).
+
 ## Deployment
 
 Changes are deployed by pushing to `main`:
