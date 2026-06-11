@@ -19,6 +19,7 @@ from threading import Lock
 
 from flask import Flask, Response, jsonify, render_template, request, session
 from flask.json.provider import DefaultJSONProvider
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash
 
 import dicts
@@ -40,7 +41,19 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 app.json_provider_class = CustomJSONProvider
 app.json = CustomJSONProvider(app)
 app.teardown_appcontext(close_db)
-app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(32)
+
+# Render (i większość PaaS) stoi za jednym reverse-proxy. Bez tego
+# request.remote_addr to IP proxy — rate-limit logowania zlewałby wszystkich
+# userów w jeden kubeł, a detekcja HTTPS (X-Forwarded-Proto) by nie działała.
+if os.environ.get('RENDER'):
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+_secret_key_env = os.environ.get('SECRET_KEY')
+if not _secret_key_env and os.environ.get('RENDER'):
+    # Fallback na losowy klucz unieważnia wszystkie sesje przy każdym
+    # redeployu/restarcie — w produkcji ustaw SECRET_KEY na stałą wartość.
+    print('[auth] WARNING: SECRET_KEY not set — sessions will be invalidated on every restart/deploy')
+app.secret_key = _secret_key_env or os.urandom(32)
 app.permanent_session_lifetime = timedelta(days=14)
 _secure_cookie_env = os.environ.get('SESSION_COOKIE_SECURE')
 _secure_cookie = (
@@ -258,6 +271,37 @@ def auth_logout():
 
 def is_no_store_api_path(path):
     return path in NO_STORE_EXACT_API_PATHS or any(path.startswith(prefix) for prefix in NO_STORE_API_PREFIXES)
+
+
+# CSP dopasowany do realnych zależności aplikacji: inline onclick/skrypty w
+# shellu (stąd 'unsafe-inline'), Leaflet/MarkerCluster z unpkg, kafelki OSM,
+# geokodowanie przez Nominatim. frame-ancestors blokuje osadzanie (clickjacking).
+_CSP_POLICY = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://unpkg.com",
+    "style-src 'self' 'unsafe-inline' https://unpkg.com",
+    "img-src 'self' data: https://unpkg.com https://*.tile.openstreetmap.org",
+    "connect-src 'self' https://nominatim.openstreetmap.org",
+    "font-src 'self' data:",
+    "manifest-src 'self'",
+    "worker-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+])
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault('Content-Security-Policy', _CSP_POLICY)
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    if os.environ.get('RENDER'):
+        response.headers.setdefault(
+            'Strict-Transport-Security', 'max-age=31536000; includeSubDomains'
+        )
+    return response
 
 
 @app.after_request
