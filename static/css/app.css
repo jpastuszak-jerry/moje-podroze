@@ -61,7 +61,7 @@ body.auth-page {
   padding: 20px;
 }
 #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
-#view { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#view { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }
 #view.view-fade { animation: view-fade-in .22s ease-out; }
 @keyframes view-fade-in {
   from { opacity: 0; transform: translateY(4px); }
@@ -1298,6 +1298,29 @@ body.auth-page {
 .toast.leaving { animation: toast-out .2s ease-in forwards; }
 .toast-icon { font-size: 18px; flex-shrink: 0; line-height: 1; }
 .toast-msg  { flex: 1; min-width: 0; word-wrap: break-word; }
+.toast-action-btn {
+  flex-shrink: 0; border: none; background: transparent;
+  color: var(--blue); font-weight: 700; font-size: 14px;
+  padding: 6px 10px; margin: -4px -6px -4px 0; border-radius: 8px;
+  cursor: pointer; text-transform: uppercase; letter-spacing: .02em;
+}
+.toast-action-btn:hover { background: var(--blue-light, rgba(26,111,219,.12)); }
+
+/* ── Pull-to-refresh indicator ─────────────────────────────── */
+.ptr-indicator {
+  position: absolute; top: 6px; left: 50%;
+  transform: translate(-50%, 0); opacity: 0;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card); color: var(--blue);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  pointer-events: none; z-index: 20;
+}
+.ptr-indicator .ptr-spinner { font-size: 18px; line-height: 1; transition: transform .15s ease; }
+.ptr-indicator.ready .ptr-spinner { transform: rotate(180deg); }
+.ptr-indicator.refreshing { opacity: 1 !important; transform: translate(-50%, 24px) !important; }
+.ptr-indicator.refreshing .ptr-spinner { animation: ptr-spin .7s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-20px) scale(.95); }

@@ -44,6 +44,7 @@ async function renderTravels(q) {
     return;
   }
   list.innerHTML = renderCardList(travels, travelCardHtml);
+  applyRestoreScroll();
 }
 
 function travelCardHtml(t) {
@@ -137,13 +138,15 @@ function sortTravels(travels, sort) {
   return arr;
 }
 
-function setSort(sort) { currentSort = sort; renderTravels(); }
-function setTravelYear(y) { currentTravelYear = y; renderTravels(); }
+function setSort(sort) { currentSort = sort; savePref('travelSort', sort); renderTravels(); }
+function setTravelYear(y) { currentTravelYear = y; savePref('travelYear', y); renderTravels(); }
 function onTravelSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderTravels(val), 400); }
 function resetTravelFilters() {
   currentSearch = '';
   currentTravelYear = null;
   currentSort = 'date_desc';
+  savePref('travelYear', null);
+  savePref('travelSort', null);
   clearTimeout(searchTimeout);
   const searchInput = document.getElementById('travel-search');
   if (searchInput) searchInput.value = '';
@@ -433,16 +436,15 @@ async function openTravel(id, options = {}) {
 
 async function confirmDelete(id) {
   return withActionLock(`travel-delete-${id}`, async () => {
-    const ok = await askConfirm({
-      title: 'Usunąć podróż?',
-      message: 'Trafi do Kosza — możesz przywrócić.',
-      confirmText: 'Do Kosza', danger: true,
-    });
-    if (!ok) return;
     const res = await apiDelete('/api/travels/' + id);
     if (res.error) { toastApiError(res, 'Nie udało się przenieść podróży do kosza'); return; }
-    toast('Podróż w koszu', 'success');
     showTab('travels');
+    toastAction('Podróż przeniesiona do kosza', 'Cofnij', async () => {
+      const r = await apiPost('/api/travels/' + id + '/restore', {});
+      if (r.error) { toastApiError(r, 'Nie udało się przywrócić podróży'); return; }
+      toast('Przywrócono podróż', 'success');
+      showTab('travels');
+    });
   });
 }
 

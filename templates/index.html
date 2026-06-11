@@ -38,6 +38,10 @@
   </button>
   <div id="app-menu-panel" class="app-menu-panel" role="menu" aria-label="Konto i wygląd">
     <div class="app-menu-title">Konto i wygląd</div>
+    <button class="app-menu-item" onclick="refreshCurrentView(); closeAppMenu();" type="button" role="menuitem">
+      <span class="app-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A8 8 0 1 0 19.73 14h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></svg></span>
+      <span class="app-menu-text"><span class="app-menu-label">Odśwież dane</span><span class="app-menu-sub">Pobierz aktualne dane</span></span>
+    </button>
     <button class="app-menu-item" onclick="toggleTheme(); closeAppMenu();" type="button" role="menuitem">
       <span class="app-menu-icon"><svg id="theme-icon" viewBox="0 0 24 24" aria-hidden="true"></svg></span>
       <span class="app-menu-text"><span class="app-menu-label">Motyw</span><span class="app-menu-sub" id="theme-menu-label">Systemowy</span></span>

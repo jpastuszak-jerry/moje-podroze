@@ -1,6 +1,8 @@
-let currentLocationQualityFilter = 'all';
-let currentLocationSort = 'country_name';
+let currentLocationQualityFilter = getPref('locQuality', 'all');
+let currentLocationSort = getPref('locSort', 'country_name');
 let currentLocationSearch = '';
+let currentLocationCountry = getPref('locCountry', '');
+let currentLocationType = getPref('locType', '');
 
 const LOCATION_QUALITY_LABELS = {
   all: 'Wszystkie',
@@ -137,12 +139,12 @@ function populateLocationFilters(locs) {
   const sortEl = document.getElementById('loc-sort');
   if (sortEl) sortEl.value = currentLocationSort;
   if (countryEl) {
-    const selected = countryEl.value;
+    const selected = countryEl.value || currentLocationCountry;
     const countries = [...new Set(locs.map(l => l.country_name).filter(Boolean))].sort();
     countryEl.innerHTML = renderSelectOptions(countries, selected, { emptyOption: 'Wszystkie kraje' });
   }
   if (typeEl) {
-    const selected = typeEl.value;
+    const selected = typeEl.value || currentLocationType;
     const types = [...new Set(locs.map(l => l.location_type).filter(Boolean))].sort();
     typeEl.innerHTML = renderSelectOptions(types, selected, { emptyOption: 'Wszystkie typy' });
   }
@@ -154,11 +156,13 @@ function applyLocTypeFilter() {
 
 function setLocQualityFilter(filter) {
   currentLocationQualityFilter = filter || 'all';
+  savePref('locQuality', currentLocationQualityFilter);
   applyLocationFilters();
 }
 
 function setLocSort(sort) {
   currentLocationSort = sort || 'country_name';
+  savePref('locSort', currentLocationSort);
   applyLocationFilters();
 }
 
@@ -201,6 +205,12 @@ function resetLocationFilters() {
   currentLocationSearch = '';
   currentLocationQualityFilter = 'all';
   currentLocationSort = 'country_name';
+  currentLocationCountry = '';
+  currentLocationType = '';
+  savePref('locQuality', null);
+  savePref('locSort', null);
+  savePref('locCountry', null);
+  savePref('locType', null);
   clearTimeout(searchTimeout);
   const searchEl = document.getElementById('loc-search');
   const countryEl = document.getElementById('loc-country-filter');
@@ -239,6 +249,10 @@ function locationVisitCount(loc) {
 function applyLocationFilters() {
   const type = document.getElementById('loc-type-filter')?.value || '';
   const country = document.getElementById('loc-country-filter')?.value || '';
+  currentLocationType = type;
+  currentLocationCountry = country;
+  savePref('locType', type);
+  savePref('locCountry', country);
   const quality = currentLocationQualityFilter || 'all';
   let locs = Array.isArray(allLocationsCache) ? [...allLocationsCache] : [];
   if (type) locs = locs.filter(l => l.location_type === type);
@@ -259,6 +273,7 @@ function applyLocationFilters() {
   updateLocQualityButtons();
   updateLocationFilterSummary(locs.length);
   renderLocList(locs);
+  applyRestoreScroll();
 }
 
 function locVisitCountLabel(count) {
@@ -533,16 +548,15 @@ async function openLocation(id, options = {}) {
 
 async function confirmDeleteLocation(id) {
   return withActionLock(`location-delete-${id}`, async () => {
-    const ok = await askConfirm({
-      title: 'Usunąć miejsce?',
-      message: 'Trafi do Kosza — możesz przywrócić.',
-      confirmText: 'Do Kosza', danger: true,
-    });
-    if (!ok) return;
     const res = await apiDelete('/api/locations/' + id);
     if (res.error) { toastApiError(res, 'Nie udało się przenieść miejsca do kosza'); return; }
-    toast('Miejsce w koszu', 'success');
     showTab('locations');
+    toastAction('Miejsce przeniesione do kosza', 'Cofnij', async () => {
+      const r = await apiPost('/api/locations/' + id + '/restore', {});
+      if (r.error) { toastApiError(r, 'Nie udało się przywrócić miejsca'); return; }
+      toast('Przywrócono miejsce', 'success');
+      showTab('locations');
+    });
   });
 }
 

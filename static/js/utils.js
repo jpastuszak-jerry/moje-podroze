@@ -1,9 +1,28 @@
 const API = '';
+
+/* ── Persisted UI preferences (filtry, sortowanie) ─────────── */
+const PREFS_KEY = 'mp:prefs';
+function _loadPrefs() {
+  if (typeof localStorage === 'undefined') return {};
+  try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; }
+}
+function getPref(key, fallback) {
+  const value = _loadPrefs()[key];
+  return value === undefined || value === null ? fallback : value;
+}
+function savePref(key, value) {
+  if (typeof localStorage === 'undefined') return;
+  const prefs = _loadPrefs();
+  if (value === null || value === undefined || value === '') delete prefs[key];
+  else prefs[key] = value;
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* quota/private mode */ }
+}
+
 let currentTab = 'travels';
 let searchTimeout;
-let currentSort = 'date_desc';
+let currentSort = getPref('travelSort', 'date_desc');
 let currentSearch = '';
-let currentTravelYear = null;
+let currentTravelYear = getPref('travelYear', null);
 
 let allLocationsCache = [];
 
@@ -315,6 +334,40 @@ function toast(message, type = 'info', duration = 3200) {
     el.classList.add('leaving');
     setTimeout(() => el.remove(), 220);
   };
+  el.addEventListener('click', dismiss);
+  setTimeout(dismiss, duration);
+}
+
+/* Akcyjny toast (np. „Cofnij" po usunięciu). Trzyma się dłużej i ma przycisk. */
+function toastAction(message, actionLabel, onAction, { type = 'info', duration = 6000 } = {}) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type + ' toast-action';
+  el.innerHTML =
+    `<div class="toast-icon">${TOAST_ICONS[type] || ''}</div>` +
+    `<div class="toast-msg">${escapeHtml(message)}</div>` +
+    `<button type="button" class="toast-action-btn">${escapeHtml(actionLabel)}</button>`;
+  container.appendChild(el);
+  let settled = false;
+  const dismiss = () => {
+    if (settled) return;
+    settled = true;
+    el.classList.add('leaving');
+    setTimeout(() => el.remove(), 220);
+  };
+  const actionBtn = el.querySelector('.toast-action-btn');
+  if (actionBtn) actionBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (settled) return;
+    dismiss();
+    try { onAction(); } catch (err) { console.error('toast action failed', err); }
+  });
   el.addEventListener('click', dismiss);
   setTimeout(dismiss, duration);
 }
@@ -768,24 +821,124 @@ function canUseHashRouter() {
     && Boolean(window.location);
 }
 
+/* ── Scroll restoration per route + pull-to-refresh ────────── */
+const _viewScrollByPath = {};
+let _pendingScroll = null;
+let _suppressScrollRestore = false;
+
+function currentRoutePath() {
+  if (typeof window === 'undefined' || !window.location) return '/travels';
+  const route = routeFromHash(window.location.hash || '');
+  return routePath(route.name, route.params);
+}
+
+function rememberCurrentScroll() {
+  const view = document.getElementById('view');
+  if (view) _viewScrollByPath[currentRoutePath()] = view.scrollTop;
+}
+
+/* Wywoływane na końcu renderów list, po wypełnieniu DOM-u danymi. */
+function applyRestoreScroll() {
+  if (!_pendingScroll) return;
+  const { path, y } = _pendingScroll;
+  if (path !== currentRoutePath()) return;
+  const view = document.getElementById('view');
+  if (view) view.scrollTop = y;
+  _pendingScroll = null;
+}
+
+function trackViewScroll() {
+  const view = document.getElementById('view');
+  if (!view || view.__scrollTracked) return;
+  view.__scrollTracked = true;
+  let raf = 0;
+  view.addEventListener('scroll', () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      _viewScrollByPath[currentRoutePath()] = view.scrollTop;
+    });
+  }, { passive: true });
+}
+
+function refreshCurrentView() {
+  if (typeof window !== 'undefined' && window.location) {
+    return renderRoute(routeFromHash(window.location.hash));
+  }
+  return renderTab(currentTab);
+}
+
+function setupPullToRefresh() {
+  const view = document.getElementById('view');
+  if (!view || view.__ptrBound) return;
+  view.__ptrBound = true;
+  const threshold = 64;
+  let indicator = null;
+  let startY = 0, pulling = false, dist = 0;
+  const ensureIndicator = () => {
+    if (indicator) return indicator;
+    indicator = document.createElement('div');
+    indicator.className = 'ptr-indicator';
+    indicator.innerHTML = '<span class="ptr-spinner">↻</span>';
+    view.appendChild(indicator);
+    return indicator;
+  };
+  view.addEventListener('touchstart', (e) => {
+    pulling = view.scrollTop <= 0
+      && e.touches.length === 1
+      && !document.querySelector('.modal-overlay, .confirm-overlay');
+    if (pulling) { startY = e.touches[0].clientY; dist = 0; }
+  }, { passive: true });
+  view.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    dist = e.touches[0].clientY - startY;
+    if (dist <= 0 || view.scrollTop > 0) { pulling = false; return; }
+    const pull = Math.min(dist * 0.5, 80);
+    const ind = ensureIndicator();
+    ind.style.transform = `translate(-50%, ${pull}px)`;
+    ind.style.opacity = String(Math.min(1, pull / threshold));
+    ind.classList.toggle('ready', pull >= threshold);
+  }, { passive: true });
+  const end = () => {
+    if (!pulling) return;
+    pulling = false;
+    const ready = dist * 0.5 >= threshold;
+    if (indicator) {
+      indicator.style.transform = '';
+      indicator.style.opacity = '';
+      indicator.classList.remove('ready');
+    }
+    if (ready) {
+      if (indicator) indicator.classList.add('refreshing');
+      Promise.resolve(refreshCurrentView()).finally(() => {
+        if (indicator) indicator.classList.remove('refreshing');
+      });
+    }
+  };
+  view.addEventListener('touchend', end, { passive: true });
+  view.addEventListener('touchcancel', end, { passive: true });
+}
+
 function renderTab(tab) {
   closeAppMenu();
   currentTab = tab;
   const view = setMapViewMode(tab === 'map');
   resetViewScroll(view);
   setActivePrimaryTab(primaryTabForRoute(tab));
-  if (tab === 'travels') renderTravels();
-  else if (tab === 'locations') renderLocations();
-  else if (tab === 'map') renderMap();
-  else if (tab === 'stats') renderStats();
-  else if (tab === 'todo') renderTodo();
-  else if (tab === 'locationTodo') renderLocationTodo();
+  let pending;
+  if (tab === 'travels') pending = renderTravels();
+  else if (tab === 'locations') pending = renderLocations();
+  else if (tab === 'map') pending = renderMap();
+  else if (tab === 'stats') pending = renderStats();
+  else if (tab === 'todo') pending = renderTodo();
+  else if (tab === 'locationTodo') pending = renderLocationTodo();
   if (view) {
     resetViewScroll(view);
     view.classList.remove('view-fade');
     void view.offsetWidth;
     view.classList.add('view-fade');
   }
+  return pending;
 }
 
 function renderRoute(route) {
@@ -795,32 +948,35 @@ function renderRoute(route) {
   currentTab = name;
   setActivePrimaryTab(primaryTabForRoute(name));
   if (name === 'travelDetail' && params.id) {
-    openTravel(params.id, { fromRouter: true });
-    return;
+    return openTravel(params.id, { fromRouter: true });
   }
   if (name === 'locationDetail' && params.id) {
-    openLocation(params.id, { fromRouter: true });
-    return;
+    return openLocation(params.id, { fromRouter: true });
   }
-  renderTab(name);
+  return renderTab(name);
 }
 
 function navigateTo(name, params = {}, options = {}) {
   const path = routePath(name, params);
   const hash = '#' + path;
+  rememberCurrentScroll();
   if (!canUseHashRouter()) {
+    _pendingScroll = null;
     renderRoute(routeFromHash(hash));
     return;
   }
   if (window.location.hash === hash) {
-    if (options.force !== false) renderRoute(routeFromHash(hash));
+    if (options.force !== false) { _pendingScroll = null; renderRoute(routeFromHash(hash)); }
     return;
   }
   if (options.replace && window.history && window.history.replaceState) {
     window.history.replaceState(null, '', hash);
+    _pendingScroll = null;
     renderRoute(routeFromHash(hash));
     return;
   }
+  // Programowa nawigacja resetuje scroll; przywracamy tylko przy back/forward.
+  _suppressScrollRestore = true;
   window.location.hash = hash;
 }
 
@@ -837,9 +993,23 @@ function startRouter() {
     renderRoute(routeFromHash(''));
     return;
   }
+  trackViewScroll();
+  setupPullToRefresh();
   if (!window.__spaRouterStarted) {
     window.__spaRouterStarted = true;
-    window.addEventListener('hashchange', () => renderRoute(routeFromHash(window.location.hash)));
+    window.addEventListener('hashchange', () => {
+      const route = routeFromHash(window.location.hash);
+      if (_suppressScrollRestore) {
+        _suppressScrollRestore = false;
+        _pendingScroll = null;
+      } else {
+        // back/forward przeglądarki — przywróć zapamiętaną pozycję listy
+        const path = routePath(route.name, route.params);
+        const y = _viewScrollByPath[path];
+        _pendingScroll = (typeof y === 'number' && y > 1) ? { path, y } : null;
+      }
+      renderRoute(route);
+    });
   }
   if (!window.location.hash) replaceRoute('travels');
   else renderRoute(routeFromHash(window.location.hash));
