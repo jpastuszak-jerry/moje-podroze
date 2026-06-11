@@ -501,6 +501,46 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** nowy agent moze wejsc w repo i zrozumiec aktualny stan bez czytania historii commitow.
 
+### 18. Audyt Claude Code 2026-06-11: wydajnosc list, rate-limit, frontend
+
+**Status:** dopisane po przegladzie projektu (silne/slabe strony) z 2026-06-11. Partia quick-winow zrobiona w `Harden HTTP layer: security headers, ProxyFix, SECRET_KEY warning`: naglowki bezpieczenstwa (CSP, nosniff, X-Frame-Options, Referrer-Policy, HSTS), `ProxyFix` na Renderze i ostrzezenie o braku `SECRET_KEY`. Ponizsze trzy tematy zostaly swiadomie odlozone jako wieksze, bo wymagaja realnej zmiany w warstwie danych albo frontendzie.
+
+**18a. Paginacja list i odchudzenie `get_locations`**
+
+**Problem:** `/api/travels` i `/api/locations` zwracaja cala tabele przy kazdym renderze listy. Dodatkowo `get_locations` liczy `visit_count` przez fan-out join (lokacja -> dzieci -> `travel_locations` -> `travels`) z `COUNT(DISTINCT)`. Przy obecnej skali jest OK (ETag lagodzi transfer), ale to sie nie skaluje liniowo z liczba miejsc/podrozy.
+
+**Propozycja:**
+- dodac paginacje albo limit + lazy load do list podrozy i miejsc,
+- przeniesc liczenie wizyt do osobnego, lekkiego SELECT albo CTE zamiast jednego duzego joina (powiazane z 14a),
+- zachowac istniejacy kontrakt JSON i wyszukiwanie `q`.
+
+**Weryfikacja:** lista podrozy i miejsc renderuje sie z ograniczonym zestawem rekordow, a liczba/koszt zapytan w `get_locations` spada bez zmiany wygladu.
+
+**18b. Rate-limiter logowania odporny na wiele workerow**
+
+**Problem:** `_auth_failures` w `app.py` trzyma stan blednych logowan w slowniku w pamieci procesu. Przy wiecej niz jednym workerze gunicorn kazdy worker liczy proby osobno, wiec lockout jest niespojny i latwiejszy do obejscia. Stan ginie tez przy restarcie/redeployu.
+
+**Propozycja:**
+- albo wymusic 1 workera i udokumentowac to jako swiadoma decyzja,
+- albo przeniesc licznik prob do wspolnego magazynu (np. Redis) lub do tabeli w PostgreSQL z krotkim TTL,
+- zachowac obecny kontrakt 429 + `Retry-After`.
+
+**Weryfikacja:** lockout dziala spojnie niezaleznie od liczby workerow i przezywa restart procesu.
+
+**18c. Odchudzenie frontendu: podzial plikow, delegacja zdarzen, zaleznosci**
+
+**Problem:** UI jest budowane glownie ze stringow HTML z inline `onclick`, co dziala dzieki `jsStringArg`/`escapeAttr`, ale jest kruche i wymusza recznene uciekanie w kazdym miejscu. `app.css` ma ~2200 linii, `locations.js` ~1100 linii w jednym pliku. Zaleznosci sa lekko przestarzale.
+
+**Propozycja:**
+- stopniowo zastepowac inline `onclick` delegacja zdarzen (powiazane z 10 i P4/16),
+- selektywnie dzielic `app.css` i `locations.js` po wyraznych sekcjach odpowiedzialnosci,
+- podbic zaleznosci (`flask`, `psycopg2-binary`, `pydantic`, `gunicorn`) po sprawdzeniu changelogow,
+- usunac duplikacje typu `L.tileLayer(...)` z `map.js` i `stats.js`.
+
+**Zasada:** male, bezpieczne ciecia bez migracji na framework; po kazdym kroku smoke JS i testy kontraktowe musza przechodzic.
+
+**Weryfikacja:** rozmiar plikow i liczba inline handlerow spada, a wyglad/UX pozostaje bez zmian.
+
 ## P4 - Pomysly pozniejsze
 
 ### 13. Import/eksport danych przyjazny dla czlowieka
