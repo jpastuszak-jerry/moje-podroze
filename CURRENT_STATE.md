@@ -12,6 +12,45 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
   `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
   przed wiekszymi refaktorami.
+- Ostatnio zweryfikowane: najnowsza seria zmian aplikacyjnych nie dotyczy juz
+  importerow, tylko UX i stabilizacji produkcji. `e6862c9` dodal undo po
+  miekkim usunieciu, zapamietywanie filtrow/sortowania, pull-to-refresh i
+  odtwarzanie scrolla list. `d974a21` naprawil pusta mape po utwardzeniu CSP:
+  `connect-src` dopuszcza teraz `https://unpkg.com`, bo service worker pobiera
+  Leaflet przez `fetch()`. Pull-to-refresh jest tez wylaczony w widoku mapy,
+  zeby nie kolidowal z przesuwaniem mapy.
+- Weryfikacja 2026-06-12: GitHub Actions dla ostatnich 5 commitow sa zielone,
+  produkcyjny CSP zawiera `connect-src 'self' https://unpkg.com
+  https://nominatim.openstreetmap.org`, a `python tools/smoke_prod.py` przeszedl
+  11/11 OK dla `https://moje-podroze.onrender.com`. Pierwszy probe `/healthz`
+  mial timeout, ale ponowienie zwrocilo `db=ok`, a pelny smoke pozniej przeszedl.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `09c1f03 Optimize
+  location visit aggregation`: maly performance pass dla `/api/locations` i
+  `/api/map-locations`. Stary szeroki join `locations -> child ->
+  travel_locations -> travels` z `COUNT(DISTINCT t.id)` i `GROUP BY` po
+  kolumnach miejsca zostal zastapiony wspolnym CTE `location_visit_stats`,
+  ktory najpierw preagreguje wizyty bezposrednie i wizyty przez bezposrednie
+  dzieci miejsc. Kontrakt JSON zostal zachowany (`visit_count`, `last_visit`,
+  `first_visit`, `travel_names`).
+- Weryfikacja lokalnego performance passu: `python -m unittest discover -s
+  tests` przeszedl 46/46, `python -m py_compile ...` dla glownych modulow
+  backendu przeszedl, `python -m ruff check .` przeszedl, `git diff --check`
+  przeszedl. Dodatkowo test client na prawdziwym `DATABASE_URL` zwrocil
+  `/api/locations` 200 z 707 rekordami i `/api/map-locations` 200 z 520
+  rekordami, wiec SQL przeszedl na PostgreSQL.
+- Po pushu `09c1f03` GitHub Actions przeszly na zielono, a produkcyjny smoke
+  `python tools/smoke_prod.py` przeszedl 11/11 OK dla
+  `https://moje-podroze.onrender.com`.
+- Ostatnio domkniete: zweryfikowano 56 historycznych rezerwacji Booking.com
+  wzgledem bazy Neon. Przed zmianami 4 noclegi byly juz potwierdzone jako
+  miejsca podrozy z datami. Dopisano 50 nowych miejsc, 23 wizyty z datami do
+  pasujacych wycieczek i uzupelniono notatki istniejacego `Hotel IOR` dla 2
+  starszych pobytow bez pasujacej wycieczki. Po kontroli 27 rezerwacji ma
+  miejsce i wizyte w `travel_locations`, a 29 zostaje jako samo miejsce z
+  notatka `UWAGA: Booking.com...` do pozniejszego powiazania. Backup i raport:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_booking\booking_reconcile_backup_20260606_122132.json`
+  oraz
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_booking\booking_reconcile_applied_20260606_122135.json`.
 - Ostatnio domkniete: dodano `ARCHITECTURE_BLUEPRINT.md`, czyli przekrojowy
   opis aktualnej architektury aplikacji: frontend SPA/PWA, backend Flask,
   Neon PostgreSQL, Render deploy, CI, smoke testy, model danych, glowne flow i
@@ -105,13 +144,14 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 1. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
    konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
-   probki uzytkownikowi. Aktualnie 480 aktywnych miejsc ma brakujacy
+   probki uzytkownikowi. Aktualnie 475 aktywnych miejsc ma brakujacy
    `address` albo `notes`.
 2. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
    `ambiguous` i `manual_review_excluded`.
 3. Prawdziwe browser E2E po naprawie Node/Playwright:
-   login, interakcje na liscie podrozy, szczegoly podrozy, Statystyki, Rocznik, Mapa.
+   login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
+   scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
 4. Realistyczny test integracyjny PostgreSQL na malym fixture:
    podroze, miejsca nadrzedne/podrzedne, uczestnicy, kosz, statystyki.
 5. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
