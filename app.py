@@ -281,7 +281,9 @@ _CSP_POLICY = "; ".join([
     "script-src 'self' 'unsafe-inline' https://unpkg.com",
     "style-src 'self' 'unsafe-inline' https://unpkg.com",
     "img-src 'self' data: https://unpkg.com https://*.tile.openstreetmap.org",
-    "connect-src 'self' https://nominatim.openstreetmap.org",
+    # connect-src obejmuje unpkg, bo to service worker pobiera Leaflet z CDN
+    # przez fetch() (staleWhileRevalidate) — a SW fetch podlega connect-src.
+    "connect-src 'self' https://unpkg.com https://nominatim.openstreetmap.org",
     "font-src 'self' data:",
     "manifest-src 'self'",
     "worker-src 'self'",

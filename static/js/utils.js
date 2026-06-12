@@ -886,6 +886,7 @@ function setupPullToRefresh() {
   view.addEventListener('touchstart', (e) => {
     pulling = view.scrollTop <= 0
       && e.touches.length === 1
+      && !view.classList.contains('map-view-mode')
       && !document.querySelector('.modal-overlay, .confirm-overlay');
     if (pulling) { startY = e.touches[0].clientY; dist = 0; }
   }, { passive: true });
