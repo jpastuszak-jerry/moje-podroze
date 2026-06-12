@@ -743,6 +743,82 @@ class ApiContractSmokeTests(unittest.TestCase):
         )
         self.assertEqual(data['needs_attention'][0]['visit_count'], 0)
 
+    def test_locations_list_uses_preaggregated_visit_stats(self):
+        rows = [{
+            'id': 1,
+            'name': 'Helsinki',
+            'country_name': 'Finland',
+            'location_type': 'miasto',
+            'address': 'Market Square',
+            'notes': 'Stolica Finlandii',
+            'latitude': 60.17,
+            'longitude': 24.94,
+            'parent_location_id': None,
+            'parent_name': None,
+            'visit_count': 2,
+            'last_visit': date(2025, 7, 21),
+        }]
+        captured = []
+
+        def capture_locations_query(sql, params=(), one=False):
+            self.assertFalse(one)
+            captured.append(' '.join(sql.split()))
+            return rows
+
+        with patch.object(locations, 'query', side_effect=capture_locations_query):
+            response = self.client.get('/api/locations')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data[0]['visit_count'], 2)
+        self.assertEqual(data[0]['last_visit'], '2025-07-21')
+        self.assertEqual(len(captured), 1)
+        sql = captured[0]
+        self.assertIn('WITH location_visit_targets AS', sql)
+        self.assertIn('location_visit_stats AS', sql)
+        self.assertIn('COUNT(DISTINCT travel_id) AS visit_count', sql)
+        self.assertIn('LEFT JOIN location_visit_stats vs ON vs.location_id = l.id', sql)
+        self.assertNotIn('child.id = l.id OR child.parent_location_id = l.id', sql)
+        self.assertNotIn('GROUP BY l.id, l.name, c.name', sql)
+
+    def test_map_locations_reuses_preaggregated_visit_stats(self):
+        rows = [{
+            'id': 1,
+            'name': 'Helsinki',
+            'country_name': 'Finland',
+            'location_type': 'miasto',
+            'address': 'Market Square',
+            'notes': 'Stolica Finlandii',
+            'latitude': 60.17,
+            'longitude': 24.94,
+            'visit_count': 2,
+            'first_visit': date(2025, 7, 18),
+            'last_visit': date(2025, 7, 21),
+            'travel_names': 'Helsinki',
+        }]
+        captured = []
+
+        def capture_locations_query(sql, params=(), one=False):
+            self.assertFalse(one)
+            captured.append(' '.join(sql.split()))
+            return rows
+
+        with patch.object(locations, 'query', side_effect=capture_locations_query):
+            response = self.client.get('/api/map-locations')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data[0]['visit_count'], 2)
+        self.assertEqual(data[0]['first_visit'], '2025-07-18')
+        self.assertEqual(len(captured), 1)
+        sql = captured[0]
+        self.assertIn('WITH location_visit_targets AS', sql)
+        self.assertIn('location_visit_stats AS', sql)
+        self.assertIn('STRING_AGG(DISTINCT travel_name', sql)
+        self.assertIn('LEFT JOIN location_visit_stats vs ON vs.location_id = l.id', sql)
+        self.assertNotIn('child.id = l.id OR child.parent_location_id = l.id', sql)
+        self.assertNotIn('GROUP BY l.id, l.name, l.latitude', sql)
+
     def test_location_detail_contract_derives_last_visit_from_visit_dates(self):
         location_row = {
             'id': 1,

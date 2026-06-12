@@ -10,35 +10,62 @@ from schemas import LocationCreate, LocationUpdate
 bp = Blueprint('locations', __name__)
 
 
+LOCATION_VISIT_STATS_CTE = """
+    WITH location_visit_targets AS (
+        SELECT l.id AS location_id,
+               tl.travel_id,
+               COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date) AS visit_date,
+               t.name AS travel_name
+        FROM travel_locations tl
+        JOIN locations l ON l.id = tl.location_id AND l.deleted_at IS NULL
+        JOIN travels t ON t.id = tl.travel_id AND t.deleted_at IS NULL
+
+        UNION ALL
+
+        SELECT parent.id AS location_id,
+               tl.travel_id,
+               COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date) AS visit_date,
+               t.name AS travel_name
+        FROM travel_locations tl
+        JOIN locations child ON child.id = tl.location_id AND child.deleted_at IS NULL
+        JOIN locations parent ON parent.id = child.parent_location_id AND parent.deleted_at IS NULL
+        JOIN travels t ON t.id = tl.travel_id AND t.deleted_at IS NULL
+    ),
+    location_visit_stats AS (
+        SELECT location_id,
+               COUNT(DISTINCT travel_id) AS visit_count,
+               MIN(visit_date) AS first_visit,
+               MAX(visit_date) AS last_visit,
+               STRING_AGG(DISTINCT travel_name, ', ' ORDER BY travel_name) AS travel_names
+        FROM location_visit_targets
+        GROUP BY location_id
+    )
+"""
+
+
 @bp.route('/api/locations')
 def get_locations():
     q = request.args.get('q', '').strip()
-    base_sql = """
+    base_sql = LOCATION_VISIT_STATS_CTE + """
             SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type,
                    l.address, l.notes, l.latitude, l.longitude,
                    l.parent_location_id, pl.name AS parent_name,
-                   COUNT(DISTINCT t.id) AS visit_count,
-                   MAX(COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date)) AS last_visit
+                   COALESCE(vs.visit_count, 0) AS visit_count,
+                   vs.last_visit
             FROM locations l
             JOIN countries c ON l.country_id = c.id
             JOIN location_types lt ON l.location_type_id = lt.id
             LEFT JOIN locations pl ON l.parent_location_id = pl.id
-            LEFT JOIN locations child ON ((child.id = l.id OR child.parent_location_id = l.id) AND child.deleted_at IS NULL)
-            LEFT JOIN travel_locations tl ON tl.location_id = child.id
-            LEFT JOIN travels t ON tl.travel_id = t.id AND t.deleted_at IS NULL
+            LEFT JOIN location_visit_stats vs ON vs.location_id = l.id
     """
     if q:
         rows = query(base_sql + """
             WHERE l.deleted_at IS NULL AND (l.name ILIKE %s OR c.name ILIKE %s)
-            GROUP BY l.id, l.name, c.name, lt.name, l.address, l.notes,
-                     l.latitude, l.longitude, l.parent_location_id, pl.name
             ORDER BY c.name, l.name
         """, (f'%{q}%', f'%{q}%'))
     else:
         rows = query(base_sql + """
             WHERE l.deleted_at IS NULL
-            GROUP BY l.id, l.name, c.name, lt.name, l.address, l.notes,
-                     l.latitude, l.longitude, l.parent_location_id, pl.name
             ORDER BY c.name, l.name
         """)
     locs = []
@@ -259,25 +286,21 @@ def restore_location(lid):
 
 @bp.route('/api/map-locations')
 def get_map_locations():
-    rows = query("""
+    rows = query(LOCATION_VISIT_STATS_CTE + """
         SELECT l.id, l.name, l.latitude, l.longitude,
                l.address, l.notes,
                c.name AS country_name,
                lt.name AS location_type,
-               COUNT(DISTINCT t.id) AS visit_count,
-               MIN(COALESCE(tl.arrival_date, tl.departure_date, t.start_date, t.end_date)) AS first_visit,
-               MAX(COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date)) AS last_visit,
-               STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name) AS travel_names
+               COALESCE(vs.visit_count, 0) AS visit_count,
+               vs.first_visit,
+               vs.last_visit,
+               vs.travel_names
         FROM locations l
         JOIN countries c ON l.country_id = c.id
         JOIN location_types lt ON l.location_type_id = lt.id
-        LEFT JOIN locations child ON ((child.id = l.id OR child.parent_location_id = l.id) AND child.deleted_at IS NULL)
-        LEFT JOIN travel_locations tl ON tl.location_id = child.id
-        LEFT JOIN travels t ON tl.travel_id = t.id AND t.deleted_at IS NULL
+        LEFT JOIN location_visit_stats vs ON vs.location_id = l.id
         WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL
           AND l.deleted_at IS NULL
-        GROUP BY l.id, l.name, l.latitude, l.longitude,
-                 l.address, l.notes, c.name, lt.name
         ORDER BY c.name, l.name
     """)
     return etag_json([dict(r) for r in rows])

@@ -101,7 +101,7 @@ def fake_locations_query(sql, params=(), one=False):
     normalized = _normalize_sql(sql)
     if not one and 'WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL' in normalized:
         return [dict(MAP_LOCATION_ROW)]
-    if not one and 'COUNT(DISTINCT t.id) AS visit_count' in normalized:
+    if not one and 'location_visit_stats AS' in normalized and 'WHERE l.deleted_at IS NULL' in normalized:
         return [dict(LOCATION_LIST_ROW)]
     if one and 'WHERE LOWER(l.name) = LOWER(%s)' in normalized:
         return None
