@@ -59,6 +59,14 @@ python -m unittest discover -s tests
 git diff --check
 ```
 
+Opcjonalny test integracyjny PostgreSQL jest pomijany bez `TEST_DATABASE_URL`.
+Uruchamia sie na tymczasowym schemacie i sprzata go po sobie:
+
+```powershell
+$env:TEST_DATABASE_URL = "postgresql://..."
+python -m unittest tests.test_postgres_integration
+```
+
 Przy zmianach JS sprawdzic skladnie zmienionych plikow, np.:
 
 ```powershell

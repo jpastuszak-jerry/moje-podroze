@@ -777,6 +777,8 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertIn('WITH location_visit_targets AS', sql)
         self.assertIn('location_visit_stats AS', sql)
         self.assertIn('COUNT(DISTINCT travel_id) AS visit_count', sql)
+        self.assertIn('MIN(visit_start) AS first_visit', sql)
+        self.assertIn('MAX(visit_end) AS last_visit', sql)
         self.assertIn('LEFT JOIN location_visit_stats vs ON vs.location_id = l.id', sql)
         self.assertNotIn('child.id = l.id OR child.parent_location_id = l.id', sql)
         self.assertNotIn('GROUP BY l.id, l.name, c.name', sql)
@@ -814,6 +816,8 @@ class ApiContractSmokeTests(unittest.TestCase):
         sql = captured[0]
         self.assertIn('WITH location_visit_targets AS', sql)
         self.assertIn('location_visit_stats AS', sql)
+        self.assertIn('COALESCE(tl.arrival_date, tl.departure_date', sql)
+        self.assertIn('COALESCE(tl.departure_date, tl.arrival_date', sql)
         self.assertIn('STRING_AGG(DISTINCT travel_name', sql)
         self.assertIn('LEFT JOIN location_visit_stats vs ON vs.location_id = l.id', sql)
         self.assertNotIn('child.id = l.id OR child.parent_location_id = l.id', sql)

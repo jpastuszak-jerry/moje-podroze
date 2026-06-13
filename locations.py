@@ -14,7 +14,8 @@ LOCATION_VISIT_STATS_CTE = """
     WITH location_visit_targets AS (
         SELECT l.id AS location_id,
                tl.travel_id,
-               COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date) AS visit_date,
+               COALESCE(tl.arrival_date, tl.departure_date, t.start_date, t.end_date) AS visit_start,
+               COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date) AS visit_end,
                t.name AS travel_name
         FROM travel_locations tl
         JOIN locations l ON l.id = tl.location_id AND l.deleted_at IS NULL
@@ -24,7 +25,8 @@ LOCATION_VISIT_STATS_CTE = """
 
         SELECT parent.id AS location_id,
                tl.travel_id,
-               COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date) AS visit_date,
+               COALESCE(tl.arrival_date, tl.departure_date, t.start_date, t.end_date) AS visit_start,
+               COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date) AS visit_end,
                t.name AS travel_name
         FROM travel_locations tl
         JOIN locations child ON child.id = tl.location_id AND child.deleted_at IS NULL
@@ -34,8 +36,8 @@ LOCATION_VISIT_STATS_CTE = """
     location_visit_stats AS (
         SELECT location_id,
                COUNT(DISTINCT travel_id) AS visit_count,
-               MIN(visit_date) AS first_visit,
-               MAX(visit_date) AS last_visit,
+               MIN(visit_start) AS first_visit,
+               MAX(visit_end) AS last_visit,
                STRING_AGG(DISTINCT travel_name, ', ' ORDER BY travel_name) AS travel_names
         FROM location_visit_targets
         GROUP BY location_id
