@@ -306,6 +306,24 @@ class PostgresIntegrationTests(unittest.TestCase):
         response = self.client.delete(f'/api/travels/{travel_id}?hard=1')
         self.assertEqual(response.status_code, 200)
 
+    def _location_payload(self, **overrides):
+        payload = {
+            'name': 'Fixture location flow',
+            'country_id': 1,
+            'location_type_id': 2,
+            'parent_location_id': None,
+            'address': 'Temporary integration address',
+            'notes': 'Temporary integration notes',
+            'latitude': 61.10000,
+            'longitude': 25.10000,
+        }
+        payload.update(overrides)
+        return payload
+
+    def _hard_delete_location(self, location_id):
+        response = self.client.delete(f'/api/locations/{location_id}?hard=1')
+        self.assertEqual(response.status_code, 200)
+
     def test_locations_and_map_aggregate_parent_child_visits(self):
         response = self.client.get('/api/locations')
 
@@ -474,6 +492,66 @@ class PostgresIntegrationTests(unittest.TestCase):
             self.assertEqual(data['locations'][0]['departure_date'], '2025-09-04')
         finally:
             self._hard_delete_travel(travel_id)
+
+    def test_location_create_duplicate_update_delete_restore_and_hard_delete(self):
+        create_response = self.client.post('/api/locations', json=self._location_payload())
+
+        self.assertEqual(create_response.status_code, 201)
+        location_id = create_response.get_json()['id']
+        try:
+            duplicate = self.client.post('/api/locations', json=self._location_payload())
+            self.assertEqual(duplicate.status_code, 409)
+            duplicate_payload = duplicate.get_json()
+            self.assertEqual(duplicate_payload['duplicate'], True)
+            self.assertEqual(duplicate_payload['existing']['id'], location_id)
+
+            detail = self.client.get(f'/api/locations/{location_id}')
+            self.assertEqual(detail.status_code, 200)
+            data = detail.get_json()
+            self.assertEqual(data['name'], 'Fixture location flow')
+            self.assertEqual(data['country_name'], 'Finland')
+            self.assertEqual(data['location_type'], 'wyspa')
+            self.assertEqual(data['visit_count'], 0)
+
+            update_response = self.client.put(f'/api/locations/{location_id}', json=self._location_payload(
+                name='Fixture location flow updated',
+                location_type_id=1,
+                parent_location_id=1,
+                address='Updated integration address',
+                notes='Updated integration notes',
+                latitude=61.23456,
+                longitude=25.23456,
+            ))
+            self.assertEqual(update_response.status_code, 200)
+
+            updated = self.client.get(f'/api/locations/{location_id}')
+            self.assertEqual(updated.status_code, 200)
+            updated_data = updated.get_json()
+            self.assertEqual(updated_data['name'], 'Fixture location flow updated')
+            self.assertEqual(updated_data['location_type'], 'miasto')
+            self.assertEqual(updated_data['parent_location_id'], 1)
+            self.assertEqual(updated_data['parent_name'], 'Helsinki')
+            self.assertEqual(updated_data['address'], 'Updated integration address')
+            self.assertEqual(updated_data['notes'], 'Updated integration notes')
+            self.assertEqual(updated_data['latitude'], '61.23456')
+            self.assertEqual(updated_data['longitude'], '25.23456')
+
+            soft_delete = self.client.delete(f'/api/locations/{location_id}')
+            self.assertEqual(soft_delete.status_code, 200)
+            self.assertEqual(self.client.get(f'/api/locations/{location_id}').status_code, 404)
+
+            trash_after_delete = self.client.get('/api/trash')
+            self.assertEqual(trash_after_delete.status_code, 200)
+            deleted_location_names = [item['name'] for item in trash_after_delete.get_json()['locations']]
+            self.assertIn('Fixture location flow updated', deleted_location_names)
+
+            restore = self.client.post(f'/api/locations/{location_id}/restore')
+            self.assertEqual(restore.status_code, 200)
+            self.assertEqual(self.client.get(f'/api/locations/{location_id}').status_code, 200)
+        finally:
+            self._hard_delete_location(location_id)
+
+        self.assertEqual(self.client.get(f'/api/locations/{location_id}').status_code, 404)
 
 
 if __name__ == '__main__':
