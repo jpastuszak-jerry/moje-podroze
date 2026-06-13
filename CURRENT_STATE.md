@@ -50,6 +50,20 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Weryfikacja po deployu `ef39e44`: GitHub Actions przeszly na zielono, a nowy
   `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil produkcyjny
   build `ef39e44`.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `9ce436d Add
+  PostgreSQL integration smoke`: dodano opcjonalny test integracyjny PostgreSQL
+  na tymczasowym schemacie `TEST_DATABASE_URL`. Fixture sprawdza podroze,
+  miejsca nadrzedne/podrzedne, uczestnika, kosz, statystyki i realne zapytania
+  `/api/locations`, `/api/map-locations`, `/api/locations/<id>`,
+  `/api/stats?year=2025` oraz `/api/trash`. Przy okazji naprawiono agregacje
+  mapy miejsc: `first_visit` liczy teraz start wizyty, a `last_visit` koniec
+  wizyty, zamiast uzywac jednej daty preferujacej wyjazd.
+- Weryfikacja po `9ce436d`: lokalnie przeszly `py_compile` glownych modulow i
+  nowego testu, `python -m ruff check .`, `python -m unittest discover -s
+  tests` 54/54 OK z 4 skipami bez `TEST_DATABASE_URL`, realny
+  `TEST_DATABASE_URL` test integracyjny 4/4 OK, `git diff --check`, GitHub
+  Actions zielone oraz produkcyjny `python tools/smoke_prod.py` 12/12 OK dla
+  buildu `9ce436d` na Renderze.
 - Ostatnio domkniete: zweryfikowano 56 historycznych rezerwacji Booking.com
   wzgledem bazy Neon. Przed zmianami 4 noclegi byly juz potwierdzone jako
   miejsca podrozy z datami. Dopisano 50 nowych miejsc, 23 wizyty z datami do
@@ -118,8 +132,9 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_geocode\db_geocode_applied_20260603_135807.json`
   i
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_geocode\db_geocode_remaining_20260603_135807.csv`.
-- GitHub Actions dla ostatniego commita byly zielone.
-- Produkcyjny smoke po deployu przeszedl: `python tools/smoke_prod.py`, 11/11 OK.
+- GitHub Actions dla ostatniego commita `9ce436d` byly zielone.
+- Produkcyjny smoke po deployu przeszedl: `python tools/smoke_prod.py`, 12/12 OK
+  dla buildu `9ce436d`.
 
 ## Maintenance Rule
 
@@ -143,9 +158,10 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   read/write API, kreator transakcyjny, statystyki, rocznik, mapa, kosz,
   soft delete/restore, podstawowe helpery UI, kontrakt startowego shella SPA
   oraz smoke renderowania kluczowych ekranow UI. Produkcyjny smoke sprawdza
-  tez build SHA i CSP wymagany przez mape.
-- Slabiej pokryte: prawdziwe E2E w przegladarce, realne PostgreSQL fixture,
-  importy danych.
+  tez build SHA i CSP wymagany przez mape. Jest tez pierwszy opcjonalny realny
+  PostgreSQL fixture na tymczasowym schemacie.
+- Slabiej pokryte: prawdziwe E2E w przegladarce, importy danych i szersze
+  warianty zapisu/edycji w realnym PostgreSQL fixture.
 - `node` w normalnym PATH jest obecnie problematyczny: alias WindowsApps zwraca
   `Odmowa dostepu`. JS smoke da sie uruchomic przez Node REPL MCP, ale docelowo
   warto zainstalowac zwykly Node LTS w PATH.
@@ -162,8 +178,8 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 3. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-4. Realistyczny test integracyjny PostgreSQL na malym fixture:
-   podroze, miejsca nadrzedne/podrzedne, uczestnicy, kosz, statystyki.
+4. Rozszerzyc realny PostgreSQL fixture o zapis kreatora, edycje podrozy i
+   bardziej zlozone przypadki dat, jesli kolejne prace dotkna tych flow.
 5. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
    statystyk/filtry, jesli bedzie to przydatne w UX i testach.
 6. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
