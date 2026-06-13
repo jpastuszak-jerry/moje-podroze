@@ -41,6 +41,15 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Po pushu `09c1f03` GitHub Actions przeszly na zielono, a produkcyjny smoke
   `python tools/smoke_prod.py` przeszedl 11/11 OK dla
   `https://moje-podroze.onrender.com`.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `ef39e44 Expose build
+  info in production smoke`: `/healthz` zwraca teraz publiczny blok `build`
+  z wersja aplikacji i SHA commita wykrytym ze zmiennych Render/GitHub albo
+  lokalnego `.git`. `tools/smoke_prod.py` sprawdza teraz zgodnosc
+  produkcyjnego `build.source_revision` z lokalnym HEAD oraz naglowki
+  bezpieczenstwa/CSP, w tym `connect-src` z `https://unpkg.com` dla mapy.
+- Weryfikacja po deployu `ef39e44`: GitHub Actions przeszly na zielono, a nowy
+  `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil produkcyjny
+  build `ef39e44`.
 - Ostatnio domkniete: zweryfikowano 56 historycznych rezerwacji Booking.com
   wzgledem bazy Neon. Przed zmianami 4 noclegi byly juz potwierdzone jako
   miejsca podrozy z datami. Dopisano 50 nowych miejsc, 23 wizyty z datami do
@@ -133,7 +142,8 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Dobrze pokryte: auth, prywatne API, shell, PWA smoke produkcji, podstawowe
   read/write API, kreator transakcyjny, statystyki, rocznik, mapa, kosz,
   soft delete/restore, podstawowe helpery UI, kontrakt startowego shella SPA
-  oraz smoke renderowania kluczowych ekranow UI.
+  oraz smoke renderowania kluczowych ekranow UI. Produkcyjny smoke sprawdza
+  tez build SHA i CSP wymagany przez mape.
 - Slabiej pokryte: prawdziwe E2E w przegladarce, realne PostgreSQL fixture,
   importy danych.
 - `node` w normalnym PATH jest obecnie problematyczny: alias WindowsApps zwraca
