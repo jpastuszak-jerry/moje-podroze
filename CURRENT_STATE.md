@@ -132,9 +132,9 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_geocode\db_geocode_applied_20260603_135807.json`
   i
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_geocode\db_geocode_remaining_20260603_135807.csv`.
-- GitHub Actions dla ostatniego commita `9ce436d` byly zielone.
-- Produkcyjny smoke po deployu przeszedl: `python tools/smoke_prod.py`, 12/12 OK
-  dla buildu `9ce436d`.
+- GitHub Actions dla najnowszego pushu na `main` byly zielone.
+- Produkcyjny smoke po najnowszym deployu przeszedl: `python tools/smoke_prod.py`,
+  12/12 OK.
 
 ## Maintenance Rule
 
