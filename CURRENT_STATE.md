@@ -12,16 +12,19 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
   `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
   przed wiekszymi refaktorami.
-- Ostatnio domkniete lokalnie: UX centrum brakow danych miejsc
+- Ostatnio domkniete i wypchniete na GitHub w commicie `a5645be Improve
+  location data quality worklist`: UX centrum brakow danych miejsc
   `#/locations/todo`. Widok pamieta filtr i sortowanie, obsluguje deep linki z
   query stringiem (`missing`, `sort`), sortuje po priorytecie albo wybranym
   trybie, pokazuje licznik wysokiego priorytetu oraz kolorowe etykiety typow
   brakow na kartach.
-- Weryfikacja lokalna tej zmiany: zwykly `node` w PATH nadal zwraca `Odmowa
-  dostepu`, wiec `tools/smoke_js.mjs` uruchomiono przez Node REPL MCP; test
-  przeszedl. Przeszly tez `python -m py_compile ...`, `python -m ruff check .`,
+- Weryfikacja tej zmiany: zwykly `node` w PATH nadal zwraca `Odmowa dostepu`,
+  wiec `tools/smoke_js.mjs` uruchomiono przez Node REPL MCP; test przeszedl.
+  Przeszly tez `python -m py_compile ...`, `python -m ruff check .`,
   `python -m unittest discover -s tests` (57 testow, 7 skipow) oraz
-  `git diff --check`.
+  `git diff --check`. Po pushu GitHub Actions dla `a5645be` byly zielone, a
+  produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil
+  build `a5645be`.
 - Lokalny Flask dla tej zmiany wystartowal i `/healthz` zwrocil 200, ale
   in-app Browser ponownie zablokowal `http://127.0.0.1:5000`
   (`ERR_BLOCKED_BY_CLIENT`), wiec browser E2E lokalnie nadal jest blokerem.
