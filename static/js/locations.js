@@ -427,6 +427,10 @@ const LOCATION_TODO_BADGE_TONES = {
   not_visited: 'green',
 };
 
+const LOCATION_TODO_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
+  ? new Intl.Collator('pl', { sensitivity: 'base' })
+  : null;
+
 function openLocationTodoView() {
   showTab('locationTodo');
 }
@@ -515,34 +519,58 @@ function applyLocationTodoRouteParams(params = {}) {
 }
 
 function locationTodoPriorityScore(item) {
-  const keys = new Set(item.missing_keys || []);
+  const keys = item.missing_keys || [];
   return (Number(item.missing_count || 0) * 10)
-    + (keys.has('missing_gps') ? 4 : 0)
-    + (keys.has('missing_address') ? 3 : 0)
-    + (keys.has('missing_notes') ? 2 : 0)
-    + (keys.has('not_visited') ? 1 : 0);
+    + (keys.includes('missing_gps') ? 4 : 0)
+    + (keys.includes('missing_address') ? 3 : 0)
+    + (keys.includes('missing_notes') ? 2 : 0)
+    + (keys.includes('not_visited') ? 1 : 0);
+}
+
+function compareLocationTodoText(a, b) {
+  const left = String(a || '');
+  const right = String(b || '');
+  return LOCATION_TODO_COLLATOR
+    ? LOCATION_TODO_COLLATOR.compare(left, right)
+    : left.localeCompare(right, 'pl', { sensitivity: 'base' });
+}
+
+function locationTodoSortRecord(item, index) {
+  return {
+    item,
+    index,
+    countryName: item.country_name || '',
+    name: item.name || '',
+    missingCount: Number(item.missing_count || 0),
+    priorityScore: locationTodoPriorityScore(item),
+    visitCount: Number(item.visit_count || 0),
+  };
 }
 
 function compareLocationTodoName(a, b) {
-  return String(a.name || '').localeCompare(String(b.name || ''), 'pl', { sensitivity: 'base' });
+  return compareLocationTodoText(a.name, b.name) || (a.index - b.index);
 }
 
 function compareLocationTodoCountryName(a, b) {
-  const country = String(a.country_name || '').localeCompare(String(b.country_name || ''), 'pl', { sensitivity: 'base' });
-  return country || compareLocationTodoName(a, b);
+  return compareLocationTodoText(a.countryName, b.countryName)
+    || compareLocationTodoText(a.name, b.name)
+    || (a.index - b.index);
 }
 
 function sortLocationTodoItems(items) {
-  const sorted = [...items];
+  const sorted = (items || []).map(locationTodoSortRecord);
   if (currentLocationTodoSort === 'missing_desc') {
-    return sorted.sort((a, b) => (Number(b.missing_count || 0) - Number(a.missing_count || 0)) || compareLocationTodoCountryName(a, b));
+    sorted.sort((a, b) => (b.missingCount - a.missingCount) || compareLocationTodoCountryName(a, b));
+    return sorted.map(record => record.item);
   }
-  if (currentLocationTodoSort === 'country_name') return sorted.sort(compareLocationTodoCountryName);
-  if (currentLocationTodoSort === 'name_asc') return sorted.sort(compareLocationTodoName);
+  if (currentLocationTodoSort === 'country_name') return sorted.sort(compareLocationTodoCountryName).map(record => record.item);
+  if (currentLocationTodoSort === 'name_asc') return sorted.sort(compareLocationTodoName).map(record => record.item);
   if (currentLocationTodoSort === 'visit_count_asc') {
-    return sorted.sort((a, b) => (Number(a.visit_count || 0) - Number(b.visit_count || 0)) || compareLocationTodoCountryName(a, b));
+    sorted.sort((a, b) => (a.visitCount - b.visitCount) || compareLocationTodoCountryName(a, b));
+    return sorted.map(record => record.item);
   }
-  return sorted.sort((a, b) => (locationTodoPriorityScore(b) - locationTodoPriorityScore(a)) || compareLocationTodoCountryName(a, b));
+  sorted.sort((a, b) => (b.priorityScore - a.priorityScore) || compareLocationTodoCountryName(a, b));
+  return sorted.map(record => record.item);
 }
 
 function locationTodoBadgeItems(item, labels) {

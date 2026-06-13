@@ -25,6 +25,12 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   `git diff --check`. Po pushu GitHub Actions dla `a5645be` byly zielone, a
   produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil
   build `a5645be`.
+- Ostatnia poprawka po uwadze o wolniejszym ladowaniu danych: zoptymalizowano
+  klientowe sortowanie `#/locations/todo`. Przyczyna byla w komparatorze
+  priorytetu, ktory dla kilkuset miejsc wielokrotnie tworzyl `Set` i odpalal
+  `localeCompare`. Teraz rekord sortowania jest przygotowywany raz, a polskie
+  porownania tekstu uzywaja jednego `Intl.Collator`. Syntetyczny benchmark 543
+  rekordow spadl ok. z 81 ms mediany do ok. 1 ms.
 - Lokalny Flask dla tej zmiany wystartowal i `/healthz` zwrocil 200, ale
   in-app Browser ponownie zablokowal `http://127.0.0.1:5000`
   (`ERR_BLOCKED_BY_CLIENT`), wiec browser E2E lokalnie nadal jest blokerem.
