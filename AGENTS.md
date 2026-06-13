@@ -85,7 +85,10 @@ Po deployu na Renderze uruchomic bezsekretowy smoke produkcji:
 python tools/smoke_prod.py
 ```
 
-Skrypt domyslnie sprawdza `https://moje-podroze.onrender.com`: `/healthz`, shell aplikacji, status auth, blokade `/api/travels` bez sesji, `/sw.js`, manifest PWA i kluczowe ikony.
+Skrypt domyslnie sprawdza `https://moje-podroze.onrender.com`: `/healthz`,
+build/commit SHA z healthchecka, naglowki bezpieczenstwa i CSP dla mapy
+(`connect-src` musi dopuszczac `unpkg.com`), shell aplikacji, status auth,
+blokade `/api/travels` bez sesji, `/sw.js`, manifest PWA i kluczowe ikony.
 
 Pelnych testow automatycznych jeszcze nie ma, ale repo ma pierwszy pakiet smoke testow Python/JS. Dla zmian UI nadal konieczna jest krotka weryfikacja reczna w przegladarce po deployu.
 

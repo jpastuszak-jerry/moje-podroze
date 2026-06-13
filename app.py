@@ -13,8 +13,10 @@ import json
 import os
 import time
 from datetime import date, datetime, timedelta, timezone
+from functools import lru_cache
 from hmac import compare_digest
 from math import ceil
+from pathlib import Path
 from threading import Lock
 
 from flask import Flask, Response, jsonify, render_template, request, session
@@ -76,6 +78,15 @@ app.register_blueprint(stats.bp)
 
 
 BACKUP_SCHEMA_VERSION = '2.0'
+APP_VERSION = '1.1.0'
+REVISION_ENV_KEYS = (
+    'RENDER_GIT_COMMIT',
+    'RENDER_COMMIT',
+    'COMMIT_SHA',
+    'SOURCE_VERSION',
+    'GIT_COMMIT',
+    'GITHUB_SHA',
+)
 
 
 def _env_int(name, default):
@@ -83,6 +94,75 @@ def _env_int(name, default):
         return int(os.environ.get(name, str(default)))
     except ValueError:
         return default
+
+
+def _git_dir():
+    path = Path(app.root_path) / '.git'
+    try:
+        if path.is_file():
+            content = path.read_text(encoding='utf-8').strip()
+            if content.startswith('gitdir:'):
+                gitdir = content.split(':', 1)[1].strip()
+                path = Path(gitdir)
+                if not path.is_absolute():
+                    path = Path(app.root_path) / path
+        return path if path.exists() else None
+    except OSError:
+        return None
+
+
+def _read_packed_ref(git_dir, ref):
+    packed_refs = git_dir / 'packed-refs'
+    try:
+        for line in packed_refs.read_text(encoding='utf-8').splitlines():
+            if not line or line.startswith(('#', '^')):
+                continue
+            revision, _, ref_name = line.partition(' ')
+            if ref_name == ref:
+                return revision.strip()
+    except OSError:
+        return None
+    return None
+
+
+def _read_git_revision():
+    git_dir = _git_dir()
+    if not git_dir:
+        return None
+    try:
+        head = (git_dir / 'HEAD').read_text(encoding='utf-8').strip()
+    except OSError:
+        return None
+    if head.startswith('ref:'):
+        ref = head.split(':', 1)[1].strip()
+        try:
+            revision = (git_dir / ref).read_text(encoding='utf-8').strip()
+        except OSError:
+            revision = _read_packed_ref(git_dir, ref)
+        return revision or None
+    return head or None
+
+
+@lru_cache(maxsize=1)
+def source_revision():
+    for key in REVISION_ENV_KEYS:
+        value = (os.environ.get(key) or '').strip()
+        if value:
+            return value, key
+    revision = _read_git_revision()
+    if revision:
+        return revision, '.git'
+    return None, None
+
+
+def build_info():
+    revision, source = source_revision()
+    return {
+        'app_version': APP_VERSION,
+        'source_revision': revision,
+        'source_revision_short': revision[:7] if revision else None,
+        'source_revision_source': source,
+    }
 
 EXPORT_TABLE_ORDERS = {
     'countries':           'id',
@@ -449,11 +529,12 @@ def export_database():
 @app.route('/healthz')
 def healthz():
     """Healthcheck dla UptimeRobot / monitoringu — pinguje DB."""
+    build = build_info()
     try:
         query("SELECT 1 AS ok", one=True)
-        return jsonify({'status': 'ok', 'db': 'ok'}), 200
+        return jsonify({'status': 'ok', 'db': 'ok', 'build': build}), 200
     except Exception as e:
-        return jsonify({'status': 'error', 'db': 'down', 'detail': str(e)[:200]}), 503
+        return jsonify({'status': 'error', 'db': 'down', 'detail': str(e)[:200], 'build': build}), 503
 
 
 if __name__ == '__main__':

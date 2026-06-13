@@ -209,7 +209,13 @@ class KeyFlowSmokeTests(unittest.TestCase):
         self.assertIn('logoutAdmin()', shell.get_data(as_text=True))
 
         self.assertEqual(health.status_code, 200)
-        self.assertEqual(health.get_json(), {'db': 'ok', 'status': 'ok'})
+        health_payload = health.get_json()
+        self.assertEqual(health_payload['db'], 'ok')
+        self.assertEqual(health_payload['status'], 'ok')
+        self.assertLessEqual(
+            {'app_version', 'source_revision', 'source_revision_short', 'source_revision_source'},
+            set(health_payload['build']),
+        )
 
         self.assertEqual(travels_list.status_code, 200)
         self.assertEqual(travels_list.headers['Cache-Control'], 'no-store')

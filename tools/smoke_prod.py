@@ -16,6 +16,7 @@ import ssl
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
@@ -31,6 +32,40 @@ KEY_ICON_PATHS = (
     "/static/icons/favicon-32.png",
     "/static/icons/apple-touch-icon.png",
 )
+
+
+def _read_packed_ref(git_dir: Path, ref: str) -> str | None:
+    packed_refs = git_dir / "packed-refs"
+    try:
+        for line in packed_refs.read_text(encoding="utf-8").splitlines():
+            if not line or line.startswith(("#", "^")):
+                continue
+            revision, _, ref_name = line.partition(" ")
+            if ref_name == ref:
+                return revision.strip()
+    except OSError:
+        return None
+    return None
+
+
+def local_git_revision() -> str | None:
+    git_dir = Path(__file__).resolve().parents[1] / ".git"
+    try:
+        if git_dir.is_file():
+            content = git_dir.read_text(encoding="utf-8").strip()
+            if content.startswith("gitdir:"):
+                path = Path(content.split(":", 1)[1].strip())
+                git_dir = path if path.is_absolute() else git_dir.parent / path
+        head = (git_dir / "HEAD").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    if head.startswith("ref:"):
+        ref = head.split(":", 1)[1].strip()
+        try:
+            return (git_dir / ref).read_text(encoding="utf-8").strip() or None
+        except OSError:
+            return _read_packed_ref(git_dir, ref)
+    return head or None
 
 
 @dataclass
@@ -124,7 +159,13 @@ def _json_or_fail(response: Response, name: str) -> tuple[Any | None, CheckResul
         return None, _fail(name, response, f"invalid JSON: {error}")
 
 
-def check_healthz(client: SmokeClient) -> CheckResult:
+def _revision_matches(actual: str, expected: str) -> bool:
+    actual = actual.lower().strip()
+    expected = expected.lower().strip()
+    return bool(actual and expected and (actual.startswith(expected) or expected.startswith(actual)))
+
+
+def check_healthz(client: SmokeClient, expected_revision: str | None, skip_revision_check: bool) -> CheckResult:
     name = "healthz"
     try:
         response = client.get("/healthz")
@@ -137,7 +178,69 @@ def check_healthz(client: SmokeClient) -> CheckResult:
         return error
     if payload.get("status") != "ok" or payload.get("db") != "ok":
         return _fail(name, response, f"expected status/db ok, got {payload!r}")
-    return _ok(name, response, "DB ok")
+    build = payload.get("build") or {}
+    if not isinstance(build, dict):
+        return _fail(name, response, f"missing build object, got {payload!r}")
+    revision = str(build.get("source_revision") or "")
+    short_revision = str(build.get("source_revision_short") or "")
+    if revision and short_revision and not revision.startswith(short_revision):
+        return _fail(name, response, f"build short revision does not match full revision: {build!r}")
+    if expected_revision and not skip_revision_check:
+        if not revision:
+            return _fail(name, response, f"build revision missing, expected {expected_revision[:12]}")
+        if not _revision_matches(revision, expected_revision):
+            return _fail(
+                name,
+                response,
+                f"deployed revision {revision[:12]} does not match expected {expected_revision[:12]}",
+            )
+    detail = "DB ok"
+    if short_revision:
+        detail += f", build {short_revision}"
+    elif skip_revision_check:
+        detail += ", build revision skipped"
+    else:
+        detail += ", build revision unavailable"
+    return _ok(name, response, detail)
+
+
+def _csp_directives(header: str) -> dict[str, set[str]]:
+    directives: dict[str, set[str]] = {}
+    for part in header.split(";"):
+        tokens = part.strip().split()
+        if tokens:
+            directives[tokens[0]] = set(tokens[1:])
+    return directives
+
+
+def check_security_headers(client: SmokeClient) -> CheckResult:
+    name = "security headers"
+    try:
+        response = client.get("/")
+    except RuntimeError as error:
+        return _fail(name, None, str(error))
+    if response.status != 200:
+        return _fail(name, response, "expected HTTP 200")
+    csp = response.header("content-security-policy")
+    if not csp:
+        return _fail(name, response, "missing Content-Security-Policy")
+    directives = _csp_directives(csp)
+    connect_src = directives.get("connect-src") or set()
+    required_connect = {"'self'", "https://unpkg.com", "https://nominatim.openstreetmap.org"}
+    missing_connect = sorted(required_connect - connect_src)
+    if missing_connect:
+        return _fail(name, response, "CSP connect-src missing: " + ", ".join(missing_connect))
+    required_headers = {
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "strict-origin-when-cross-origin",
+    }
+    for header, expected in required_headers.items():
+        if response.header(header).lower() != expected.lower():
+            return _fail(name, response, f"unexpected {header}: {response.header(header) or '(missing)'}")
+    if directives.get("frame-ancestors") != {"'none'"}:
+        return _fail(name, response, "CSP frame-ancestors should be 'none'")
+    return _ok(name, response, "CSP/connect-src and security headers ok")
 
 
 def check_shell(client: SmokeClient) -> CheckResult:
@@ -277,10 +380,13 @@ def run_smoke(
     timeout: float,
     allow_unconfigured_auth: bool,
     strict_tls: bool,
+    expected_revision: str | None,
+    skip_revision_check: bool,
 ) -> list[CheckResult]:
     client = SmokeClient(base_url, timeout, strict_tls)
     checks = [
-        check_healthz(client),
+        check_healthz(client, expected_revision, skip_revision_check),
+        check_security_headers(client),
         check_shell(client),
         check_auth_status(client, allow_unconfigured_auth),
         check_private_api_blocked(client),
@@ -331,6 +437,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Keep OpenSSL strict certificate-extension checks enabled.",
     )
+    parser.add_argument(
+        "--expect-revision",
+        default=os.environ.get("MOJE_PODROZE_EXPECT_REVISION") or local_git_revision(),
+        help="Expected deployed Git revision. Defaults to MOJE_PODROZE_EXPECT_REVISION or local HEAD.",
+    )
+    parser.add_argument(
+        "--skip-revision-check",
+        action="store_true",
+        help="Do not compare /healthz build.source_revision with the expected revision.",
+    )
     return parser.parse_args(argv)
 
 
@@ -341,6 +457,8 @@ def main(argv: list[str] | None = None) -> int:
         args.timeout,
         args.allow_unconfigured_auth,
         args.strict_tls,
+        args.expect_revision,
+        args.skip_revision_check,
     )
     print_report(args.base_url, results)
     return 1 if any(not result.ok for result in results) else 0
