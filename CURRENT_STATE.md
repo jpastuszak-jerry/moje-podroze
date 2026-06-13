@@ -64,6 +64,16 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   `TEST_DATABASE_URL` test integracyjny 4/4 OK, `git diff --check`, GitHub
   Actions zielone oraz produkcyjny `python tools/smoke_prod.py` 12/12 OK dla
   buildu `9ce436d` na Renderze.
+- Ostatnio domkniete: rozszerzono realny PostgreSQL fixture o zapisy bez
+  asysty uzytkownika. Test integracyjny sprawdza teraz takze tworzenie podrozy
+  przez `/api/travels/wizard` wraz z miejscami i uczestnikiem oraz edycje
+  podrozy: konflikt dat wizyt przy zwezaniu zakresu i skuteczne `on_conflict:
+  clip`, ktore przycina daty w `travel_locations`.
+- Weryfikacja rozszerzonego fixture: `python -m py_compile ...` dla glownych
+  modulow i testu przeszedl, `python -m ruff check .` przeszedl,
+  `python -m unittest discover -s tests` przeszedl 56/56 OK z 6 skipami bez
+  `TEST_DATABASE_URL`, realny `TEST_DATABASE_URL` test integracyjny przeszedl
+  6/6 OK, a `git diff --check` przeszedl.
 - Ostatnio domkniete: zweryfikowano 56 historycznych rezerwacji Booking.com
   wzgledem bazy Neon. Przed zmianami 4 noclegi byly juz potwierdzone jako
   miejsca podrozy z datami. Dopisano 50 nowych miejsc, 23 wizyty z datami do
@@ -158,9 +168,10 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   read/write API, kreator transakcyjny, statystyki, rocznik, mapa, kosz,
   soft delete/restore, podstawowe helpery UI, kontrakt startowego shella SPA
   oraz smoke renderowania kluczowych ekranow UI. Produkcyjny smoke sprawdza
-  tez build SHA i CSP wymagany przez mape. Jest tez pierwszy opcjonalny realny
-  PostgreSQL fixture na tymczasowym schemacie.
-- Slabiej pokryte: prawdziwe E2E w przegladarce, importy danych i szersze
+  tez build SHA i CSP wymagany przez mape. Jest tez opcjonalny realny
+  PostgreSQL fixture na tymczasowym schemacie, obejmujacy odczyty, kosz,
+  statystyki, kreator zapisu oraz edycje zakresu dat podrozy.
+- Slabiej pokryte: prawdziwe E2E w przegladarce, importy danych i mniej typowe
   warianty zapisu/edycji w realnym PostgreSQL fixture.
 - `node` w normalnym PATH jest obecnie problematyczny: alias WindowsApps zwraca
   `Odmowa dostepu`. JS smoke da sie uruchomic przez Node REPL MCP, ale docelowo
@@ -178,8 +189,9 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 3. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-4. Rozszerzyc realny PostgreSQL fixture o zapis kreatora, edycje podrozy i
-   bardziej zlozone przypadki dat, jesli kolejne prace dotkna tych flow.
+4. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+   edycje miejsc, restore miejsc albo hard delete miejsc, gdy kolejne prace
+   dotkna tych endpointow.
 5. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
    statystyk/filtry, jesli bedzie to przydatne w UX i testach.
 6. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce

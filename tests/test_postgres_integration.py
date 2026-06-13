@@ -179,6 +179,25 @@ def _seed_fixture(conn):
             "INSERT INTO travel_participants (travel_id, person_id) VALUES (%s, %s)",
             [(1, 1), (2, 1), (3, 1)],
         )
+        serial_tables = (
+            'countries',
+            'location_types',
+            'relation_types',
+            'persons',
+            'locations',
+            'travels',
+            'travel_locations',
+        )
+        for table in serial_tables:
+            cur.execute(
+                sql.SQL("""
+                    SELECT setval(
+                        pg_get_serial_sequence(%s, 'id'),
+                        COALESCE((SELECT MAX(id) FROM {}), 1)
+                    )
+                """).format(sql.Identifier(table)),
+                (table,),
+            )
     conn.commit()
 
 
@@ -265,6 +284,28 @@ class PostgresIntegrationTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             session[self.app_module.AUTH_SESSION_KEY] = True
 
+    def _travel_payload(self, **overrides):
+        payload = {
+            'name': 'Fixture save flow',
+            'start_date': '2025-09-01',
+            'end_date': '2025-09-05',
+            'purpose': 'Test',
+            'has_photo_album': False,
+            'amount': '250.00',
+            'currency': 'EUR',
+            'is_description_complete': True,
+            'rating': 4.5,
+            'reflections': 'Saved through integration smoke',
+            'notes': 'Temporary test trip',
+            'number_of_flights': 0,
+        }
+        payload.update(overrides)
+        return payload
+
+    def _hard_delete_travel(self, travel_id):
+        response = self.client.delete(f'/api/travels/{travel_id}?hard=1')
+        self.assertEqual(response.status_code, 200)
+
     def test_locations_and_map_aggregate_parent_child_visits(self):
         response = self.client.get('/api/locations')
 
@@ -342,6 +383,97 @@ class PostgresIntegrationTests(unittest.TestCase):
         finally:
             restore_response = self.client.post('/api/travels/2/restore')
             self.assertEqual(restore_response.status_code, 200)
+
+    def test_wizard_creates_travel_with_locations_and_participants(self):
+        response = self.client.post('/api/travels/wizard', json={
+            'travel': self._travel_payload(
+                name='Wizard integration trip',
+                start_date='2025-09-10',
+                end_date='2025-09-12',
+                number_of_flights=2,
+            ),
+            'locations': [
+                {
+                    'location_id': 1,
+                    'arrival_date': '2025-09-10',
+                    'departure_date': '2025-09-11',
+                    'notes': 'Wizard parent location',
+                },
+                {
+                    'location_id': 3,
+                    'arrival_date': '2025-09-12',
+                    'departure_date': '2025-09-12',
+                    'notes': 'Wizard second country',
+                },
+            ],
+            'participants': [{'person_id': 1}],
+        })
+
+        self.assertEqual(response.status_code, 201)
+        created = response.get_json()
+        travel_id = created['id']
+        try:
+            self.assertEqual(created['locations'], 2)
+            self.assertEqual(created['participants'], 1)
+
+            detail = self.client.get(f'/api/travels/{travel_id}')
+            self.assertEqual(detail.status_code, 200)
+            data = detail.get_json()
+            self.assertEqual(data['name'], 'Wizard integration trip')
+            self.assertEqual(data['start_date'], '2025-09-10')
+            self.assertEqual(data['end_date'], '2025-09-12')
+            self.assertEqual(data['number_of_flights'], 2)
+            self.assertEqual(
+                [(loc['location_name'], loc['arrival_date'], loc['departure_date']) for loc in data['locations']],
+                [('Helsinki', '2025-09-10', '2025-09-11'), ('Tallinn', '2025-09-12', '2025-09-12')],
+            )
+            self.assertEqual(data['participants'], [{'id': 1, 'name': 'Anna', 'relation_type': 'Rodzina'}])
+        finally:
+            self._hard_delete_travel(travel_id)
+
+    def test_travel_edit_conflict_and_clip_updates_visit_dates(self):
+        create_response = self.client.post('/api/travels', json=self._travel_payload(name='Editable integration trip'))
+
+        self.assertEqual(create_response.status_code, 201)
+        travel_id = create_response.get_json()['id']
+        try:
+            location_response = self.client.post(f'/api/travels/{travel_id}/locations', json={
+                'location_id': 1,
+                'arrival_date': '2025-09-01',
+                'departure_date': '2025-09-05',
+                'notes': 'Needs clipping',
+            })
+            self.assertEqual(location_response.status_code, 201)
+
+            narrower_payload = self._travel_payload(
+                name='Editable integration trip',
+                start_date='2025-09-02',
+                end_date='2025-09-04',
+                amount='275.50',
+                rating=5.0,
+                number_of_flights=1,
+            )
+            conflict = self.client.put(f'/api/travels/{travel_id}', json=narrower_payload)
+            self.assertEqual(conflict.status_code, 409)
+            self.assertEqual(conflict.get_json()['conflict'], True)
+
+            clipped = self.client.put(
+                f'/api/travels/{travel_id}',
+                json={**narrower_payload, 'on_conflict': 'clip'},
+            )
+            self.assertEqual(clipped.status_code, 200)
+
+            detail = self.client.get(f'/api/travels/{travel_id}')
+            self.assertEqual(detail.status_code, 200)
+            data = detail.get_json()
+            self.assertEqual(data['start_date'], '2025-09-02')
+            self.assertEqual(data['end_date'], '2025-09-04')
+            self.assertEqual(data['rating'], '5.0')
+            self.assertEqual(data['number_of_flights'], 1)
+            self.assertEqual(data['locations'][0]['arrival_date'], '2025-09-02')
+            self.assertEqual(data['locations'][0]['departure_date'], '2025-09-04')
+        finally:
+            self._hard_delete_travel(travel_id)
 
 
 if __name__ == '__main__':
