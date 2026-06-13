@@ -391,6 +391,11 @@ assert.deepEqual(
   { name: 'locationTodo', params: {} },
   'router parses auxiliary location todo hashes',
 );
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.routeFromHash('#/locations/todo?missing=missing_gps&sort=visit_count_asc'))),
+  { name: 'locationTodo', params: { missing: 'missing_gps', sort: 'visit_count_asc' } },
+  'router keeps location todo filter params from hashes',
+);
 assert.equal(context.routePath('travelDetail', { id: 42 }), '/travels/42', 'router builds travel detail paths');
 assert.equal(context.routePath('locationDetail', { id: 17 }), '/locations/17', 'router builds location detail paths');
 assert.equal(context.routePath('todo'), '/stats/todo', 'router builds stats todo path');
@@ -645,24 +650,41 @@ context.document.getElementById = id => (id === 'view' ? locationTodoView : null
 context.api = async path => {
   assert.equal(path, '/api/locations/todo', 'location todo fetches the expected endpoint');
   return {
-    total: 2,
-    labels: { missing_gps: 'Bez GPS', missing_visit: 'Bez wizyt' },
-    counts: { missing_gps: 1, missing_visit: 1 },
+    total: 3,
+    labels: { missing_gps: 'Bez GPS', missing_address: 'Bez adresu', missing_notes: 'Bez notatek', not_visited: 'Bez wizyt' },
+    counts: { missing_gps: 2, missing_address: 1, missing_notes: 1, not_visited: 1 },
     needs_attention: [{
       id: 10,
       name: 'Helsinki',
       location_type: 'miasto',
       country_name: 'Finlandia',
-      visit_count: 1,
-      missing_keys: ['missing_gps'],
-      missing: ['Bez GPS'],
+      visit_count: 3,
+      missing_count: 3,
+      missing_keys: ['missing_gps', 'missing_address', 'missing_notes'],
+      missing: ['Bez GPS', 'Bez adresu', 'Bez notatek'],
+    }, {
+      id: 11,
+      name: 'Catania',
+      location_type: 'miasto',
+      country_name: 'Włochy',
+      visit_count: 0,
+      missing_count: 2,
+      missing_keys: ['missing_gps', 'not_visited'],
+      missing: ['Bez GPS', 'Bez wizyt'],
     }],
   };
 };
-vm.runInContext('currentLocationTodoFilter = "all"', context);
-await context.renderLocationTodo();
+vm.runInContext('currentLocationTodoFilter = "all"; currentLocationTodoSort = "priority"', context);
+await context.renderLocationTodo({ missing: 'missing_gps', sort: 'visit_count_asc' });
 assert.match(locationTodoView.innerHTML, /aux-filter-panel/, 'location todo uses compact filter panel');
 assert.match(locationTodoView.innerHTML, /location-todo-filter-select/, 'location todo filter is a select control');
+assert.match(locationTodoView.innerHTML, /location-todo-sort-select/, 'location todo exposes sort control');
+assert.match(locationTodoView.innerHTML, /badge-orange/, 'location todo renders colored GPS badges');
+assert.match(locationTodoView.innerHTML, /badge-purple/, 'location todo renders colored address badges');
+assert.ok(
+  locationTodoView.innerHTML.indexOf('Catania') < locationTodoView.innerHTML.indexOf('Helsinki'),
+  'location todo applies visit-count sorting from route params',
+);
 assert.doesNotMatch(locationTodoView.innerHTML, /sort-btn/, 'location todo avoids horizontal chip filters');
 assert.match(locationTodoView.innerHTML, /worklist-list/, 'location todo uses worklist card list');
 

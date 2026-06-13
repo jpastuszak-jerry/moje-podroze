@@ -12,6 +12,19 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
   `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
   przed wiekszymi refaktorami.
+- Ostatnio domkniete lokalnie: UX centrum brakow danych miejsc
+  `#/locations/todo`. Widok pamieta filtr i sortowanie, obsluguje deep linki z
+  query stringiem (`missing`, `sort`), sortuje po priorytecie albo wybranym
+  trybie, pokazuje licznik wysokiego priorytetu oraz kolorowe etykiety typow
+  brakow na kartach.
+- Weryfikacja lokalna tej zmiany: zwykly `node` w PATH nadal zwraca `Odmowa
+  dostepu`, wiec `tools/smoke_js.mjs` uruchomiono przez Node REPL MCP; test
+  przeszedl. Przeszly tez `python -m py_compile ...`, `python -m ruff check .`,
+  `python -m unittest discover -s tests` (57 testow, 7 skipow) oraz
+  `git diff --check`.
+- Lokalny Flask dla tej zmiany wystartowal i `/healthz` zwrocil 200, ale
+  in-app Browser ponownie zablokowal `http://127.0.0.1:5000`
+  (`ERR_BLOCKED_BY_CLIENT`), wiec browser E2E lokalnie nadal jest blokerem.
 - Ostatnio zweryfikowane: najnowsza seria zmian aplikacyjnych nie dotyczy juz
   importerow, tylko UX i stabilizacji produkcji. `e6862c9` dodal undo po
   miekkim usunieciu, zapamietywanie filtrow/sortowania, pull-to-refresh i
@@ -176,8 +189,9 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Dobrze pokryte: auth, prywatne API, shell, PWA smoke produkcji, podstawowe
   read/write API, kreator transakcyjny, statystyki, rocznik, mapa, kosz,
   soft delete/restore, podstawowe helpery UI, kontrakt startowego shella SPA
-  oraz smoke renderowania kluczowych ekranow UI. Produkcyjny smoke sprawdza
-  tez build SHA i CSP wymagany przez mape. Jest tez opcjonalny realny
+  oraz smoke renderowania kluczowych ekranow UI, w tym deep linki hash-routera
+  i parametry centrum brakow miejsc. Produkcyjny smoke sprawdza tez build SHA
+  i CSP wymagany przez mape. Jest tez opcjonalny realny
   PostgreSQL fixture na tymczasowym schemacie, obejmujacy odczyty, kosz,
   statystyki, kreator zapisu, edycje zakresu dat podrozy oraz CRUD miejsc.
 - Slabiej pokryte: prawdziwe E2E w przegladarce, importy danych i mniej typowe
@@ -188,22 +202,25 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
+1. Dalszy UX centrum brakow miejsc: szybkie akcje z kart albo lekki widok
+   grupowania po kraju/typie braku, zeby przechodzic od raportu do uzupelniania
+   danych bez wracania przez liste miejsc.
+2. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
    konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
    probki uzytkownikowi. Aktualnie 475 aktywnych miejsc ma brakujacy
    `address` albo `notes`.
-2. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
+3. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
    `ambiguous` i `manual_review_excluded`.
-3. Prawdziwe browser E2E po naprawie Node/Playwright:
+4. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-4. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+5. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-5. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
+6. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
    statystyk/filtry, jesli bedzie to przydatne w UX i testach.
-6. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+7. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions

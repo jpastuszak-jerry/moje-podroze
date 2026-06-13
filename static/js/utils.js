@@ -765,15 +765,31 @@ function decodeRoutePart(part) {
   }
 }
 
+function parseRouteQuery(query) {
+  const params = {};
+  String(query || '').split('&').forEach(pair => {
+    if (!pair) return;
+    const [rawKey, ...rawValueParts] = pair.split('=');
+    const key = decodeRoutePart((rawKey || '').replace(/\+/g, ' '));
+    if (!key) return;
+    const rawValue = rawValueParts.join('=');
+    params[key] = decodeRoutePart((rawValue || '').replace(/\+/g, ' '));
+  });
+  return params;
+}
+
 function routeFromHash(hash) {
-  const raw = String(hash || '').replace(/^#/, '').replace(/^\/+/, '').replace(/\/+$/, '');
-  const parts = raw ? raw.split('/').map(decodeRoutePart).filter(Boolean) : [];
+  const raw = String(hash || '').replace(/^#/, '').replace(/^\/+/, '');
+  const queryStart = raw.indexOf('?');
+  const pathRaw = (queryStart >= 0 ? raw.slice(0, queryStart) : raw).replace(/\/+$/, '');
+  const query = queryStart >= 0 ? parseRouteQuery(raw.slice(queryStart + 1)) : {};
+  const parts = pathRaw ? pathRaw.split('/').map(decodeRoutePart).filter(Boolean) : [];
   if (!parts.length) return { name: 'travels', params: {} };
   if (parts[0] === 'travels' && parts[1] && /^\d+$/.test(parts[1])) {
     return { name: 'travelDetail', params: { id: parseInt(parts[1], 10) } };
   }
   if (parts[0] === 'locations' && parts[1] === 'todo') {
-    return { name: 'locationTodo', params: {} };
+    return { name: 'locationTodo', params: query };
   }
   if (parts[0] === 'locations' && parts[1] && /^\d+$/.test(parts[1])) {
     return { name: 'locationDetail', params: { id: parseInt(parts[1], 10) } };
@@ -920,7 +936,7 @@ function setupPullToRefresh() {
   view.addEventListener('touchcancel', end, { passive: true });
 }
 
-function renderTab(tab) {
+function renderTab(tab, params = {}) {
   closeAppMenu();
   currentTab = tab;
   const view = setMapViewMode(tab === 'map');
@@ -932,7 +948,7 @@ function renderTab(tab) {
   else if (tab === 'map') pending = renderMap();
   else if (tab === 'stats') pending = renderStats();
   else if (tab === 'todo') pending = renderTodo();
-  else if (tab === 'locationTodo') pending = renderLocationTodo();
+  else if (tab === 'locationTodo') pending = renderLocationTodo(params);
   if (view) {
     resetViewScroll(view);
     view.classList.remove('view-fade');
@@ -954,7 +970,7 @@ function renderRoute(route) {
   if (name === 'locationDetail' && params.id) {
     return openLocation(params.id, { fromRouter: true });
   }
-  return renderTab(name);
+  return renderTab(name, params);
 }
 
 function navigateTo(name, params = {}, options = {}) {

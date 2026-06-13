@@ -409,57 +409,164 @@ function renderLocList(locs) {
 
 function onLocSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderLocations(val), 400); }
 
-let currentLocationTodoFilter = 'all';
+let currentLocationTodoFilter = getPref('locationTodoFilter', 'all');
+let currentLocationTodoSort = getPref('locationTodoSort', 'priority');
+
+const LOCATION_TODO_SORTS = [
+  { key: 'priority', label: 'Priorytet' },
+  { key: 'missing_desc', label: 'Najwięcej braków' },
+  { key: 'country_name', label: 'Kraj i nazwa' },
+  { key: 'name_asc', label: 'Nazwa A-Z' },
+  { key: 'visit_count_asc', label: 'Najmniej wizyt' },
+];
+
+const LOCATION_TODO_BADGE_TONES = {
+  missing_gps: 'orange',
+  missing_address: 'purple',
+  missing_notes: 'blue',
+  not_visited: 'green',
+};
 
 function openLocationTodoView() {
-  currentLocationTodoFilter = 'all';
   showTab('locationTodo');
 }
 
 function setLocationTodoFilter(filter) {
   currentLocationTodoFilter = filter || 'all';
+  savePref('locationTodoFilter', currentLocationTodoFilter === 'all' ? null : currentLocationTodoFilter);
+  syncLocationTodoRoute();
+  renderLocationTodo();
+}
+
+function setLocationTodoSort(sort) {
+  currentLocationTodoSort = sort || 'priority';
+  savePref('locationTodoSort', currentLocationTodoSort === 'priority' ? null : currentLocationTodoSort);
+  syncLocationTodoRoute();
   renderLocationTodo();
 }
 
 function resetLocationTodoControls() {
   currentLocationTodoFilter = 'all';
+  currentLocationTodoSort = 'priority';
+  savePref('locationTodoFilter', null);
+  savePref('locationTodoSort', null);
+  syncLocationTodoRoute();
   renderLocationTodo();
 }
 
 function renderLocationTodoControls({ filters, totalItems, visibleItems }) {
   const activeFilter = filters.find(f => f.key === currentLocationTodoFilter);
+  const activeSort = LOCATION_TODO_SORTS.find(s => s.key === currentLocationTodoSort) || LOCATION_TODO_SORTS[0];
+  const details = [];
+  if (activeFilter) details.push(activeFilter.label);
+  if (activeSort.key !== 'priority') details.push(activeSort.label);
+  const hasActiveControls = currentLocationTodoFilter !== 'all' || currentLocationTodoSort !== 'priority';
   return renderFilterPanel({
-    gridClass: 'aux-filter-grid single',
-    controls: [{
-      label: 'Typ braku',
-      id: 'location-todo-filter-select',
-      onchange: 'setLocationTodoFilter(this.value)',
-      options: filters,
-      selectedValue: currentLocationTodoFilter,
-      valueKey: 'key',
-      emptyOption: { key: 'all', label: 'Wszystkie braki' },
-    }],
+    controls: [
+      {
+        label: 'Typ braku',
+        id: 'location-todo-filter-select',
+        onchange: 'setLocationTodoFilter(this.value)',
+        options: filters,
+        selectedValue: currentLocationTodoFilter,
+        valueKey: 'key',
+        emptyOption: { key: 'all', label: 'Wszystkie braki' },
+      },
+      {
+        label: 'Sortowanie',
+        id: 'location-todo-sort-select',
+        onchange: 'setLocationTodoSort(this.value)',
+        options: LOCATION_TODO_SORTS,
+        selectedValue: currentLocationTodoSort,
+        valueKey: 'key',
+      },
+    ],
     summary: {
       count: visibleItems,
       countLabel: worklistCountLabel(visibleItems),
-      detail: activeFilter ? activeFilter.label : `${totalItems} miejsc wymaga uwagi`,
-      resetOnclick: activeFilter ? 'resetLocationTodoControls()' : '',
+      detail: details.length ? details : `${totalItems} miejsc wymaga uwagi`,
+      resetOnclick: hasActiveControls ? 'resetLocationTodoControls()' : '',
     },
   });
 }
 
-function locationTodoCardHtml(item) {
+function locationTodoRouteQuery() {
+  const parts = [];
+  if (currentLocationTodoFilter && currentLocationTodoFilter !== 'all') {
+    parts.push(`missing=${encodeURIComponent(currentLocationTodoFilter)}`);
+  }
+  if (currentLocationTodoSort && currentLocationTodoSort !== 'priority') {
+    parts.push(`sort=${encodeURIComponent(currentLocationTodoSort)}`);
+  }
+  return parts.join('&');
+}
+
+function syncLocationTodoRoute() {
+  if (!canUseHashRouter() || !window.history || !window.history.replaceState) return;
+  const query = locationTodoRouteQuery();
+  window.history.replaceState(null, '', '#/locations/todo' + (query ? '?' + query : ''));
+}
+
+function applyLocationTodoRouteParams(params = {}) {
+  const filter = params.missing || params.filter;
+  const sort = params.sort;
+  if (filter) currentLocationTodoFilter = filter;
+  if (sort) currentLocationTodoSort = sort;
+}
+
+function locationTodoPriorityScore(item) {
+  const keys = new Set(item.missing_keys || []);
+  return (Number(item.missing_count || 0) * 10)
+    + (keys.has('missing_gps') ? 4 : 0)
+    + (keys.has('missing_address') ? 3 : 0)
+    + (keys.has('missing_notes') ? 2 : 0)
+    + (keys.has('not_visited') ? 1 : 0);
+}
+
+function compareLocationTodoName(a, b) {
+  return String(a.name || '').localeCompare(String(b.name || ''), 'pl', { sensitivity: 'base' });
+}
+
+function compareLocationTodoCountryName(a, b) {
+  const country = String(a.country_name || '').localeCompare(String(b.country_name || ''), 'pl', { sensitivity: 'base' });
+  return country || compareLocationTodoName(a, b);
+}
+
+function sortLocationTodoItems(items) {
+  const sorted = [...items];
+  if (currentLocationTodoSort === 'missing_desc') {
+    return sorted.sort((a, b) => (Number(b.missing_count || 0) - Number(a.missing_count || 0)) || compareLocationTodoCountryName(a, b));
+  }
+  if (currentLocationTodoSort === 'country_name') return sorted.sort(compareLocationTodoCountryName);
+  if (currentLocationTodoSort === 'name_asc') return sorted.sort(compareLocationTodoName);
+  if (currentLocationTodoSort === 'visit_count_asc') {
+    return sorted.sort((a, b) => (Number(a.visit_count || 0) - Number(b.visit_count || 0)) || compareLocationTodoCountryName(a, b));
+  }
+  return sorted.sort((a, b) => (locationTodoPriorityScore(b) - locationTodoPriorityScore(a)) || compareLocationTodoCountryName(a, b));
+}
+
+function locationTodoBadgeItems(item, labels) {
+  return (item.missing_keys || []).map(key => ({
+    label: labels[key] || key,
+    tone: LOCATION_TODO_BADGE_TONES[key] || 'orange',
+  }));
+}
+
+function locationTodoCardHtml(item, labels) {
+  const missingCount = Number(item.missing_count || (item.missing_keys || []).length || 0);
+  const missingLabel = polishPlural(missingCount, 'brak', 'braki', 'braków');
   return renderWorklistCard({
     onclick: `openLocation(${item.id})`,
     iconHtml: locationIcon(item.location_type),
     title: item.name || '(bez nazwy)',
     editOnclick: `openEditLocationModal(${item.id})`,
-    subtitle: `${item.location_type || ''} · ${item.country_name || ''} · ${item.visit_count || 0} wizyt`,
-    badges: item.missing || [],
+    subtitle: `${item.location_type || ''} · ${item.country_name || ''} · ${item.visit_count || 0} wizyt · ${missingCount} ${missingLabel}`,
+    badges: locationTodoBadgeItems(item, labels),
   });
 }
 
-async function renderLocationTodo() {
+async function renderLocationTodo(params = {}) {
+  applyLocationTodoRouteParams(params);
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Miejsca do uzupełnienia</div></div>` + skeletonCards(3);
   const data = await api('/api/locations/todo');
@@ -471,10 +578,18 @@ async function renderLocationTodo() {
   const labels = data.labels || {};
   const filters = Object.entries(labels)
     .map(([key, label]) => ({ key, label, count: data.counts?.[key] || 0 }))
-    .filter(f => f.count > 0);
-  const items = (data.needs_attention || []).filter(item =>
+    .filter(f => f.count > 0 || f.key === currentLocationTodoFilter);
+  if (currentLocationTodoFilter !== 'all' && !filters.some(f => f.key === currentLocationTodoFilter)) {
+    currentLocationTodoFilter = 'all';
+  }
+  if (!LOCATION_TODO_SORTS.some(s => s.key === currentLocationTodoSort)) {
+    currentLocationTodoSort = 'priority';
+  }
+  const filteredItems = (data.needs_attention || []).filter(item =>
     currentLocationTodoFilter === 'all' || (item.missing_keys || []).includes(currentLocationTodoFilter)
   );
+  const items = sortLocationTodoItems(filteredItems);
+  const highPriorityCount = (data.needs_attention || []).filter(item => Number(item.missing_count || 0) >= 3).length;
 
   let html = `<div class="page-header">
     <div>
@@ -493,7 +608,7 @@ async function renderLocationTodo() {
       { value: data.total || 0, label: 'miejsc w bazie' },
       { value: data.needs_attention?.length || 0, label: 'wymaga uwagi' },
       { value: items.length, label: 'na tej liście' },
-      { value: filters.length, label: 'typów braków' },
+      { value: highPriorityCount, label: 'wysoki priorytet' },
     ])}
   </div>`;
 
@@ -509,7 +624,7 @@ async function renderLocationTodo() {
     return;
   }
 
-  html += renderCardList(items, locationTodoCardHtml, { className: 'card-list worklist-list' });
+  html += renderCardList(items, item => locationTodoCardHtml(item, labels), { className: 'card-list worklist-list' });
   view.innerHTML = html;
 }
 
