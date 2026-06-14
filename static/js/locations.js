@@ -427,6 +427,13 @@ const LOCATION_TODO_BADGE_TONES = {
   not_visited: 'green',
 };
 
+const LOCATION_TODO_ACTIONS = {
+  missing_gps: { label: 'GPS', focus: 'gps' },
+  missing_address: { label: 'Adres', focus: 'address' },
+  missing_notes: { label: 'Notatki', focus: 'notes' },
+  not_visited: { label: 'Wizyty', view: 'visits' },
+};
+
 const LOCATION_TODO_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
   ? new Intl.Collator('pl', { sensitivity: 'base' })
   : null;
@@ -580,6 +587,23 @@ function locationTodoBadgeItems(item, labels) {
   }));
 }
 
+function openLocationTodoAction(id, missingKey) {
+  const action = LOCATION_TODO_ACTIONS[missingKey];
+  if (!action) return openLocation(id);
+  if (action.view === 'visits') return openLocation(id);
+  return openEditLocationModal(id, { focus: action.focus });
+}
+
+function locationTodoActionsHtml(item) {
+  const actions = (item.missing_keys || [])
+    .map(key => ({ key, ...(LOCATION_TODO_ACTIONS[key] || {}) }))
+    .filter(action => action.label);
+  if (!actions.length) return '';
+  return `<div class="worklist-card-actions">
+    ${actions.map(action => `<button type="button" class="worklist-action-btn" onclick="event.stopPropagation(); openLocationTodoAction(${item.id}, '${escapeAttr(action.key)}')">${escapeHtml(action.label)}</button>`).join('')}
+  </div>`;
+}
+
 function locationTodoCardHtml(item, labels) {
   const missingCount = Number(item.missing_count || (item.missing_keys || []).length || 0);
   const missingLabel = polishPlural(missingCount, 'brak', 'braki', 'braków');
@@ -590,6 +614,7 @@ function locationTodoCardHtml(item, labels) {
     editOnclick: `openEditLocationModal(${item.id})`,
     subtitle: `${item.location_type || ''} · ${item.country_name || ''} · ${item.visit_count || 0} wizyt · ${missingCount} ${missingLabel}`,
     badges: locationTodoBadgeItems(item, labels),
+    actionsHtml: locationTodoActionsHtml(item),
   });
 }
 
@@ -703,7 +728,28 @@ async function confirmDeleteLocation(id) {
   });
 }
 
-async function openEditLocationModal(id) {
+function focusEditLocationField(focus) {
+  const targetId = {
+    gps: 'el-lat',
+    address: 'el-address',
+    notes: 'el-notes',
+  }[focus];
+  if (!targetId) return;
+  setTimeout(() => {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    if (typeof el.focus === 'function') {
+      try { el.focus({ preventScroll: true }); }
+      catch { el.focus(); }
+    }
+    if (typeof el.select === 'function' && el.tagName !== 'TEXTAREA') el.select();
+    if (typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    }
+  }, 40);
+}
+
+async function openEditLocationModal(id, options = {}) {
   if (!beginOverlayOpen('edit-loc-overlay')) return;
   try {
   const [loc, countries, locTypes, allLocs] = await Promise.all([
@@ -755,6 +801,7 @@ async function openEditLocationModal(id) {
   attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
   document.getElementById('el-notes').value = loc.notes || '';
   updateParentLocListFor('edit-loc-overlay', 'el');
+  focusEditLocationField(options.focus);
   } finally {
     finishOverlayOpen('edit-loc-overlay');
   }

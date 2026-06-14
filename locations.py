@@ -45,6 +45,32 @@ LOCATION_VISIT_STATS_CTE = """
 """
 
 
+LOCATION_VISIT_COUNT_CTE = """
+    WITH location_visit_targets AS (
+        SELECT l.id AS location_id,
+               tl.travel_id
+        FROM travel_locations tl
+        JOIN locations l ON l.id = tl.location_id AND l.deleted_at IS NULL
+        JOIN travels t ON t.id = tl.travel_id AND t.deleted_at IS NULL
+
+        UNION ALL
+
+        SELECT parent.id AS location_id,
+               tl.travel_id
+        FROM travel_locations tl
+        JOIN locations child ON child.id = tl.location_id AND child.deleted_at IS NULL
+        JOIN locations parent ON parent.id = child.parent_location_id AND parent.deleted_at IS NULL
+        JOIN travels t ON t.id = tl.travel_id AND t.deleted_at IS NULL
+    ),
+    location_visit_counts AS (
+        SELECT location_id,
+               COUNT(DISTINCT travel_id) AS visit_count
+        FROM location_visit_targets
+        GROUP BY location_id
+    )
+"""
+
+
 @bp.route('/api/locations')
 def get_locations():
     q = request.args.get('q', '').strip()
@@ -82,20 +108,15 @@ def get_locations():
 
 @bp.route('/api/locations/todo')
 def get_locations_todo():
-    rows = [dict(r) for r in query("""
+    rows = [dict(r) for r in query(LOCATION_VISIT_COUNT_CTE + """
         SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type,
                l.address, l.notes, l.latitude, l.longitude, l.parent_location_id,
-               COUNT(DISTINCT tl.travel_id) AS direct_visits,
-               COUNT(DISTINCT child_tl.travel_id) AS child_visits
+               COALESCE(vc.visit_count, 0) AS visit_count
         FROM locations l
         JOIN countries c ON l.country_id = c.id
         JOIN location_types lt ON l.location_type_id = lt.id
-        LEFT JOIN travel_locations tl ON tl.location_id = l.id
-        LEFT JOIN locations child ON child.parent_location_id = l.id AND child.deleted_at IS NULL
-        LEFT JOIN travel_locations child_tl ON child_tl.location_id = child.id
+        LEFT JOIN location_visit_counts vc ON vc.location_id = l.id
         WHERE l.deleted_at IS NULL
-        GROUP BY l.id, l.name, c.name, lt.name, l.address, l.notes,
-                 l.latitude, l.longitude, l.parent_location_id
         ORDER BY c.name, l.name
     """)]
 
@@ -106,7 +127,7 @@ def get_locations_todo():
         (
             'not_visited',
             'brak wizyt',
-            lambda loc: int(loc.get('direct_visits') or 0) == 0 and int(loc.get('child_visits') or 0) == 0,
+            lambda loc: int(loc.get('visit_count') or 0) == 0,
         ),
     ]
     counts = {key: 0 for key, _, _ in checks}
@@ -129,7 +150,7 @@ def get_locations_todo():
                 'missing': missing,
                 'missing_keys': missing_keys,
                 'missing_count': len(missing),
-                'visit_count': int(loc.get('direct_visits') or 0) + int(loc.get('child_visits') or 0),
+                'visit_count': int(loc.get('visit_count') or 0),
             })
 
     needs_attention.sort(key=lambda loc: (loc['missing_count'], loc['country_name'], loc['name']), reverse=True)

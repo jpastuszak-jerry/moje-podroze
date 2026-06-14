@@ -12,6 +12,18 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
   `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
   przed wiekszymi refaktorami.
+- Ostatnio domkniete lokalnie: pakiet `1+2` dla centrum brakow miejsc. Backend
+  `/api/locations/todo` uzywa teraz preagregowanego `visit_count` z CTE
+  `location_visit_counts`, bez szerokiego `GROUP BY` po miejscach i bez
+  liczenia usunietych podrozy jako aktywnych wizyt. Frontend dodal szybkie
+  akcje na kartach brakow: `GPS`, `Adres`, `Notatki` otwieraja edycje miejsca
+  z fokusem na odpowiednim polu, a `Wizyty` otwiera szczegol miejsca.
+- Weryfikacja lokalna pakietu `1+2`: `python -m py_compile ...`,
+  `python -m ruff check .`, `python -m unittest discover -s tests` (58 testow,
+  7 skipow), `tools/smoke_js.mjs` przez Node REPL MCP oraz `git diff --check`
+  przeszly. Nowy `/api/locations/todo` przeszedl na realnym `DATABASE_URL`:
+  709 miejsc, 542 wymagajace uwagi. Porownanie SQL na Neon: stary wariant
+  medianowo ok. 68.05 ms, nowy ok. 67.39 ms.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `a5645be Improve
   location data quality worklist`: UX centrum brakow danych miejsc
   `#/locations/todo`. Widok pamieta filtr i sortowanie, obsluguje deep linki z

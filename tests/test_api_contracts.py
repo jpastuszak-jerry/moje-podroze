@@ -703,8 +703,7 @@ class ApiContractSmokeTests(unittest.TestCase):
                 'latitude': None,
                 'longitude': None,
                 'parent_location_id': None,
-                'direct_visits': 0,
-                'child_visits': 0,
+                'visit_count': 0,
             },
             {
                 'id': 2,
@@ -716,8 +715,7 @@ class ApiContractSmokeTests(unittest.TestCase):
                 'latitude': 59.437,
                 'longitude': 24.7536,
                 'parent_location_id': None,
-                'direct_visits': 1,
-                'child_visits': 0,
+                'visit_count': 1,
             },
         ]
 
@@ -742,6 +740,42 @@ class ApiContractSmokeTests(unittest.TestCase):
             set(data['needs_attention'][0]),
         )
         self.assertEqual(data['needs_attention'][0]['visit_count'], 0)
+
+    def test_locations_todo_reuses_preaggregated_visit_counts(self):
+        rows = [{
+            'id': 1,
+            'name': 'Helsinki',
+            'country_name': 'Finland',
+            'location_type': 'miasto',
+            'address': 'Market Square',
+            'notes': 'Stolica Finlandii',
+            'latitude': 60.17,
+            'longitude': 24.94,
+            'parent_location_id': None,
+            'visit_count': 2,
+        }]
+        captured = []
+
+        def capture_locations_query(sql, params=(), one=False):
+            self.assertFalse(one)
+            captured.append(' '.join(sql.split()))
+            return rows
+
+        with patch.object(locations, 'query', side_effect=capture_locations_query):
+            response = self.client.get('/api/locations/todo')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data['needs_attention'], [])
+        self.assertEqual(len(captured), 1)
+        sql = captured[0]
+        self.assertIn('WITH location_visit_targets AS', sql)
+        self.assertIn('location_visit_counts AS', sql)
+        self.assertIn('COUNT(DISTINCT travel_id) AS visit_count', sql)
+        self.assertIn('LEFT JOIN location_visit_counts vc ON vc.location_id = l.id', sql)
+        self.assertNotIn('COUNT(DISTINCT tl.travel_id) AS direct_visits', sql)
+        self.assertNotIn('COUNT(DISTINCT child_tl.travel_id) AS child_visits', sql)
+        self.assertNotIn('GROUP BY l.id, l.name, c.name', sql)
 
     def test_locations_list_uses_preaggregated_visit_stats(self):
         rows = [{

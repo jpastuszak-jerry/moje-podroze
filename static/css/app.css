@@ -325,6 +325,14 @@ body.auth-page {
   overflow: hidden; text-overflow: ellipsis; }
 .card-subtitle { font-size: 12px; color: var(--text2); margin-top: 2px; }
 .card-meta { display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+.worklist-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.worklist-action-btn {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  border-radius: 8px; padding: 5px 9px; font-size: 12px; font-weight: 700;
+  line-height: 1.1; cursor: pointer;
+}
+.worklist-action-btn:hover { color: var(--blue); border-color: var(--blue-light); }
+.worklist-action-btn:active { transform: scale(0.97); }
 .card-chevron { color: var(--text3); font-size: 20px; align-self: center; }
 .badge { font-size: 11px; padding: 2px 7px; border-radius: 20px; font-weight: 500; }
 .badge-blue { background: var(--blue-light); color: var(--blue); }

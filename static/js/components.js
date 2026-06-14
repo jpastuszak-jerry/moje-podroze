@@ -246,8 +246,12 @@ function renderWorklistCard({
   subtitle = '',
   badges = [],
   badgeTone = 'orange',
+  actionsHtml = '',
 } = {}) {
   const badgesHtml = renderBadges(badges, { tone: badgeTone });
+  const metaParts = [];
+  if (badgesHtml) metaParts.push(`<div class="card-meta">${badgesHtml}</div>`);
+  if (actionsHtml) metaParts.push(actionsHtml);
   return renderEntityCard({
     onclick,
     icon,
@@ -259,7 +263,7 @@ function renderWorklistCard({
       ? `<button class="btn-add-small" onclick="event.stopPropagation(); ${escapeAttr(editOnclick)}">Edytuj</button>`
       : '',
     subtitles: [subtitle],
-    metaHtml: badgesHtml ? `<div class="card-meta">${badgesHtml}</div>` : '',
+    metaHtml: metaParts.join(''),
   });
 }
 

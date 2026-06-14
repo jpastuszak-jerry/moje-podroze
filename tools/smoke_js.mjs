@@ -349,10 +349,12 @@ const worklistCardHtml = context.renderWorklistCard({
   editOnclick: 'openTodoEdit(2)',
   subtitle: '2 braki',
   badges: ['Bez oceny'],
+  actionsHtml: '<div class="worklist-card-actions"><button type="button">GPS</button></div>',
 });
 assert.match(worklistCardHtml, /worklist-card-title-row/, 'renderWorklistCard renders title action row');
 assert.match(worklistCardHtml, /openTodoEdit\(2\)/, 'renderWorklistCard keeps edit action');
 assert.match(worklistCardHtml, /badge-orange/, 'renderWorklistCard renders missing-data badges');
+assert.match(worklistCardHtml, /worklist-card-actions/, 'renderWorklistCard can render quick actions');
 
 const pickerRowHtml = context.renderPickerRow({
   onclick: 'pick(1)',
@@ -681,6 +683,9 @@ assert.match(locationTodoView.innerHTML, /location-todo-filter-select/, 'locatio
 assert.match(locationTodoView.innerHTML, /location-todo-sort-select/, 'location todo exposes sort control');
 assert.match(locationTodoView.innerHTML, /badge-orange/, 'location todo renders colored GPS badges');
 assert.match(locationTodoView.innerHTML, /badge-purple/, 'location todo renders colored address badges');
+assert.match(locationTodoView.innerHTML, /worklist-action-btn/, 'location todo cards expose quick action buttons');
+assert.match(locationTodoView.innerHTML, /openLocationTodoAction\(10, 'missing_gps'\)/, 'location todo GPS action targets the edit modal');
+assert.match(locationTodoView.innerHTML, /openLocationTodoAction\(11, 'not_visited'\)/, 'location todo visit action targets the location detail');
 assert.ok(
   locationTodoView.innerHTML.indexOf('Catania') < locationTodoView.innerHTML.indexOf('Helsinki'),
   'location todo applies visit-count sorting from route params',
