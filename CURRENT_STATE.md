@@ -12,6 +12,11 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete lokalnie: maly cleanup stabilizacyjny po profilu miejsca.
+  Usunieto nieuzywany `renderLocationDetailProfileLegacy` z
+  `static/js/locations.js`, zeby szczegol miejsca mial jedna aktywna sciezke
+  renderowania. Weryfikacja lokalna: `tools/smoke_js.mjs` przez Node REPL MCP
+  oraz `git diff --check` przeszly.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `67288d7 Enhance
   location detail profile`: profil miejsca jako mini-historia. Endpoint
   `/api/locations/<id>` zwraca teraz `first_visit`, osobne liczniki wizyt
@@ -259,8 +264,8 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
    wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
    ma stac sie "pamiatkowy", a nie tylko analityczny.
 2. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
-   dopracowac teksty/spacing albo usunac stary nieuzywany renderer profilu
-   miejsca z `static/js/locations.js` jako czysty refaktor.
+   dopracowac teksty/spacing albo dodac drobne deep linki z miejsc podrzednych,
+   jesli bedzie to faktycznie przydatne w pracy.
 3. Dalszy UX centrum brakow miejsc: szybkie akcje z kart albo lekki widok
    grupowania po kraju/typie braku, zeby przechodzic od raportu do uzupelniania
    danych bez wracania przez liste miejsc.

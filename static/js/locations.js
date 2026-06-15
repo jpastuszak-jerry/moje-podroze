@@ -440,51 +440,6 @@ function renderLocationDetailProfile(loc, directVisits, childVisits) {
   </div>`;
 }
 
-function renderLocationDetailProfileLegacy(loc, directVisits, childVisits) {
-  const hasGps = locationHasGps(loc);
-  const gpsText = hasGps
-    ? `${parseFloat(loc.latitude).toFixed(5)}, ${parseFloat(loc.longitude).toFixed(5)}`
-    : 'Brak współrzędnych';
-  const mapsHref = hasGps ? `https://maps.google.com/?q=${encodeURIComponent(`${loc.latitude},${loc.longitude}`)}` : '';
-  const totalVisits = locationVisitCount(loc);
-  return `<div class="section location-detail-card">
-    <div class="location-profile-top">
-      <div class="location-profile-icon">${locationIcon(loc.location_type)}</div>
-      <div class="location-profile-main">
-        <div class="location-profile-title">${escapeHtml(loc.name || '(bez nazwy)')}</div>
-        <div class="location-profile-sub">${escapeHtml(loc.location_type || 'typ nieznany')} · ${escapeHtml(loc.country_name || 'kraj nieznany')}</div>
-        <div class="location-detail-badges">
-          <span class="location-detail-badge">${escapeHtml(locVisitSummary(loc))}</span>
-          <span class="location-detail-badge ${hasGps ? 'ok' : 'warn'}">${hasGps ? 'GPS zapisany' : 'Bez GPS'}</span>
-        </div>
-      </div>
-    </div>
-    ${renderMetricGrid([
-      { label: 'Wizyty łącznie', value: totalVisits || 0 },
-      { label: 'Bezpośrednie', value: directVisits.length },
-      { label: 'Przez podrzędne', value: childVisits.length },
-    ], {
-      className: 'location-metrics-grid',
-      itemClass: 'location-metric',
-      valueClass: 'location-metric-value',
-      labelClass: 'location-metric-label',
-      subClass: 'location-metric-sub',
-    })}
-    <div class="location-meta-list">
-      ${loc.parent_name ? `<div class="location-meta-item">
-        <span>Region / miasto</span>
-        <button type="button" class="location-meta-link" onclick="openLocation(${loc.parent_location_id})">${escapeHtml(loc.parent_name)}</button>
-      </div>` : ''}
-      ${loc.address ? `<div class="location-meta-item wide"><span>Adres</span><strong>${escapeHtml(loc.address)}</strong></div>` : ''}
-      <div class="location-meta-item wide">
-        <span>Współrzędne GPS</span>
-        <strong class="mono-detail">${escapeHtml(gpsText)}${hasGps ? ` <a class="text-link" href="${mapsHref}" target="_blank" rel="noopener">Google Maps</a>` : ''}</strong>
-      </div>
-      ${loc.notes ? `<div class="location-meta-item wide"><span>Notatki</span><strong class="notes-text">${escapeHtml(loc.notes)}</strong></div>` : ''}
-    </div>
-  </div>`;
-}
-
 function renderLocationVisitSection(title, visits, icon, child = false) {
   if (!visits.length) {
     return `<div class="section location-visits-section">
