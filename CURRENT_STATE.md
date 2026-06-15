@@ -12,6 +12,19 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `17bd7c1 Cache map
+  markers for faster filtering`: kolejny maly performance pass frontendu.
+  Mapa buduje teraz markery Leafleta raz po pobraniu `/api/map-locations`, a
+  filtrowanie typu/kraju przepina cache'owane markery w klastrze zamiast
+  tworzyc je od nowa. Selecty mapy sortuja wartosci wspolnym polskim
+  `Intl.Collator`, pickery miejsc w kreatorze i w dodawaniu miejsca licza
+  tekst zapytania tylko raz na zmiane, a lata na liscie podrozy sortuja sie
+  numerycznie.
+- Weryfikacja tej zmiany: lokalnie `tools/smoke_js.mjs` przeszedl przez Node
+  REPL MCP, `git diff --check` przeszedl, smoke JS sprawdza cache markerow
+  mapy i normalizacje wyszukiwania pickerow. GitHub Actions dla `17bd7c1`
+  byly zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK
+  i potwierdzil build `17bd7c1`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `fc66b78 Speed up
   location list sorting`: maly performance pass dla glownej listy miejsc.
   Sortowanie po kraju/nazwie oraz opcje filtrow kraju/typu uzywaja teraz
