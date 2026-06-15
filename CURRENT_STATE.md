@@ -12,6 +12,16 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete lokalnie: profil miejsca jako mini-historia. Endpoint
+  `/api/locations/<id>` zwraca teraz `first_visit`, osobne liczniki wizyt
+  bezposrednich i przez miejsca podrzedne, liste `children` oraz obiekt
+  `quality` z brakami danych. Frontend szczegolu miejsca pokazuje "Paszport
+  miejsca", status kompletnosci, szybkie akcje uzupelniania GPS/adresu/notatek,
+  metryki pierwszej/ostatniej wizyty, miejsca podrzedne i jedna historie wizyt.
+- Weryfikacja lokalna profilu miejsca: `python -m py_compile ...`,
+  `python -m ruff check .`, `python -m unittest discover -s tests` (58 testow,
+  7 skipow), `tools/smoke_js.mjs` przez Node REPL MCP oraz `git diff --check`
+  przeszly.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `64ad250 Enhance travel
   yearbook`: `Rocznik podrozy 2.0` w statystykach. Backend `_yearbook()` zwraca
   teraz krotka narracje roku (`story`), `featured_trip`, pelny rytm miesiecy

@@ -132,6 +132,7 @@ assert.match(appCssSource, /\.yearbook-trip-name\s*\{[\s\S]*min-width:\s*0[\s\S]
 assert.match(appCssSource, /\.yearbook-story\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1\.35fr\)/, 'yearbook has a structured annual story layout');
 assert.match(appCssSource, /\.yearbook-month-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(12/, 'yearbook month rhythm uses a stable 12-column grid');
 assert.match(appCssSource, /@media\s*\(max-width:\s*620px\)[\s\S]*\.yearbook-trip\s*\{[\s\S]*flex-direction:\s*column/, 'mobile yearbook trips stack long names and metadata');
+assert.match(appCssSource, /\.location-passport\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/, 'location detail has a structured passport layout');
 
 const originalGetElementById = context.document.getElementById;
 const originalLocalStorageGetItem = context.localStorage.getItem;
@@ -602,13 +603,49 @@ const locationProfileHtml = context.renderLocationDetailProfile({
   latitude: 60.1699,
   longitude: 24.9384,
   visit_count: 3,
+  direct_visit_count: 2,
+  child_visit_count: 1,
+  child_location_count: 1,
+  first_visit: '2024-06-01',
   last_visit: '2025-07-21',
   address: 'Market Square',
   notes: 'Port i centrum.',
+  quality: {
+    complete: true,
+    score: 100,
+    missing_count: 0,
+    missing_keys: [],
+    missing: [],
+  },
+  children: [{
+    id: 11,
+    name: 'Suomenlinna',
+    location_type: 'wyspa',
+    visit_count: 1,
+    last_visit: '2025-07-21',
+  }],
 }, [{ id: 1 }], [{ id: 2 }]);
 assert.match(locationProfileHtml, /GPS zapisany/, 'location detail profile shows GPS status');
-assert.match(locationProfileHtml, /Wizyty łącznie/, 'location detail profile shows visit metrics');
+assert.match(locationProfileHtml, /Pierwsza wizyta/, 'location detail profile shows visit metrics');
 assert.match(locationProfileHtml, /Google Maps/, 'location detail profile keeps external map link');
+assert.match(locationProfileHtml, /Paszport miejsca/, 'location detail profile shows a place passport');
+assert.match(locationProfileHtml, /Kompletne/, 'location detail profile shows data completeness status');
+const incompleteLocationProfileHtml = context.renderLocationDetailProfile({
+  id: 12,
+  name: 'Unknown pier',
+  location_type: 'przystań',
+  country_name: 'Finlandia',
+  visit_count: 0,
+  quality: {
+    complete: false,
+    score: 25,
+    missing_count: 4,
+    missing_keys: ['missing_gps', 'missing_address', 'missing_notes', 'not_visited'],
+    missing: [],
+  },
+}, [], []);
+assert.match(incompleteLocationProfileHtml, /Uzupe.* GPS/, 'location detail profile exposes a GPS quick action');
+assert.match(incompleteLocationProfileHtml, /Brak wizyt/, 'location detail profile explains missing visits');
 const locationVisitsHtml = context.renderLocationVisitSection('Wizyty', [{
   id: 1,
   travel_name: 'Finlandia',
@@ -617,6 +654,10 @@ const locationVisitsHtml = context.renderLocationVisitSection('Wizyty', [{
   notes: 'Spacer',
 }], 'x');
 assert.match(locationVisitsHtml, /location-visit-row/, 'location detail renders visit rows as buttons');
+const locationChildrenHtml = context.renderLocationChildren({
+  children: [{ id: 11, name: 'Suomenlinna', location_type: 'wyspa', visit_count: 1, last_visit: '2025-07-21' }],
+});
+assert.match(locationChildrenHtml, /Miejsca podrz/, 'location detail renders child places');
 const locationPickerHtml = context.buildLocPickerList([{
   id: 10,
   name: 'Helsinki',

@@ -71,6 +71,24 @@ LOCATION_VISIT_COUNT_CTE = """
 """
 
 
+def _location_quality(loc):
+    checks = [
+        ('missing_gps', 'brak GPS', loc.get('latitude') is None or loc.get('longitude') is None),
+        ('missing_address', 'brak adresu/opisu', not (loc.get('address') or '').strip()),
+        ('missing_notes', 'brak notatek', not (loc.get('notes') or '').strip()),
+        ('not_visited', 'brak wizyt', int(loc.get('visit_count') or 0) == 0),
+    ]
+    missing = [{'key': key, 'label': label} for key, label, is_missing in checks if is_missing]
+    total = len(checks)
+    return {
+        'complete': not missing,
+        'score': int(round(((total - len(missing)) / total) * 100)),
+        'missing_count': len(missing),
+        'missing_keys': [item['key'] for item in missing],
+        'missing': missing,
+    }
+
+
 @bp.route('/api/locations')
 def get_locations():
     q = request.args.get('q', '').strip()
@@ -196,16 +214,42 @@ def get_location(lid):
           AND t.deleted_at IS NULL AND l.deleted_at IS NULL
         ORDER BY t.start_date, l.name
     """, (lid,))]
+    loc['children'] = [dict(r) for r in query("""
+        SELECT child.id, child.name, lt.name AS location_type,
+               COUNT(DISTINCT t.id) AS visit_count,
+               MAX(CASE WHEN t.id IS NOT NULL
+                   THEN COALESCE(tl.departure_date, tl.arrival_date, t.end_date, t.start_date)
+                   ELSE NULL
+               END) AS last_visit
+        FROM locations child
+        JOIN location_types lt ON child.location_type_id = lt.id
+        LEFT JOIN travel_locations tl ON tl.location_id = child.id
+        LEFT JOIN travels t ON t.id = tl.travel_id AND t.deleted_at IS NULL
+        WHERE child.parent_location_id = %s AND child.deleted_at IS NULL
+        GROUP BY child.id, child.name, lt.name
+        ORDER BY child.name
+    """, (lid,))]
 
     all_visits = loc['visits'] + loc['child_visits']
     loc['visit_count'] = len({v.get('id') for v in all_visits if v.get('id') is not None})
-    visit_dates = [
+    loc['direct_visit_count'] = len({v.get('id') for v in loc['visits'] if v.get('id') is not None})
+    loc['child_visit_count'] = len({v.get('id') for v in loc['child_visits'] if v.get('id') is not None})
+    visit_start_dates = [
+        visit_date
+        for v in all_visits
+        if (visit_date := (v.get('arrival_date') or v.get('start_date') or v.get('departure_date') or v.get('end_date')))
+    ]
+    visit_end_dates = [
         visit_date
         for v in all_visits
         if (visit_date := (v.get('departure_date') or v.get('arrival_date') or v.get('end_date') or v.get('start_date')))
     ]
-    last_visit = max(visit_dates, default=None)
+    first_visit = min(visit_start_dates, default=None)
+    last_visit = max(visit_end_dates, default=None)
+    loc['first_visit'] = str(first_visit) if first_visit else None
     loc['last_visit'] = str(last_visit) if last_visit else None
+    loc['child_location_count'] = len(loc['children'])
+    loc['quality'] = _location_quality(loc)
 
     for v in loc['visits']:
         for key in ('start_date', 'end_date', 'arrival_date', 'departure_date'):
@@ -215,6 +259,10 @@ def get_location(lid):
         for key in ('start_date', 'end_date', 'arrival_date', 'departure_date'):
             if v.get(key):
                 v[key] = str(v[key])
+    for child in loc['children']:
+        child['visit_count'] = int(child.get('visit_count') or 0)
+        if child.get('last_visit'):
+            child['last_visit'] = str(child['last_visit'])
     return jsonify(loc)
 
 

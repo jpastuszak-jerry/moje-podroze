@@ -901,15 +901,32 @@ class ApiContractSmokeTests(unittest.TestCase):
             'arrival_date': date(2025, 7, 22),
             'departure_date': date(2025, 7, 23),
         }]
+        children = [{
+            'id': 4,
+            'name': 'Espoo',
+            'location_type': 'miasto',
+            'visit_count': 1,
+            'last_visit': date(2025, 7, 23),
+        }]
 
-        with patch.object(locations, 'query', side_effect=[location_row, direct_visits, child_visits]):
+        with patch.object(locations, 'query', side_effect=[location_row, direct_visits, child_visits, children]):
             response = self.client.get('/api/locations/1')
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertEqual(data['visit_count'], 2)
+        self.assertEqual(data['direct_visit_count'], 1)
+        self.assertEqual(data['child_visit_count'], 1)
+        self.assertEqual(data['child_location_count'], 1)
+        self.assertEqual(data['first_visit'], '2025-07-18')
         self.assertEqual(data['last_visit'], '2025-07-23')
         self.assertEqual(data['visits'][0]['arrival_date'], '2025-07-18')
+        self.assertEqual(data['children'][0]['last_visit'], '2025-07-23')
+        self.assertLessEqual(
+            {'complete', 'score', 'missing_count', 'missing_keys', 'missing'},
+            set(data['quality']),
+        )
+        self.assertEqual(data['quality']['missing_keys'], ['missing_gps', 'missing_address', 'missing_notes'])
 
 
 if __name__ == '__main__':

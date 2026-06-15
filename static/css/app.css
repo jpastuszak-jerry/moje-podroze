@@ -690,6 +690,37 @@ body.auth-page {
 }
 .location-detail-badge.ok { background: var(--green-light); color: var(--green); }
 .location-detail-badge.warn { background: var(--orange-light); color: var(--orange); }
+.location-passport {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px; align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid rgba(127,127,127,0.12);
+  border-bottom: 1px solid rgba(127,127,127,0.12);
+}
+.location-passport-label {
+  margin-bottom: 5px;
+  font-size: 10px; font-weight: 850; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.location-passport-text {
+  font-size: 13px; line-height: 1.45; color: var(--text2);
+  overflow-wrap: anywhere;
+}
+.location-action-row {
+  min-width: 190px; display: flex; flex-wrap: wrap; justify-content: flex-end;
+  gap: 6px;
+}
+.location-quick-action {
+  min-height: 30px; padding: 6px 10px; border-radius: 15px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--blue);
+  font: inherit; font-size: 11px; font-weight: 800; cursor: pointer;
+}
+.location-quick-action:hover { background: var(--blue-light); border-color: transparent; }
+.location-action-hint {
+  max-width: 260px; font-size: 11px; line-height: 1.35; color: var(--text2);
+  text-align: right;
+}
+.location-action-hint.ok { color: var(--green); font-weight: 800; }
 .location-metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .location-metric {
   min-width: 0; padding: 10px; border-radius: 10px;
@@ -723,6 +754,15 @@ body.auth-page {
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--bg); color: var(--text2); font-size: 11px; font-weight: 800;
 }
+.location-child-list { display: flex; flex-direction: column; }
+.location-child-row {
+  width: 100%; min-height: 54px; display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border: none; border-top: 1px solid var(--border);
+  background: transparent; color: var(--text); text-align: left; cursor: pointer;
+}
+.location-child-row:first-child { border-top: none; padding-top: 0; }
+.location-child-row:last-child { padding-bottom: 0; }
+.location-child-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .location-visit-list { display: flex; flex-direction: column; }
 .location-visit-row {
   width: 100%; min-height: 56px; display: flex; align-items: center; gap: 10px;
@@ -1912,6 +1952,9 @@ button.yearbook-highlight { cursor: pointer; }
   .aux-filter-summary { align-items: stretch; flex-direction: column; }
   .aux-filter-summary-text { align-items: flex-start; flex-direction: column; }
   .aux-filter-summary-text span { white-space: normal; }
+  .location-passport { grid-template-columns: 1fr; }
+  .location-action-row { min-width: 0; justify-content: flex-start; }
+  .location-action-hint { max-width: none; text-align: left; }
   .location-metrics-grid,
   .location-meta-list { grid-template-columns: 1fr; }
   .location-profile-title,

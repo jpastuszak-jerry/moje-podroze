@@ -353,12 +353,19 @@ class PostgresIntegrationTests(unittest.TestCase):
         data = response.get_json()
         self.assertEqual(data['name'], 'Helsinki')
         self.assertEqual(data['visit_count'], 2)
+        self.assertEqual(data['direct_visit_count'], 1)
+        self.assertEqual(data['child_visit_count'], 2)
+        self.assertEqual(data['child_location_count'], 1)
+        self.assertEqual(data['first_visit'], '2025-07-18')
         self.assertEqual(data['last_visit'], '2025-08-02')
         self.assertEqual([visit['travel_name'] for visit in data['visits']], ['Nordic loop'])
         self.assertEqual(
             [visit['travel_name'] for visit in data['child_visits']],
             ['Nordic loop', 'Island return'],
         )
+        self.assertEqual(data['children'][0]['name'], 'Suomenlinna')
+        self.assertEqual(data['children'][0]['visit_count'], 2)
+        self.assertEqual(data['quality']['complete'], True)
 
     def test_stats_use_real_postgres_fixture(self):
         response = self.client.get('/api/stats?year=2025')
