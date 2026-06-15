@@ -121,6 +121,7 @@ function count(haystack, needle) {
 }
 
 const appCssSource = fs.readFileSync(appCssPath, 'utf8');
+const locationsSource = fs.readFileSync(locationsPath, 'utf8');
 assert.match(appCssSource, /#view\.map-view-mode\s*\{\s*overflow:\s*hidden;/, 'mobile map view disables page scroll');
 assert.match(appCssSource, /\.map-screen-shell[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/, 'map screen uses a dedicated flex shell');
 assert.match(appCssSource, /\.app-menu\s*\{[\s\S]*position:\s*fixed[\s\S]*top:\s*calc\(env\(safe-area-inset-top/, 'mobile app menu respects the iPhone safe area');
@@ -133,6 +134,10 @@ assert.match(appCssSource, /\.yearbook-story\s*\{[\s\S]*grid-template-columns:\s
 assert.match(appCssSource, /\.yearbook-month-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(12/, 'yearbook month rhythm uses a stable 12-column grid');
 assert.match(appCssSource, /@media\s*\(max-width:\s*620px\)[\s\S]*\.yearbook-trip\s*\{[\s\S]*flex-direction:\s*column/, 'mobile yearbook trips stack long names and metadata');
 assert.match(appCssSource, /\.location-passport\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/, 'location detail has a structured passport layout');
+assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\('pl', \{ sensitivity: 'base' \}\)/, 'location sorting reuses one Polish collator');
+assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
+assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
+assert.match(locationsSource, /function compareLocationTodoText\(a, b\)\s*\{\s*return compareLocationText\(a, b\);\s*\}/, 'location worklist reuses the main text comparator');
 
 const originalGetElementById = context.document.getElementById;
 const originalLocalStorageGetItem = context.localStorage.getItem;

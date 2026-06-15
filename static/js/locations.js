@@ -18,6 +18,10 @@ const LOCATION_SORT_LABELS = {
   last_visit_desc: 'Ostatnio odwiedzone',
 };
 
+const LOCATION_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
+  ? new Intl.Collator('pl', { sensitivity: 'base' })
+  : null;
+
 async function renderLocations(q) {
   if (q !== undefined) currentLocationSearch = q || '';
   const view = document.getElementById('view');
@@ -140,12 +144,12 @@ function populateLocationFilters(locs) {
   if (sortEl) sortEl.value = currentLocationSort;
   if (countryEl) {
     const selected = countryEl.value || currentLocationCountry;
-    const countries = [...new Set(locs.map(l => l.country_name).filter(Boolean))].sort();
+    const countries = [...new Set(locs.map(l => l.country_name).filter(Boolean))].sort(compareLocationText);
     countryEl.innerHTML = renderSelectOptions(countries, selected, { emptyOption: 'Wszystkie kraje' });
   }
   if (typeEl) {
     const selected = typeEl.value || currentLocationType;
-    const types = [...new Set(locs.map(l => l.location_type).filter(Boolean))].sort();
+    const types = [...new Set(locs.map(l => l.location_type).filter(Boolean))].sort(compareLocationText);
     typeEl.innerHTML = renderSelectOptions(types, selected, { emptyOption: 'Wszystkie typy' });
   }
 }
@@ -229,12 +233,27 @@ function updateLocQualityButtons() {
   });
 }
 
+function compareLocationText(a, b) {
+  const left = String(a || '');
+  const right = String(b || '');
+  return LOCATION_COLLATOR
+    ? LOCATION_COLLATOR.compare(left, right)
+    : left.localeCompare(right, 'pl', { sensitivity: 'base' });
+}
+
+function compareLocationDateDesc(a, b) {
+  const left = String(a || '');
+  const right = String(b || '');
+  if (left === right) return 0;
+  return right > left ? 1 : -1;
+}
+
 function compareLocName(a, b) {
-  return String(a.name || '').localeCompare(String(b.name || ''), 'pl', { sensitivity: 'base' });
+  return compareLocationText(a.name, b.name);
 }
 
 function compareLocCountryName(a, b) {
-  const country = String(a.country_name || '').localeCompare(String(b.country_name || ''), 'pl', { sensitivity: 'base' });
+  const country = compareLocationText(a.country_name, b.country_name);
   return country || compareLocName(a, b);
 }
 
@@ -266,7 +285,7 @@ function applyLocationFilters() {
   } else if (currentLocationSort === 'visit_count_desc') {
     locs.sort((a, b) => (locationVisitCount(b) - locationVisitCount(a)) || compareLocCountryName(a, b));
   } else if (currentLocationSort === 'last_visit_desc') {
-    locs.sort((a, b) => String(b.last_visit || '').localeCompare(String(a.last_visit || '')) || compareLocCountryName(a, b));
+    locs.sort((a, b) => compareLocationDateDesc(a.last_visit, b.last_visit) || compareLocCountryName(a, b));
   } else {
     locs.sort(compareLocCountryName);
   }
@@ -534,10 +553,6 @@ const LOCATION_TODO_ACTIONS = {
   not_visited: { label: 'Wizyty', view: 'visits' },
 };
 
-const LOCATION_TODO_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
-  ? new Intl.Collator('pl', { sensitivity: 'base' })
-  : null;
-
 function openLocationTodoView() {
   showTab('locationTodo');
 }
@@ -635,11 +650,7 @@ function locationTodoPriorityScore(item) {
 }
 
 function compareLocationTodoText(a, b) {
-  const left = String(a || '');
-  const right = String(b || '');
-  return LOCATION_TODO_COLLATOR
-    ? LOCATION_TODO_COLLATOR.compare(left, right)
-    : left.localeCompare(right, 'pl', { sensitivity: 'base' });
+  return compareLocationText(a, b);
 }
 
 function locationTodoSortRecord(item, index) {
