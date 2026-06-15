@@ -202,10 +202,18 @@ def _yearbook_payload():
         'countries': 2,
         'top_month': {'month': 7, 'days': 11},
         'new_countries': [{'id': 1, 'name': 'Finland', 'first_visit': '2025-07-18', 'trips': 1}],
+        'new_countries_count': 1,
         'returning_countries': [],
+        'returning_countries_count': 0,
+        'months': [{'month': 7, 'days': 11}],
         'highlights': {
             'longest': {'id': 1, 'name': 'Helsinki', 'days': 11},
             'best_rated': {'id': 1, 'name': 'Helsinki', 'rating': 4.5},
+        },
+        'featured_trip': {'id': 1, 'name': 'Helsinki', 'days': 11},
+        'story': {
+            'title': 'Rok w drodze',
+            'summary': 'Jedenaście dni w drodze.',
         },
         'trips_list': [{
             'id': 1,
@@ -510,7 +518,9 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertLessEqual(
             {
                 'year', 'trips', 'days', 'countries', 'top_month',
-                'new_countries', 'returning_countries', 'highlights', 'trips_list',
+                'new_countries', 'new_countries_count',
+                'returning_countries', 'returning_countries_count',
+                'months', 'highlights', 'featured_trip', 'story', 'trips_list',
             },
             set(data['yearbook'][0]),
         )

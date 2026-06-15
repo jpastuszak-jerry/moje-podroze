@@ -129,6 +129,8 @@ assert.match(appCssSource, /@media\s*\(max-width:\s*600px\)[\s\S]*body\.auth-pag
 assert.match(appCssSource, /\.modal\s*\{[\s\S]*scroll-padding-bottom:\s*calc\(170px \+ var\(--safe-bottom\)\)/, 'modal forms keep focused fields above the iOS keyboard accessory area');
 assert.match(appCssSource, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)\s*34px\s*34px/, 'mobile map toolbar keeps filters and buttons in a fixed grid');
 assert.match(appCssSource, /\.yearbook-trip-name\s*\{[\s\S]*min-width:\s*0[\s\S]*overflow-wrap:\s*anywhere/, 'yearbook trip names can wrap instead of overflowing');
+assert.match(appCssSource, /\.yearbook-story\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1\.35fr\)/, 'yearbook has a structured annual story layout');
+assert.match(appCssSource, /\.yearbook-month-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(12/, 'yearbook month rhythm uses a stable 12-column grid');
 assert.match(appCssSource, /@media\s*\(max-width:\s*620px\)[\s\S]*\.yearbook-trip\s*\{[\s\S]*flex-direction:\s*column/, 'mobile yearbook trips stack long names and metadata');
 
 const originalGetElementById = context.document.getElementById;
@@ -1043,7 +1045,10 @@ function statsPayload(overrides = {}) {
       countries: 2,
       top_month: { month: 7, days: 8 },
       new_countries: [{ id: 3, name: 'Finlandia', first_visit: '2025-07-18', trips: 1 }],
+      new_countries_count: 1,
       returning_countries: [{ id: 4, name: 'Estonia', first_visit: '2024-04-10', trips: 2 }],
+      returning_countries_count: 1,
+      months: [{ month: 7, days: 8 }, { month: 9, days: 2 }],
       highlights: {
         longest: {
           id: 1,
@@ -1078,6 +1083,21 @@ function statsPayload(overrides = {}) {
           currency: 'EUR',
           days: 4,
         },
+      },
+      featured_trip: {
+        id: 1,
+        name: 'Helsinki',
+        start_date: '2025-07-18',
+        end_date: '2025-07-21',
+        purpose: 'Miasto',
+        rating: 4.5,
+        amount: 1200,
+        currency: 'EUR',
+        days: 4,
+      },
+      story: {
+        title: 'Rok spokojnych rozdziałów',
+        summary: '2 podróże, 8 dni w drodze i 2 kraje.',
       },
       trips_list: [{
         id: 1,
@@ -1172,6 +1192,9 @@ assert.doesNotMatch(countriesStats, /Podr.*y w roku/, 'non-overview sections sta
 const yearbookStats = await renderStatsSection('yearbook');
 assert.match(yearbookStats, /Rocznik/, 'yearbook section renders the travel yearbook');
 assert.match(yearbookStats, /Helsinki/, 'yearbook section renders highlighted trips');
+assert.match(yearbookStats, /Podr.* roku/, 'yearbook section renders the featured trip');
+assert.match(yearbookStats, /Rytm roku/, 'yearbook section renders month rhythm');
+assert.match(yearbookStats, /Rok spokojnych/, 'yearbook section renders the annual story');
 assert.match(yearbookStats, /Nowe kraje/, 'yearbook section renders country chapter details');
 assert.doesNotMatch(yearbookStats, /Koszty wed/, 'yearbook section stays focused on the yearbook');
 criticalScreens.add('stats-yearbook');

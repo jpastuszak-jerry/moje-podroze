@@ -9,9 +9,21 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   uczestnikami, mapa i statystykami.
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
-- Aktualny glowny kierunek: jakosc danych miejsc, zwlaszcza konkretne
-  `address`/`notes` oraz pozostale braki GPS, przy zachowaniu stabilizacji smoke
-  przed wiekszymi refaktorami.
+- Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
+  kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
+  miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete lokalnie: `Rocznik podrozy 2.0` w statystykach. Backend
+  `_yearbook()` zwraca teraz krotka narracje roku (`story`), `featured_trip`,
+  pelny rytm miesiecy (`months`) oraz liczniki nowych/powrotnych krajow przed
+  przycieciem chipow. Frontend pokazuje na poczatku kazdego rozdzialu charakter
+  roku, metryki, "Podroz roku" i miniwykres miesiecy, a dopiero potem
+  dotychczasowe highlighty, kraje i wybrane podroze.
+- Weryfikacja lokalna Rocznika 2.0: `python -m py_compile ...`,
+  `python -m ruff check .`, `python -m unittest discover -s tests` (58 testow,
+  7 skipow), `tools/smoke_js.mjs` przez Node REPL MCP oraz `git diff --check`
+  przeszly. Proba wizualnego fixture w in-app Browser zostala zablokowana przez
+  polityke przegladarki dla `data:` i lokalnego `file://`, wiec browser E2E
+  nadal nie jest wykonany lokalnie.
 - Ostatnio domkniete lokalnie: pakiet `1+2` dla centrum brakow miejsc. Backend
   `/api/locations/todo` uzywa teraz preagregowanego `visit_count` z CTE
   `location_visit_counts`, bez szerokiego `GROUP BY` po miejscach i bez
@@ -226,25 +238,28 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Dalszy UX centrum brakow miejsc: szybkie akcje z kart albo lekki widok
+1. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
+   wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
+   ma stac sie "pamiatkowy", a nie tylko analityczny.
+2. Dalszy UX centrum brakow miejsc: szybkie akcje z kart albo lekki widok
    grupowania po kraju/typie braku, zeby przechodzic od raportu do uzupelniania
    danych bez wracania przez liste miejsc.
-2. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
+3. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
    konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
    probki uzytkownikowi. Aktualnie 475 aktywnych miejsc ma brakujacy
    `address` albo `notes`.
-3. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
+4. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
    `ambiguous` i `manual_review_excluded`.
-4. Prawdziwe browser E2E po naprawie Node/Playwright:
+5. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-5. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+6. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-6. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
+7. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
    statystyk/filtry, jesli bedzie to przydatne w UX i testach.
-7. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+8. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions

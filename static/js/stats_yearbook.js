@@ -1,6 +1,6 @@
 function yearbookTripMeta(trip) {
   const parts = [
-    `${fmtDate(trip.start_date)} – ${fmtDate(trip.end_date)}`,
+    `${fmtDate(trip.start_date)} - ${fmtDate(trip.end_date)}`,
     `${trip.days || 0} dni`,
   ];
   if (trip.purpose) parts.push(escapeHtml(trip.purpose));
@@ -23,24 +23,87 @@ function yearbookHighlight(label, trip, valueHtml, subHtml = '') {
 
 function yearbookCountryChips(countries, emptyText) {
   if (!countries || !countries.length) return `<span class="yearbook-muted">${escapeHtml(emptyText)}</span>`;
-  return countries.map(c => `<span class="yearbook-chip">${escapeHtml(c.name)}${c.trips > 1 ? ` · ${c.trips}×` : ''}</span>`).join('');
+  return countries.map(c => `<span class="yearbook-chip">${escapeHtml(c.name)}${c.trips > 1 ? ` · ${c.trips}x` : ''}</span>`).join('');
+}
+
+function yearbookMonthLabel(month) {
+  const monthLabels = ['', 'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
+  return monthLabels[Number(month)] || month;
+}
+
+function renderYearbookMetric(value, label) {
+  return `<div class="yearbook-story-metric">
+    <strong>${escapeHtml(String(value))}</strong>
+    <span>${escapeHtml(label)}</span>
+  </div>`;
+}
+
+function renderYearbookStory(chapter) {
+  const story = chapter.story || {};
+  const featuredTrip = chapter.featured_trip || chapter.highlights?.best_rated || chapter.highlights?.longest;
+  const featuredHtml = featuredTrip
+    ? `<button class="yearbook-featured" type="button" onclick="openTravel(${featuredTrip.id})">
+        <span class="yearbook-mini-label">Podróż roku</span>
+        <strong>${escapeHtml(featuredTrip.name || '(bez nazwy)')}</strong>
+        <span>${yearbookTripMeta(featuredTrip)}</span>
+      </button>`
+    : `<div class="yearbook-featured yearbook-featured-empty">
+        <span class="yearbook-mini-label">Podróż roku</span>
+        <strong>Brak danych</strong>
+      </div>`;
+
+  return `<div class="yearbook-story">
+    <div class="yearbook-story-copy">
+      <div class="yearbook-story-title">${escapeHtml(story.title || `Rok ${chapter.year}`)}</div>
+      <p>${escapeHtml(story.summary || 'Najważniejsze liczby i podróże z tego roku są zebrane poniżej.')}</p>
+      <div class="yearbook-story-metrics">
+        ${renderYearbookMetric(chapter.trips || 0, pluralTrips(chapter.trips || 0))}
+        ${renderYearbookMetric(chapter.days || 0, 'dni')}
+        ${renderYearbookMetric(chapter.countries || 0, 'krajów')}
+        ${renderYearbookMetric(chapter.new_countries_count || 0, 'nowych')}
+        ${renderYearbookMetric(chapter.returning_countries_count || 0, 'powrotów')}
+      </div>
+    </div>
+    ${featuredHtml}
+  </div>`;
+}
+
+function renderYearbookMonths(chapter) {
+  const monthMap = new Map((chapter.months || []).map(item => [Number(item.month), Number(item.days || 0)]));
+  if (!monthMap.size) return '';
+  const maxDays = Math.max(...monthMap.values(), 1);
+  const bars = Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    const days = monthMap.get(month) || 0;
+    const share = days ? Math.max(12, Math.round((days / maxDays) * 100)) : 0;
+    return `<div class="yearbook-month" title="${yearbookMonthLabel(month)}: ${days} dni">
+      <div class="yearbook-month-track">
+        <span class="yearbook-month-bar" style="--month-share: ${share}%"></span>
+      </div>
+      <span>${yearbookMonthLabel(month)}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="yearbook-months">
+    <div class="yearbook-mini-label">Rytm roku</div>
+    <div class="yearbook-month-grid">${bars}</div>
+  </div>`;
 }
 
 function renderYearbookChapter(chapter) {
-  const monthLabels = ['','Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'];
   const highlights = chapter.highlights || {};
   const topMonth = chapter.top_month;
   const topMonthHtml = topMonth
     ? `<div class="yearbook-highlight">
         <div class="yearbook-highlight-label">Najaktywniejszy miesiąc</div>
-        <div class="yearbook-highlight-value">${monthLabels[topMonth.month] || topMonth.month}</div>
+        <div class="yearbook-highlight-value">${yearbookMonthLabel(topMonth.month)}</div>
         <div class="yearbook-highlight-name">${topMonth.days || 0} dni w trasie</div>
       </div>`
     : '';
   const highlightHtml = [
     yearbookHighlight('Najdłuższa', highlights.longest, `${highlights.longest?.days || 0} dni`, yearbookTripMeta(highlights.longest || {})),
-    yearbookHighlight('Najwyżej oceniana', highlights.best_rated, highlights.best_rated?.rating ? stars(highlights.best_rated.rating) : '–', yearbookTripMeta(highlights.best_rated || {})),
-    yearbookHighlight('Najwyższy koszt', highlights.priciest, highlights.priciest?.amount > 0 ? formatCost(highlights.priciest.amount, highlights.priciest.currency || 'PLN') : '–', yearbookTripMeta(highlights.priciest || {})),
+    yearbookHighlight('Najwyżej oceniana', highlights.best_rated, highlights.best_rated?.rating ? stars(highlights.best_rated.rating) : '-', yearbookTripMeta(highlights.best_rated || {})),
+    yearbookHighlight('Najwyższy koszt', highlights.priciest, highlights.priciest?.amount > 0 ? formatCost(highlights.priciest.amount, highlights.priciest.currency || 'PLN') : '-', yearbookTripMeta(highlights.priciest || {})),
     topMonthHtml,
   ].filter(Boolean).join('');
   const tripsHtml = (chapter.trips_list || []).length
@@ -58,6 +121,8 @@ function renderYearbookChapter(chapter) {
       </div>
       <button class="section-action secondary" type="button" onclick="setStatsYear(${chapter.year})">Pokaż rok</button>
     </div>
+    ${renderYearbookStory(chapter)}
+    ${renderYearbookMonths(chapter)}
     ${highlightHtml ? `<div class="yearbook-highlights">${highlightHtml}</div>` : ''}
     <div class="yearbook-countries">
       <div>
@@ -82,9 +147,9 @@ function renderYearbook(yearbook, selectedYear) {
   if (!chapters.length) return '';
   const subtitle = selectedYear
     ? `Najważniejsze momenty z ${selectedYear}.`
-    : 'Lata jako rozdziały: najważniejsze podróże, nowe kraje i powroty.';
+    : 'Lata jako rozdziały: rytm podróży, podróż roku, nowe kraje i powroty.';
   return renderSectionCard({
-    title: '📖 Rocznik podróży',
+    title: 'Rocznik podróży',
     className: 'chart-card yearbook-card',
     body: `<div class="yearbook-subtitle">${escapeHtml(subtitle)}</div>
       ${chapters.map(renderYearbookChapter).join('')}`,

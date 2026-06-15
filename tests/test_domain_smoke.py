@@ -184,7 +184,13 @@ class DateLogicSmokeTests(unittest.TestCase):
         self.assertEqual(chapter['highlights']['best_rated']['name'], 'Tallinn')
         self.assertEqual(chapter['highlights']['priciest']['currency'], 'EUR')
         self.assertEqual(chapter['new_countries'][0]['name'], 'Finland')
+        self.assertEqual(chapter['new_countries_count'], 1)
         self.assertEqual(chapter['returning_countries'][0]['name'], 'Estonia')
+        self.assertEqual(chapter['returning_countries_count'], 1)
+        self.assertEqual(chapter['months'], [{'month': 7, 'days': 11}, {'month': 9, 'days': 1}])
+        self.assertEqual(chapter['featured_trip']['name'], 'Helsinki')
+        self.assertEqual(chapter['story']['title'], 'Rok spokojnych rozdziałów')
+        self.assertIn('2 podróże', chapter['story']['summary'])
         self.assertEqual(chapter['trips_list'][0]['id'], 1)
 
 

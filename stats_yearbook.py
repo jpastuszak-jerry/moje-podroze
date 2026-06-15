@@ -29,6 +29,90 @@ def _travel_item(row):
     }
 
 
+def _polish_count(count, one, few, many):
+    count = int(count or 0)
+    last_digit = count % 10
+    last_two = count % 100
+    if count == 1:
+        word = one
+    elif 2 <= last_digit <= 4 and not 12 <= last_two <= 14:
+        word = few
+    else:
+        word = many
+    return f'{count} {word}'
+
+
+def _featured_trip(trips):
+    if not trips:
+        return None
+
+    def score(trip):
+        rating = float(trip.get('rating') or 0)
+        days = int(trip.get('days') or 0)
+        amount = float(trip.get('amount') or 0)
+        return (
+            rating * 8 + min(days, 21) + (1 if amount > 0 else 0),
+            days,
+            amount,
+            trip.get('name') or '',
+        )
+
+    return max(trips, key=score)
+
+
+def _yearbook_story(chapter):
+    trips = int(chapter.get('trips') or 0)
+    days = int(chapter.get('days') or 0)
+    countries = int(chapter.get('countries') or 0)
+    new_count = int(chapter.get('new_countries_count') or 0)
+    returning_count = int(chapter.get('returning_countries_count') or 0)
+    top_month = chapter.get('top_month') or {}
+
+    if trips == 0:
+        return {
+            'title': 'Rok bez zapisanych podróży',
+            'summary': 'W tym roku nie ma jeszcze podróży w bazie.',
+        }
+
+    if days >= 30:
+        title = 'Rok w drodze'
+    elif trips >= 8:
+        title = 'Rok wielu wyjazdów'
+    elif new_count >= 3:
+        title = 'Rok odkryć'
+    elif returning_count >= max(2, new_count + 1):
+        title = 'Rok powrotów'
+    elif countries >= 5:
+        title = 'Rok szerokiej mapy'
+    else:
+        title = 'Rok spokojnych rozdziałów'
+
+    parts = [
+        (
+            f"{_polish_count(trips, 'podróż', 'podróże', 'podróży')}, "
+            f"{_polish_count(days, 'dzień', 'dni', 'dni')} w drodze "
+            f"i {_polish_count(countries, 'kraj', 'kraje', 'krajów')}."
+        )
+    ]
+    if new_count:
+        parts.append(
+            'Do kolekcji doszło '
+            f"{_polish_count(new_count, 'nowy kraj', 'nowe kraje', 'nowych krajów')}."
+        )
+    if returning_count:
+        parts.append(
+            'Powroty zbudowały '
+            f"{_polish_count(returning_count, 'znajomy kierunek', 'znajome kierunki', 'znajomych kierunków')}."
+        )
+    if top_month:
+        parts.append(
+            'Najmocniejszy miesiąc miał '
+            f"{_polish_count(top_month.get('days'), 'dzień', 'dni', 'dni')} podróży."
+        )
+
+    return {'title': title, 'summary': ' '.join(parts)}
+
+
 def _yearbook(limit_years=12, trips_per_year=6):
     summary_rows = [dict(r) for r in query("""
         WITH year_trips AS (
@@ -79,8 +163,13 @@ def _yearbook(limit_years=12, trips_per_year=6):
             'countries': int(row['countries'] or 0),
             'top_month': None,
             'new_countries': [],
+            'new_countries_count': 0,
             'returning_countries': [],
+            'returning_countries_count': 0,
+            'months': [],
             'highlights': {},
+            'featured_trip': None,
+            'story': None,
             'trips_list': [],
         }
     if not chapters:
@@ -137,6 +226,11 @@ def _yearbook(limit_years=12, trips_per_year=6):
                 'month': int(row['month']),
                 'days': int(row['days'] or 0),
             }
+        if year in chapters:
+            chapters[year]['months'].append({
+                'month': int(row['month']),
+                'days': int(row['days'] or 0),
+            })
 
     country_rows = [dict(r) for r in query("""
         WITH country_visits AS (
@@ -211,7 +305,15 @@ def _yearbook(limit_years=12, trips_per_year=6):
             key=lambda t: (t['days'], t['rating'] or 0, t['amount'] or 0, t['start_date'] or ''),
             reverse=True,
         )[:trips_per_year]
-        chapters[year]['new_countries'] = chapters[year]['new_countries'][:6]
-        chapters[year]['returning_countries'] = chapters[year]['returning_countries'][:6]
+
+    for year, chapter in chapters.items():
+        trips = trips_by_year.get(year, [])
+        chapter['months'].sort(key=lambda month: month['month'])
+        chapter['new_countries_count'] = len(chapter['new_countries'])
+        chapter['returning_countries_count'] = len(chapter['returning_countries'])
+        chapter['new_countries'] = chapter['new_countries'][:6]
+        chapter['returning_countries'] = chapter['returning_countries'][:6]
+        chapter['featured_trip'] = _featured_trip(trips)
+        chapter['story'] = _yearbook_story(chapter)
 
     return [chapters[year] for year in sorted(chapters, reverse=True)]
