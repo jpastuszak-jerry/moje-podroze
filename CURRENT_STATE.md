@@ -12,6 +12,18 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `fc66b78 Speed up
+  location list sorting`: maly performance pass dla glownej listy miejsc.
+  Sortowanie po kraju/nazwie oraz opcje filtrow kraju/typu uzywaja teraz
+  wspolnego `Intl.Collator('pl')` zamiast tworzyc kosztowne porownania
+  `localeCompare(..., { sensitivity: 'base' })` w kazdym porownaniu. Sortowanie
+  po ostatniej wizycie porownuje daty ISO bez lokalizacji, a centrum brakow
+  miejsc wspoldzieli ten sam komparator tekstowy.
+- Weryfikacja tej zmiany: `tools/smoke_js.mjs` przeszedl przez Node REPL MCP,
+  `git diff --check` przeszedl, syntetyczny benchmark 1200 miejsc spadl
+  medianowo z ok. 362 ms do ok. 21 ms, GitHub Actions dla `fc66b78` byly
+  zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i
+  potwierdzil build `fc66b78`.
 - Ostatnio domkniete lokalnie: maly cleanup stabilizacyjny po profilu miejsca.
   Usunieto nieuzywany `renderLocationDetailProfileLegacy` z
   `static/js/locations.js`, zeby szczegol miejsca mial jedna aktywna sciezke
