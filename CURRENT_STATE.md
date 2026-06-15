@@ -12,16 +12,20 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
-- Ostatnio domkniete lokalnie: profil miejsca jako mini-historia. Endpoint
+- Ostatnio domkniete i wypchniete na GitHub w commicie `67288d7 Enhance
+  location detail profile`: profil miejsca jako mini-historia. Endpoint
   `/api/locations/<id>` zwraca teraz `first_visit`, osobne liczniki wizyt
   bezposrednich i przez miejsca podrzedne, liste `children` oraz obiekt
   `quality` z brakami danych. Frontend szczegolu miejsca pokazuje "Paszport
   miejsca", status kompletnosci, szybkie akcje uzupelniania GPS/adresu/notatek,
   metryki pierwszej/ostatniej wizyty, miejsca podrzedne i jedna historie wizyt.
-- Weryfikacja lokalna profilu miejsca: `python -m py_compile ...`,
+- Weryfikacja profilu miejsca: lokalnie przeszly `python -m py_compile ...`,
   `python -m ruff check .`, `python -m unittest discover -s tests` (58 testow,
-  7 skipow), `tools/smoke_js.mjs` przez Node REPL MCP oraz `git diff --check`
-  przeszly.
+  7 skipow), `tools/smoke_js.mjs` przez Node REPL MCP oraz `git diff --check`.
+  GitHub Actions dla `67288d7` byly zielone. Pierwszy produkcyjny smoke mial
+  timeout na `/healthz`, ale pozostale endpointy byly OK; ponowienie
+  `python tools/smoke_prod.py` przeszlo 12/12 OK i potwierdzilo build
+  `67288d7`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `64ad250 Enhance travel
   yearbook`: `Rocznik podrozy 2.0` w statystykach. Backend `_yearbook()` zwraca
   teraz krotka narracje roku (`story`), `featured_trip`, pelny rytm miesiecy
@@ -254,25 +258,28 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 1. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
    wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
    ma stac sie "pamiatkowy", a nie tylko analityczny.
-2. Dalszy UX centrum brakow miejsc: szybkie akcje z kart albo lekki widok
+2. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
+   dopracowac teksty/spacing albo usunac stary nieuzywany renderer profilu
+   miejsca z `static/js/locations.js` jako czysty refaktor.
+3. Dalszy UX centrum brakow miejsc: szybkie akcje z kart albo lekki widok
    grupowania po kraju/typie braku, zeby przechodzic od raportu do uzupelniania
    danych bez wracania przez liste miejsc.
-3. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
+4. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
    konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
    probki uzytkownikowi. Aktualnie 475 aktywnych miejsc ma brakujacy
    `address` albo `notes`.
-4. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
+5. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
    `ambiguous` i `manual_review_excluded`.
-5. Prawdziwe browser E2E po naprawie Node/Playwright:
+6. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-6. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+7. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-7. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
+8. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
    statystyk/filtry, jesli bedzie to przydatne w UX i testach.
-8. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+9. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
