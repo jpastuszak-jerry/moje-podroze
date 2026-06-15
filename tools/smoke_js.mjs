@@ -122,6 +122,8 @@ function count(haystack, needle) {
 
 const appCssSource = fs.readFileSync(appCssPath, 'utf8');
 const locationsSource = fs.readFileSync(locationsPath, 'utf8');
+const mapSource = fs.readFileSync(mapPath, 'utf8');
+const wizardSource = fs.readFileSync(wizardPath, 'utf8');
 assert.match(appCssSource, /#view\.map-view-mode\s*\{\s*overflow:\s*hidden;/, 'mobile map view disables page scroll');
 assert.match(appCssSource, /\.map-screen-shell[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/, 'map screen uses a dedicated flex shell');
 assert.match(appCssSource, /\.app-menu\s*\{[\s\S]*position:\s*fixed[\s\S]*top:\s*calc\(env\(safe-area-inset-top/, 'mobile app menu respects the iPhone safe area');
@@ -138,6 +140,10 @@ assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\
 assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
 assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
 assert.match(locationsSource, /function compareLocationTodoText\(a, b\)\s*\{\s*return compareLocationText\(a, b\);\s*\}/, 'location worklist reuses the main text comparator');
+assert.match(locationsSource, /function filterLocPicker\(q\)[\s\S]*const query = String\(q \|\| ''\)\.trim\(\)\.toLowerCase\(\)/, 'location picker normalizes search text once');
+assert.match(mapSource, /function buildMapMarkerCache\(locations\)[\s\S]*allMapMarkers = \(locations \|\| \[\]\)\.map\(createMapMarker\)/, 'map markers are cached after loading data');
+assert.match(mapSource, /if \(markerClusterGroup\.addLayers\) markerClusterGroup\.addLayers\(markers\)/, 'map marker rendering can add cached markers in batch');
+assert.match(wizardSource, /function wizardFilterPicker\(q\)[\s\S]*const query = String\(q \|\| ''\)\.trim\(\)\.toLowerCase\(\)/, 'wizard picker normalizes search text once');
 
 const originalGetElementById = context.document.getElementById;
 const originalLocalStorageGetItem = context.localStorage.getItem;
@@ -509,6 +515,37 @@ assert.equal(context.__mapOptions.options.zoomControl, true, 'map render keeps L
 assert.equal(context.__mapInvalidated, true, 'map render invalidates Leaflet size after layout changes');
 assert.equal(context.__mapLoadCalled, true, 'map render still loads map locations');
 criticalScreens.add('map');
+
+let mapMarkerCreates = 0;
+let mapBatchAdds = 0;
+const mapCounter = elementStub();
+const mapCluster = {
+  clearLayers() {},
+  addLayers(markers) { mapBatchAdds += markers.length; },
+  getBounds() { return { isValid() { return false; } }; },
+};
+context.document.getElementById = id => (id === 'map-counter' ? mapCounter : null);
+context.L.marker = () => {
+  mapMarkerCreates += 1;
+  return {
+    bindPopup() { return this; },
+  };
+};
+context.__mapCluster = mapCluster;
+context.__mapLocations = [
+  { id: 1, name: 'Helsinki', latitude: 60.17, longitude: 24.94, location_type: 'miasto', country_name: 'Finlandia' },
+  { id: 2, name: 'Catania', latitude: 37.5, longitude: 15.08, location_type: 'miasto', country_name: 'Wlochy' },
+];
+vm.runInContext(`
+  markerClusterGroup = __mapCluster;
+  allMapLocations = __mapLocations;
+  buildMapMarkerCache(allMapLocations);
+  renderMapMarkers(allMapLocations);
+  renderMapMarkers(allMapLocations.slice(0, 1));
+`, context);
+assert.equal(mapMarkerCreates, 2, 'map creates Leaflet markers once per loaded location');
+assert.equal(mapBatchAdds, 3, 'map filtering reuses cached markers in batches');
+assert.equal(mapCounter.textContent, '1 miejsc', 'map counter follows the filtered marker count');
 
 const tabMap = elementStub();
 const tabTravels = elementStub();

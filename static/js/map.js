@@ -4,6 +4,18 @@ let allMapLocations = [];
 let allMapMarkers = [];
 let pendingMapLocationIds = null;
 
+const MAP_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
+  ? new Intl.Collator('pl', { sensitivity: 'base' })
+  : null;
+
+function compareMapText(a, b) {
+  const left = String(a || '');
+  const right = String(b || '');
+  return MAP_COLLATOR
+    ? MAP_COLLATOR.compare(left, right)
+    : left.localeCompare(right, 'pl', { sensitivity: 'base' });
+}
+
 function createColorIcon(locationType) {
   const type = (locationType || '').toLowerCase();
   const color = MAP_TYPE_COLORS[type] || MAP_TYPE_COLORS['default'];
@@ -64,6 +76,7 @@ async function loadMapLocations() {
     const res = await fetch('/api/map-locations');
     allMapLocations = await res.json();
     buildMapFilters(allMapLocations);
+    buildMapMarkerCache(allMapLocations);
     if (pendingMapLocationIds) {
       const ids = pendingMapLocationIds;
       pendingMapLocationIds = null;
@@ -87,22 +100,38 @@ function showTravelOnMap(locationIds) {
 }
 
 function buildMapFilters(locations) {
-  const types = [...new Set(locations.map(l => l.location_type))].sort();
-  const countries = [...new Set(locations.map(l => l.country_name))].sort();
+  const types = [...new Set(locations.map(l => l.location_type).filter(Boolean))].sort(compareMapText);
+  const countries = [...new Set(locations.map(l => l.country_name).filter(Boolean))].sort(compareMapText);
   document.getElementById('map-filter-type').innerHTML =
     renderSelectOptions(types, '', { emptyOption: 'Wszystkie typy' });
   document.getElementById('map-filter-country').innerHTML =
     renderSelectOptions(countries, '', { emptyOption: 'Wszystkie kraje' });
 }
 
+function createMapMarker(loc) {
+  const icon = createColorIcon(loc.location_type);
+  const marker = L.marker([loc.latitude, loc.longitude], { icon }).bindPopup(createMapPopup(loc), { maxWidth: 280 });
+  marker._locData = loc;
+  return marker;
+}
+
+function buildMapMarkerCache(locations) {
+  allMapMarkers = (locations || []).map(createMapMarker);
+}
+
+function renderCachedMapMarkers(markers) {
+  markerClusterGroup.clearLayers();
+  if (markerClusterGroup.addLayers) markerClusterGroup.addLayers(markers);
+  else markers.forEach(marker => markerClusterGroup.addLayer(marker));
+  document.getElementById('map-counter').textContent = markers.length + ' miejsc';
+}
+
 function renderMapMarkers(locations) {
-  markerClusterGroup.clearLayers(); allMapMarkers = [];
-  locations.forEach(loc => {
-    const icon = createColorIcon(loc.location_type);
-    const marker = L.marker([loc.latitude, loc.longitude], { icon }).bindPopup(createMapPopup(loc), { maxWidth: 280 });
-    marker._locData = loc; allMapMarkers.push(marker); markerClusterGroup.addLayer(marker);
-  });
-  document.getElementById('map-counter').textContent = locations.length + ' miejsc';
+  const locationIds = new Set((locations || []).map(loc => loc.id));
+  const markers = locationIds.size === allMapMarkers.length
+    ? allMapMarkers
+    : allMapMarkers.filter(marker => locationIds.has(marker._locData.id));
+  renderCachedMapMarkers(markers);
 }
 
 function createMapPopup(loc) {
@@ -128,9 +157,12 @@ function createMapPopup(loc) {
 function filterMapMarkers() {
   const st = document.getElementById('map-filter-type').value;
   const sc = document.getElementById('map-filter-country').value;
-  const filtered = allMapLocations.filter(l => (!st || l.location_type === st) && (!sc || l.country_name === sc));
-  renderMapMarkers(filtered);
-  if (filtered.length > 0) fitMapToMarkers();
+  const markers = allMapMarkers.filter(marker => {
+    const loc = marker._locData;
+    return (!st || loc.location_type === st) && (!sc || loc.country_name === sc);
+  });
+  renderCachedMapMarkers(markers);
+  if (markers.length > 0) fitMapToMarkers();
 }
 
 function fitMapToMarkers() {
@@ -141,7 +173,7 @@ function fitMapToMarkers() {
 function resetMapView() {
   document.getElementById('map-filter-type').value = '';
   document.getElementById('map-filter-country').value = '';
-  renderMapMarkers(allMapLocations);
+  renderCachedMapMarkers(allMapMarkers);
   if (allMapLocations.length > 0) fitMapToMarkers();
 }
 

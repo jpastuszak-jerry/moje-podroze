@@ -1244,7 +1244,10 @@ function buildLocPickerList(locs, travelId, travelStart, travelEnd) {
 function filterLocPicker(q) {
   const overlay = document.getElementById('loc-picker-overlay'); if (!overlay) return;
   const all = overlay._allLocs || [];
-  const filtered = q.trim() ? all.filter(l => l.name.toLowerCase().includes(q.toLowerCase()) || l.country_name.toLowerCase().includes(q.toLowerCase())) : all;
+  const query = String(q || '').trim().toLowerCase();
+  const filtered = query
+    ? all.filter(l => (l.name || '').toLowerCase().includes(query) || (l.country_name || '').toLowerCase().includes(query))
+    : all;
   document.getElementById('loc-picker-list').innerHTML = buildLocPickerList(filtered, overlay._travelId, overlay._travelStart, overlay._travelEnd);
 }
 

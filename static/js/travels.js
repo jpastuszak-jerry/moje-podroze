@@ -28,7 +28,7 @@ async function renderTravels(q) {
   list.innerHTML = skeletonCards(4);
   let travels = await api('/api/travels' + (currentSearch ? '?q='+encodeURIComponent(currentSearch) : ''));
   const years = [...new Set(travels.map(t => t.start_date && String(t.start_date).slice(0,4)).filter(Boolean))]
-    .sort((a,b) => b.localeCompare(a));
+    .sort((a, b) => Number(b) - Number(a));
   if (currentTravelYear && !years.includes(String(currentTravelYear))) currentTravelYear = null;
   if (currentTravelYear) {
     travels = travels.filter(t => t.start_date && String(t.start_date).startsWith(String(currentTravelYear)));

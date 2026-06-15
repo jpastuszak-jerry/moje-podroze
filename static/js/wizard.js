@@ -293,8 +293,9 @@ function wizardLocationsHtml(locs, countries, locTypes) {
 
 function wizardFilterPicker(q) {
   const all = wizardState.allLocs || [];
-  const filtered = q.trim()
-    ? all.filter(l => (l.name || '').toLowerCase().includes(q.toLowerCase()) || (l.country_name || '').toLowerCase().includes(q.toLowerCase()))
+  const query = String(q || '').trim().toLowerCase();
+  const filtered = query
+    ? all.filter(l => (l.name || '').toLowerCase().includes(query) || (l.country_name || '').toLowerCase().includes(query))
     : all;
   document.getElementById('wiz-picker-list').innerHTML = wizardGroupedLocationsHtml(filtered);
 }
