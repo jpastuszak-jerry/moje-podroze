@@ -12,18 +12,21 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
-- Ostatnio domkniete lokalnie: `Rocznik podrozy 2.0` w statystykach. Backend
-  `_yearbook()` zwraca teraz krotka narracje roku (`story`), `featured_trip`,
-  pelny rytm miesiecy (`months`) oraz liczniki nowych/powrotnych krajow przed
-  przycieciem chipow. Frontend pokazuje na poczatku kazdego rozdzialu charakter
-  roku, metryki, "Podroz roku" i miniwykres miesiecy, a dopiero potem
-  dotychczasowe highlighty, kraje i wybrane podroze.
-- Weryfikacja lokalna Rocznika 2.0: `python -m py_compile ...`,
+- Ostatnio domkniete i wypchniete na GitHub w commicie `64ad250 Enhance travel
+  yearbook`: `Rocznik podrozy 2.0` w statystykach. Backend `_yearbook()` zwraca
+  teraz krotka narracje roku (`story`), `featured_trip`, pelny rytm miesiecy
+  (`months`) oraz liczniki nowych/powrotnych krajow przed przycieciem chipow.
+  Frontend pokazuje na poczatku kazdego rozdzialu charakter roku, metryki,
+  "Podroz roku" i miniwykres miesiecy, a dopiero potem dotychczasowe highlighty,
+  kraje i wybrane podroze.
+- Weryfikacja Rocznika 2.0: lokalnie przeszly `python -m py_compile ...`,
   `python -m ruff check .`, `python -m unittest discover -s tests` (58 testow,
-  7 skipow), `tools/smoke_js.mjs` przez Node REPL MCP oraz `git diff --check`
-  przeszly. Proba wizualnego fixture w in-app Browser zostala zablokowana przez
-  polityke przegladarki dla `data:` i lokalnego `file://`, wiec browser E2E
-  nadal nie jest wykonany lokalnie.
+  7 skipow), `tools/smoke_js.mjs` przez Node REPL MCP oraz `git diff --check`.
+  GitHub Actions dla `64ad250` byly zielone, a produkcyjny
+  `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil build
+  `64ad250`. Proba wizualnego fixture w in-app Browser zostala zablokowana
+  przez polityke przegladarki dla `data:` i lokalnego `file://`, wiec browser
+  E2E nadal nie jest wykonany lokalnie.
 - Ostatnio domkniete lokalnie: pakiet `1+2` dla centrum brakow miejsc. Backend
   `/api/locations/todo` uzywa teraz preagregowanego `visit_count` z CTE
   `location_visit_counts`, bez szerokiego `GROUP BY` po miejscach i bez
