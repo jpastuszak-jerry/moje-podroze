@@ -12,6 +12,17 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete w bazie Neon 2026-06-17: kolejna ostrozna partia jakosci
+  danych miejsc. Z losowej puli niepelnych miejsc wybrano 40 jednoznacznych
+  rekordow i uzupelniono tylko pewne pola: 35 opisow w `address`, 39 notatek
+  `Typ:`/`Region:` oraz 3 brakujace GPS. Istniejace opisy/notatki zostaly
+  zachowane; przy braku precyzyjnego GPS dla portu Mazara del Vallo
+  wspolrzedne zostaly pominiete. Po zmianie aktywne miejsca: 339 z adresem,
+  430 z notatkami, 528 z GPS, 484 nadal z co najmniej jednym brakiem.
+  Backup i finalny raport:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\locations_fill_backup_20260617_182151.json`
+  oraz
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\locations_fill_final_report_20260617_182541.json`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `22ba2d0 Refresh
   backlog priorities`: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
   indeks backlogu z podzialem wg potencjalnej korzysci, wskazano aktywne
