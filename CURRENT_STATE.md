@@ -62,6 +62,10 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_final_backup_20260617_190216.json`
   oraz
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_final_applied_20260617_190216.json`.
+  Weryfikacja procesu: commit `dffaf5a` zostal wypchniety, GitHub Actions byly
+  zielone, pierwszy produkcyjny smoke trafil chwilowe `503` na `/healthz`
+  podczas deployu, a ponowiony `python tools/smoke_prod.py` przeszedl 12/12 OK
+  i potwierdzil build `dffaf5a`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `22ba2d0 Refresh
   backlog priorities`: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
   indeks backlogu z podzialem wg potencjalnej korzysci, wskazano aktywne
