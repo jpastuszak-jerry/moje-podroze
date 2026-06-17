@@ -26,6 +26,16 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   Weryfikacja procesu: `git diff --check -- CURRENT_STATE.md` przeszedl,
   dokumentacyjny commit zostal wypchniety, GitHub Actions byly zielone, a
   produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK.
+- Ostatnio domkniete w bazie Neon 2026-06-17 po uwadze o zbyt ubogich opisach:
+  rozszerzono pierwsza zaakceptowana partie 12 miejsc do bogatszego,
+  dwuakapitowego wzorca w `address` (ok. 490-565 znakow na opis). Dotyczylo:
+  Porto, Przelecz Jugowska, Santiago de Compostela, Lago di Piana degli
+  Albanesi, Plac Tiananmen, Avola, Nalaguraidhoo, San Bartolome de
+  Tirajana, Glossa, Plac sw. Piotra, Palermo i Sukothai. `notes`, GPS i nazwy
+  miejsc nie byly ruszane. Backup i raport:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_batch1_backup_20260617_184150.json`
+  oraz
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_batch1_applied_20260617_184150.json`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `22ba2d0 Refresh
   backlog priorities`: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
   indeks backlogu z podzialem wg potencjalnej korzysci, wskazano aktywne
