@@ -25,20 +25,23 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   mapy i normalizacje wyszukiwania pickerow. GitHub Actions dla `17bd7c1`
   byly zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK
   i potwierdzil build `17bd7c1`.
-- Ostatnio domkniete: pakiet `wydajnosc statystyk + UX brakow miejsc`.
-  Backend dodal sekcyjne endpointy `/api/stats/section/<section>` dla
-  zakladek `yearbook`, `countries`, `costs`, `participants` i `quality`, a
-  `static/js/stats.js` przestal pobierac pelny `/api/stats` przy przelaczaniu
-  tych sekcji. Pelny `/api/stats` zostaje jako kompatybilny kontrakt. Widok
-  `#/locations/todo` ma teraz zapamietywane i deep-linkowane grupowanie kart po
-  kraju albo typie braku, obok dotychczasowego filtra i sortowania.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `45f26d7 Split stats
+  sections and group location worklist`: pakiet `wydajnosc statystyk + UX
+  brakow miejsc`. Backend dodal sekcyjne endpointy
+  `/api/stats/section/<section>` dla zakladek `yearbook`, `countries`,
+  `costs`, `participants` i `quality`, a `static/js/stats.js` przestal
+  pobierac pelny `/api/stats` przy przelaczaniu tych sekcji. Pelny
+  `/api/stats` zostaje jako kompatybilny kontrakt. Widok `#/locations/todo` ma
+  teraz zapamietywane i deep-linkowane grupowanie kart po kraju albo typie
+  braku, obok dotychczasowego filtra i sortowania.
 - Weryfikacja lokalna tego pakietu: `python -m py_compile ...` dla glownych
   modulow przeszedl, `python -m ruff check .` przeszedl,
   `python -m unittest discover -s tests` przeszedl (59 testow, 7 skipow),
   `tools/smoke_js.mjs` przeszedl przez Node REPL MCP, a `git diff --check`
   przeszedl z samymi ostrzezeniami CRLF. Zwykly `node` w PATH w tej sesji byl
   niedostepny (`CommandNotFoundException`), wiec JS nadal sprawdzac przez Node
-  REPL MCP albo po naprawie Node LTS w PATH.
+  REPL MCP albo po naprawie Node LTS w PATH. GitHub Actions dla `45f26d7` byly
+  zielone.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `fc66b78 Speed up
   location list sorting`: maly performance pass dla glownej listy miejsc.
   Sortowanie po kraju/nazwie oraz opcje filtrow kraju/typu uzywaja teraz
@@ -300,8 +303,8 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Po pushu pakietu `wydajnosc statystyk + UX brakow miejsc`: sprawdzic
-   GitHub Actions i po deployu uruchomic `python tools/smoke_prod.py`.
+1. Po deployu pakietu `wydajnosc statystyk + UX brakow miejsc`: uruchomic
+   `python tools/smoke_prod.py`.
 2. Po deployu obejrzec w produkcji: przelaczanie zakladek Statystyk
    (`/api/stats/section/...`) oraz `#/locations/todo` z grupowaniem po kraju i
    typie braku. Ewentualnie dopracowac teksty/spacing po realnym ekranie.
