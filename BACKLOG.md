@@ -2,7 +2,70 @@
 
 Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupelnienia" i poprawkami stabilnosci. Priorytety sa praktyczne: najpierw rzeczy, ktore zwiekszaja wiarygodnosc danych i wygode pracy, potem wieksze zmiany architektoniczne.
 
+## Aktualny audyt backlogu - 2026-06-17
+
+Ten plik jest juz bardziej mapa decyzji i historia roadmapy niz prosta lista
+TODO. Wpisy `DONE` zostaja, bo tlumacza dlaczego aplikacja wyglada tak, a nie
+inaczej. Do startu nowej sesji nadal uzywac najpierw `CURRENT_STATE.md`.
+
+**Co tu jest:**
+- P0/P3: fundamenty techniczne, bezpieczenstwo, testy, cache, migracje,
+  wydajnosc i dlugi architektoniczne.
+- P1/P2: analityka, UX i praca z danymi; wiekszosc najwazniejszych tematow z
+  tych sekcji jest juz domknieta.
+- P4: pomysly pozniejsze albo parking dla rzeczy, ktore maja sens dopiero po
+  recznej potrzebie.
+
+**Najlepsze aktywne tematy wg potencjalnej korzysci:**
+1. **Jakosc danych miejsc** - kontynuowac konkretne `address`/`notes` malymi
+   partiami i recznie przejrzec 142 miejsca bez GPS. To bezposrednio zwieksza
+   wartosc mapy, statystyk i list brakow.
+2. **Browser E2E / Node LTS w PATH** - najwieksza luka stabilnosci frontendu.
+   Najpierw naprawic zwykly Node, potem dodac maly browser smoke kluczowych
+   ekranow.
+3. **Role admin/viewer + cache po rolach** - duza korzysc, jesli aplikacja ma
+   byc pokazywana komus poza adminem. Wiekszy zakres, bo dotyka API, UI i PWA.
+4. **Mala analityka kosztow albo Rocznik jako pamiatka** - sensowne UX/product
+   follow-upy, ale mniej pilne niz jakosc danych i E2E.
+5. **Drobny polish produkcyjny** - Statystyki i `#/locations/todo` po
+   `45f26d7` zostaly recznie sprawdzone i dzialaja dobrze; wracac tylko jesli
+   po dluzszym uzyciu wyjdzie tekst/spacing do poprawy.
+
+**Tematy techniczne nadal sensowne, ale nie na goraco:**
+- rate limiter logowania odporny na wiele workerow,
+- dalsze selektywne dzielenie `locations.js` / `app.css` i delegacja zdarzen,
+- wydzielenie kolejnych agregacji statystyk z `stats.py`,
+- rozszerzanie realnego PostgreSQL fixture tylko wtedy, gdy nowe prace dotkna
+  danego przeplywu.
+
+**Tematy do parkingu / niski priorytet teraz:**
+- pelna migracja frontendu na moduly/bundler,
+- zdjecia i albumy,
+- przyjazny import/eksport czastkowy,
+- onboarding nowego uzytkownika, dopoki aplikacja pozostaje prywatna i ma
+  wypelniona baze.
+
+**Najwazniejsze korekty aktualnosci po audycie:**
+- Sekcyjne endpointy statystyk `/api/stats/section/<section>` sa juz zrobione
+  w `45f26d7`; dalsza optymalizacja statystyk powinna wynikac z realnego laga
+  albo pomiaru, nie z samego dlugu historycznego.
+- Realny PostgreSQL fixture na tymczasowym schemacie juz istnieje i obejmuje
+  najwazniejsze odczyty/zapisy; backlog powinien mowic raczej o rozszerzaniu
+  go punktowo.
+- Centrum brakow miejsc ma juz szybkie akcje, sort/filter deep linki i
+  grupowanie po kraju/typie braku; dalszy UX tego widoku to juz polish po
+  realnym uzyciu.
+- P0 nie ma obecnie jednego oczywistego krytycznego zadania kodowego. Najblizej
+  P0 operacyjnie jest potwierdzenie stalego `SECRET_KEY` w Renderze, jesli nie
+  zostalo juz sprawdzone w logach.
+
 ## P0 - Pilne po audycie architektury
+
+Uwaga po audycie 2026-06-17: ta sekcja jest w wiekszosci historia domknietych
+fundamentow. Nie ma obecnie jednego oczywistego P0 kodowego. Aktywne ryzyka z
+tej grupy to raczej: potwierdzenie stalego `SECRET_KEY` w Renderze, przyszle
+role viewer/admin oraz rate limiter logowania, jesli aplikacja bedzie dzialac
+na wielu workerach.
 
 ### 0. Audyt Claude Code 2026-05-28: bezpieczenstwo i fundamenty - PARTIAL
 
@@ -13,10 +76,23 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 2. Connection pooling - DONE. `core.get_db()` korzysta z `psycopg2.pool.ThreadedConnectionPool` zamiast otwierac nowe polaczenie per request. Rozmiar puli mozna ustawic przez `DB_POOL_MINCONN` i `DB_POOL_MAXCONN`.
 3. Migracje wersjonowane - DONE. `ensure_schema()` nadal zachowuje zasade "no manual steps after deploy", ale deleguje prace do `schema_migrations.py`: migracje maja wersje, nazwy i zapis w tabeli `schema_migrations`. Wybrany zostal prosty wlasny system zamiast Alembic, bo pasuje do malej aplikacji i deployu na Renderze bez dodatkowych komend.
 4. Indeksy FK i partial indexes - DONE. `ensure_schema()` tworzy idempotentnie indeksy pod relacje i aktywne rekordy, szczegolnie `travel_locations(travel_id)`, `travel_locations(location_id)`, `travel_participants(travel_id/person_id)`, `locations(parent_location_id)`, `locations(country_id)`, `travels(start_date) WHERE deleted_at IS NULL` i `locations(country_id) WHERE deleted_at IS NULL`.
-5. Budzet zapytan dla `/api/stats` - PARTIAL. Endpoint nadal sklada wiele agregatow w jednym kontrakcie, ale ma teraz krotki cache TTL (`STATS_CACHE_TTL_SECONDS`, domyslnie 60s) z uniewaznianiem po zapisach. Dodatkowo w `Optimize stats query budget` zimny budzet `/api/stats?year=...` zostal obnizony orientacyjnie z ok. 42 do ok. 23 zapytan: poprzedni rok liczy lekki overview, rankingi kosztow korzystaja z pobranych juz podrozy, a Hall of Fame spadl z 10 do 3 zapytan. W `Add stats overview endpoint` i `Load stats overview first` dodany zostal lekki `/api/stats/overview`, a frontend uzywa go dla pierwszej sekcji Podsumowanie. Kolejny krok: sekcyjne endpointy dla kosztow/krajow/jakosci oraz realny pomiar czasow na produkcji.
+5. Budzet zapytan dla `/api/stats` - MOSTLY DONE. Endpoint nadal istnieje jako
+   pelny kompatybilny kontrakt, ale najciezsze wejscie UI zostalo rozbite:
+   `Optimize stats query budget` obnizyl zimny budzet `/api/stats?year=...`
+   orientacyjnie z ok. 42 do ok. 23 zapytan, `Add stats overview endpoint` i
+   `Load stats overview first` dodaly lekki `/api/stats/overview`, a
+   `45f26d7 Split stats sections and group location worklist` dodal
+   `/api/stats/section/<section>` dla `yearbook`, `countries`, `costs`,
+   `participants` i `quality`. Kolejny krok tylko jesli pojawi sie realny lag:
+   pomiar czasow na produkcji albo dalsze wspoldzielenie danych miedzy
+   agregatami krajow.
 6. Audyt XSS w frontendzie - DONE. Dynamiczne opcje selectow i wartosci inputow w miejscach/osobach/podrozach/mapie/kreatorze ida przez `renderSelectOptions()` i `escapeAttr()` zamiast lokalnych template stringow albo recznego `replace(/"/g, '&quot;')`.
 7. Jedno zrodlo polityki `no-store` - DONE. Backendowe listy `NO_STORE_EXACT_API_PATHS` i `NO_STORE_API_PREFIXES` w `app.py` sa zrodlem prawdy, a `/sw.js` wstrzykuje je do service workera przy serwowaniu pliku.
-8. Realniejsze testy integracyjne. Obecne testy kontraktu sa wartosciowe, ale mock SQL nie lapie regresji w zapytaniach. Dodac mala baze testowa, fixture PostgreSQL albo minimalny smoke na prawdziwym schemacie.
+8. Realniejsze testy integracyjne - DONE jako pierwszy stabilny fixture.
+   `tests/test_postgres_integration.py` uruchamia sie opcjonalnie z
+   `TEST_DATABASE_URL` na tymczasowym schemacie i sprawdza realne zapytania,
+   kosz, statystyki, kreator zapisu oraz CRUD miejsc. Dalsze rozszerzenia robic
+   punktowo przy zmianach konkretnych endpointow.
 9. Pieniadze jako `Decimal`/`NUMERIC` i CHECK constraints w DB - DONE. `amount` w Pydantic jest `Decimal`, `migrate.py` tworzy schemat z ograniczeniami, a `ensure_schema()` dopina idempotentne CHECK constraints dla kwot, walut, dat, ratingu, lotow, dat pobytu i GPS.
 10. Strukturalne logowanie/Sentry. Przydatne, ale po auth, migracjach, poolingu, indeksach i statystykach.
 
@@ -30,7 +106,9 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 **Smoke testy po realizacji pierwszej partii P0:**
 1. Wejsc bez zalogowania w `/`, `/api/export`, `/api/trash` i dowolna mutacje API; prywatne endpointy powinny wymagac logowania albo zwracac 401/403.
 2. Zalogowac sie jako admin i sprawdzic: lista podrozy, szczegoly podrozy, edycja, kosz, backup.
-3. Zalogowac sie jako viewer i sprawdzic: brak kosztow w UI i JSON API, brak mozliwosci mutacji, brak widokow administracyjnych.
+3. Po wdrozeniu przyszlych rol viewer/admin zalogowac sie jako viewer i
+   sprawdzic: brak kosztow w UI i JSON API, brak mozliwosci mutacji, brak
+   widokow administracyjnych. Ten punkt nie dotyczy obecnego admin-only auth.
 4. Po zmianach DB odpalic migracje na pustej bazie i na istniejacej bazie; oba przebiegi powinny byc idempotentne.
 5. Otworzyc Statystyki na cieplym i zimnym starcie; porownac liczbe/czas zapytan przed i po optymalizacji.
 
@@ -142,6 +220,10 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 ### 5. Widok miejsc "Do uzupelnienia" - DONE
 
 **Status:** zrobione w `34f9ee9 Add location completion worklist`.
+Dopiete pozniej w kolejnych malych pracach: filtr/sort z deep linkiem,
+kolorowe etykiety brakow, szybkie akcje `GPS`/`Adres`/`Notatki`/`Wizyty`,
+optymalizacja sortowania oraz grupowanie po kraju albo typie braku w
+`45f26d7 Split stats sections and group location worklist`.
 
 **Weryfikacja:** osobny filtr/lista pozwala szybko znalezc miejsca wymagajace poprawy.
 
@@ -195,26 +277,26 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** dolna nawigacja ma cztery glowne obszary: Podroze, Miejsca, Mapa, Statystyki.
 
-### 8b. Ujednolicenie UI - faza 1 - PARTIAL
+### 8b. Ujednolicenie UI - faza 1 - DONE jako etap historyczny
 
-**Status:** pierwsza faza zaczeta w `Unify basic UI controls`.
+**Status:** pierwsza faza zaczeta w `Unify basic UI controls`, a jej glowne
+follow-upy zostaly domkniete w fazach 2-4 oraz w pozniejszych pracach nad
+`components.js`, widokami pomocniczymi i desktop shell.
 
 **Zrobione:**
 - wspolne klasy CSS dla filtrow (`filter-grid`, `filter-select`) i malych akcji (`action-strip`, `action-button`, `icon-button`),
 - podpiecie nowych klas w widoku Miejsca,
 - podpiecie nowych klas w pasku narzedzi mapy.
 
-**Do zrobienia dalej:**
-- usunac kolejne inline style z formularzy i modalow,
-- ujednolicic przyciski edycji/usuwania w szczegolach podrozy i miejsc,
-- wydzielic najczestsze template stringi do lekkiego `components.js`,
-- podzielic ekran Statystyk na czytelne sekcje.
+**Do zrobienia dalej:** brak jako osobny etap. Dalsze porzadkowanie frontendu
+trzymac w P4/16 i robic tylko selektywnie.
 
 **Weryfikacja:** filtry i przyciski narzedziowe w Miejscach oraz na Mapie wygladaja spojniej i korzystaja ze wspolnych klas.
 
-### 8c. Ujednolicenie UI - faza 2 - PARTIAL
+### 8c. Ujednolicenie UI - faza 2 - DONE jako etap historyczny
 
-**Status:** kolejna faza zaczeta w `Unify detail action controls`.
+**Status:** kolejna faza zaczeta w `Unify detail action controls`, a brakujace
+formularze/modale zostaly uporzadkowane w fazie 3 i 4.
 
 **Zrobione:**
 - wspolne klasy dla akcji w naglowkach sekcji (`section-actions`, `section-action`),
@@ -225,14 +307,12 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - pierwsze wspolne klasy dla linkow i metadanych w szczegolach miejsc.
 - dopiete pozniej w `Tidy auxiliary views`: kompaktowe filtry w widokach "Do uzupelnienia" i "Miejsca do uzupelnienia" oraz wspolne klasy wierszy i akcji Kosza.
 
-**Do zrobienia dalej:**
-- przeniesc style formularzy i geokodowania z inline CSS do klas,
-- ujednolicic przyciski zapisu/anulowania w modalach,
-- uporzadkowac pozostale akcje slownikow.
+**Do zrobienia dalej:** brak jako osobny etap. Jesli wracac do UI cleanupu,
+robic male, widoczne ciecia z P4/16.
 
 **Weryfikacja:** w szczegolach podrozy przyciski `Mapa`, `Dodaj`, edycja/usuwanie miejsc i usuwanie uczestnikow maja spojny wyglad.
 
-### 8d. Ujednolicenie UI - faza 3
+### 8d. Ujednolicenie UI - faza 3 - DONE
 
 **Status:** formularze i listy modalne uporzadkowane w `Unify modal form controls`.
 
@@ -298,7 +378,8 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - testy jakosci danych miejsc,
 - testy nowych/powrotnych krajow,
 - glebsze testy kontraktow z realistycznym zestawem danych statystyk,
-- docelowo testy z mala baza testowa albo mockiem warstwy `query()`.
+- rozszerzenia realnego PostgreSQL fixture tylko dla przeplywow, ktore beda
+  dotykane w kolejnych zmianach.
 
 **Weryfikacja:** GitHub Actions uruchamia testy przy pushu i lapie regresje w statystykach.
 
@@ -316,15 +397,21 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Weryfikacja:** po kazdym deployu jedna komenda potwierdza, ze aplikacja wystawia port, DB odpowiada, auth jest skonfigurowany, prywatne API jest zablokowane bez sesji, a shell/PWA assety sa dostepne.
 
-### 9b. Realistyczny test integracyjny na schemacie testowym
+### 9b. Realistyczny test integracyjny na schemacie testowym - DONE / EXTEND AS NEEDED
 
-**Status:** kierunek po audycie 2026-06-02, bez pilnej implementacji.
+**Status:** zrobione w `9ce436d Add PostgreSQL integration smoke` i
+rozszerzone pozniej o kreator zapisu, edycje zakresu dat podrozy oraz CRUD
+miejsc. Test jest opcjonalny, wymaga `TEST_DATABASE_URL`, uruchamia sie na
+tymczasowym schemacie i sprzata po sobie.
 
 **Problem:** obecne testy kontraktowe i smoke sa wartosciowe, ale duza czesc backendu jest sprawdzana przez mockowane `query()`. To chroni kontrakt JSON i podstawowa logike, ale slabiej lapie regresje w prawdziwych zapytaniach PostgreSQL.
 
-**Propozycja:** dodac maly test integracyjny na osobnym schemacie albo testowej bazie z realistycznym zestawem danych: kilka podrozy, kraje, miejsca nadrzedne/podrzedne, uczestnicy, kosz i jakosc danych. Test powinien sprawdzac m.in. `/api/stats`, `/api/locations`, szczegoly podrozy, szczegoly miejsca i `/api/trash`.
+**Zrobione:** fixture sprawdza m.in. `/api/stats`, `/api/locations`,
+`/api/map-locations`, szczegoly miejsca, `/api/trash`, kreator transakcyjny,
+edycje dat pobytu i CRUD miejsc.
 
-**Zasada:** nie budowac ciezkiego frameworka testowego. Wystarczy jeden stabilny fixture i kilka przeplywow o wysokiej wartosci.
+**Zasada:** nie budowac ciezkiego frameworka testowego. Rozszerzac tylko o
+przeplywy wysokiego ryzyka, gdy kolejne prace dotkna danego endpointu.
 
 **Weryfikacja:** test lapie blad w SQL albo joinach, ktorego nie zlapalby sam mock kontraktu.
 
@@ -362,6 +449,10 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Dopiete pozniej:** `Load stats overview first` zaczyna rozbijanie ekranu Statystyk od warstwy danych: sekcja Podsumowanie pobiera lekki `/api/stats/overview`, a pozostale sekcje nadal korzystaja z pelnego `/api/stats`. To pilot pod dalszy podzial `stats.js` bez rewolucji w calym frontendzie.
 
+**Aktualizacja 2026-06-17:** po `45f26d7` pozostale glowne sekcje Statystyk
+pobieraja juz scoped endpointy `/api/stats/section/<section>`. `components.js`
+jest przydatny i ma zostac lekki; nie robic z niego frameworka.
+
 **Weryfikacja:** `stats.js`, `todo.js`, `locations.js` i `travels.js` maja mniej duplikacji, a wyglad kart/filtrow pozostaje spojny.
 
 ### 11. Kontrakty API dla widokow - PARTIAL
@@ -372,13 +463,16 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Zrobione:**
 - test kontraktu `/api/stats`,
+- test kontraktu `/api/stats/overview`,
+- test kontraktu `/api/stats/section/<section>`,
 - test kontraktu `/api/stats/todo`,
 - test kontraktu `/api/locations/todo`.
 
 **Do zrobienia dalej:**
 - opisac odpowiedzi w dokumentacji technicznej,
-- zastapic kruche mockowanie fragmentow SQL fixture'ami albo mala baza testowa,
-- rozszerzyc kontrakty o dane bardziej realistyczne dla statystyk krajow, kosztow i jakosci danych.
+- stopniowo opierac najwazniejsze kontrakty o realny PostgreSQL fixture tam,
+  gdzie mock SQL robi sie kruchy,
+- rozszerzac kontrakty tylko przy nowych polach albo zmianach widokow.
 
 **Weryfikacja:** nowy agent albo przyszly refaktor wie, ktore pola sa wymagane przez UI.
 
@@ -438,7 +532,9 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 - agregaty krajow i powrotow przeniesione do `stats_countries.py`,
 - agregaty jakosci danych i listy brakow przeniesione do `stats_quality.py`,
 - agregaty Hall of Fame przeniesione do `stats_hall_of_fame.py`,
-- `stats.py` pozostaje odpowiedzialny za glowny endpoint i pozostale agregaty.
+- `stats.py` pozostaje odpowiedzialny za glowne endpointy i pozostale agregaty,
+- `45f26d7` dodal warstwe endpointow sekcyjnych bez przenoszenia calej logiki
+  do nowych modulow.
 
 **Propozycja:**
 - wydzielic kolejne sekcje agregacji: koszty i glowne agregaty okresu,
@@ -456,8 +552,13 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 **Do rozwazenia pozniej:**
 - zrobione w `Optimize stats query budget`: lekki `_period_overview(year - 1)` dla porownania rok do roku, wspolna baza danych okresu w `_period_base()`, kosztowe rankingi bez dodatkowych SQL i Hall of Fame liczony z trzech zapytan zamiast dziesieciu,
 - zrobione w `Add stats overview endpoint` i `Load stats overview first`: osobny lekki endpoint dla Podsumowania i frontendowe overview-first loading,
+- zrobione w `45f26d7`: sekcyjne endpointy dla kosztow, krajow, uczestnikow,
+  jakosci i rocznika, zeby UI nie pobieral pelnego `/api/stats` przy kazdej
+  zakladce,
+- zrobione w `09c1f03` oraz pozniejszych passach: `/api/locations`,
+  `/api/map-locations` i `/api/locations/todo` uzywaja preagregowanych CTE
+  zamiast szerokiego `GROUP BY` jako podstawowej sciezki,
 - polaczyc albo wspoldzielic dane miedzy `country_history` i `country_milestones`,
-- uproscic `/api/locations` przez CTE albo osobny maly SELECT agregujacy wizyty,
 - dodac krotkotrwaly cache w request-scope dla pozostalych wspolnych agregatow, jesli pojawia sie realne lagi.
 
 **Weryfikacja:** widoki Statystyki i Miejsca zachowuja ten sam kontrakt JSON, ale liczba lub koszt zapytan spada.
@@ -505,13 +606,16 @@ Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupe
 
 **Status:** dopisane po przegladzie projektu (silne/slabe strony) z 2026-06-11. Partia quick-winow zrobiona w `Harden HTTP layer: security headers, ProxyFix, SECRET_KEY warning`: naglowki bezpieczenstwa (CSP, nosniff, X-Frame-Options, Referrer-Policy, HSTS), `ProxyFix` na Renderze i ostrzezenie o braku `SECRET_KEY`. Ponizsze trzy tematy zostaly swiadomie odlozone jako wieksze, bo wymagaja realnej zmiany w warstwie danych albo frontendzie.
 
-**18a. Paginacja list i odchudzenie `get_locations`**
+**18a. Paginacja list i odchudzenie `get_locations` - PARTIAL**
 
-**Problem:** `/api/travels` i `/api/locations` zwracaja cala tabele przy kazdym renderze listy. Dodatkowo `get_locations` liczy `visit_count` przez fan-out join (lokacja -> dzieci -> `travel_locations` -> `travels`) z `COUNT(DISTINCT)`. Przy obecnej skali jest OK (ETag lagodzi transfer), ale to sie nie skaluje liniowo z liczba miejsc/podrozy.
+**Problem:** `/api/travels` i `/api/locations` zwracaja cala tabele przy
+kazdym renderze listy. Czesc dotyczaca kosztownego liczenia `visit_count`
+zostala juz poprawiona przez CTE/preagregacje, ale brak paginacji nadal moze
+stac sie problemem przy znacznie wiekszej bazie.
 
 **Propozycja:**
 - dodac paginacje albo limit + lazy load do list podrozy i miejsc,
-- przeniesc liczenie wizyt do osobnego, lekkiego SELECT albo CTE zamiast jednego duzego joina (powiazane z 14a),
+- utrzymac istniejacy CTE/agregacje wizyt jako kontrakt wydajnosciowy,
 - zachowac istniejacy kontrakt JSON i wyszukiwanie `q`.
 
 **Weryfikacja:** lista podrozy i miejsc renderuje sie z ograniczonym zestawem rekordow, a liczba/koszt zapytan w `get_locations` spada bez zmiany wygladu.
@@ -570,9 +674,13 @@ Lepsze komunikaty, kiedy dane pochodza z cache, oraz reczne "odswiez dane".
 ### 16. Dalsze porzadkowanie kodu frontendu
 
 **Status:** czesciowo zaczete. W `Split stats yearbook renderer` rocznik statystyk zostal przeniesiony ze `stats.js` do `static/js/stats_yearbook.js`, bez zmiany UI i bez migracji na moduly.
+Dodatkowo `45f26d7` rozbil ladowanie danych Statystyk na sekcyjne endpointy,
+wiec dalszy podzial `stats.js` powinien wynikac z utrzymania kodu, nie z
+wydajnosci pierwszego renderu.
 
 **Kierunek:** robic tylko selektywne, male ciecia tam, gdzie plik ma wyrazna sekcje odpowiedzialnosci:
-- w `stats.js`: dalsze sekcje typu kraje/koszty/jakosc, jesli zaczna przeszkadzac w utrzymaniu,
+- w `stats.js`: dalsze renderery typu kraje/koszty/jakosc, jesli zaczna
+  przeszkadzac w utrzymaniu,
 - w `locations.js`: osobno lista/filtrowanie, szczegoly miejsca, formularze/modale i kosz/narzedzia,
 - w `components.js`: tylko helpery naprawde uzywane w wielu miejscach.
 
@@ -583,8 +691,12 @@ Lepsze komunikaty, kiedy dane pochodza z cache, oraz reczne "odswiez dane".
 ### 17. Historia / Rocznik podrozy - PARTIAL
 
 Pierwszy etap zrobiony w `Add stats yearbook`: backend zwraca `yearbook`, a Statystyki maja sekcje Rocznik z latami jako rozdzialami, najwazniejszymi podrozami roku, nowymi krajami, powrotami i najbardziej wypelnionym miesiacem.
+Dopiete pozniej w `64ad250 Enhance travel yearbook`: krotka narracja roku,
+`featured_trip`, rytm miesiecy i pelniejsze liczniki nowych/powrotnych krajow.
 
-Do dopracowania pozniej: bardziej narracyjne opisy roczne, dluzsze przerwy miedzy powrotami oraz ewentualne porownania rok do roku w ramach rocznika.
+Do dopracowania pozniej tylko jesli widok ma stac sie bardziej pamiatkowy:
+tryb wydruku/eksportu jednego roku, deep link do konkretnego roku, ewentualnie
+porownania rok do roku albo dluzsze przerwy miedzy powrotami.
 
 ### 18. Menu aplikacji dla ustawien sesji - DONE
 

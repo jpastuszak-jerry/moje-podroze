@@ -12,6 +12,11 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
+  indeks backlogu z podzialem wg potencjalnej korzysci, wskazano aktywne
+  tematy, parking i korekty statusow. Zaktualizowano m.in. status sekcyjnych
+  endpointow statystyk, realnego PostgreSQL fixture, centrum brakow miejsc,
+  faz UI cleanupu, wydajnosci miejsc oraz Rocznika.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `17bd7c1 Cache map
   markers for faster filtering`: kolejny maly performance pass frontendu.
   Mapa buduje teraz markery Leafleta raz po pobraniu `/api/map-locations`, a
@@ -304,32 +309,26 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Po deployu pakietu `wydajnosc statystyk + UX brakow miejsc` obejrzec w
-   produkcji: przelaczanie zakladek Statystyk
-   (`/api/stats/section/...`) oraz `#/locations/todo` z grupowaniem po kraju i
-   typie braku. Ewentualnie dopracowac teksty/spacing po realnym ekranie.
-2. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
-   wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
-   ma stac sie "pamiatkowy", a nie tylko analityczny.
-3. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
-   dopracowac teksty/spacing albo dodac drobne deep linki z miejsc podrzednych,
-   jesli bedzie to faktycznie przydatne w pracy.
-4. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
-   konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
-   probki uzytkownikowi. Aktualnie 475 aktywnych miejsc ma brakujacy
-   `address` albo `notes`.
-5. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
-   `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
-   `ambiguous` i `manual_review_excluded`.
-6. Prawdziwe browser E2E po naprawie Node/Playwright:
+1. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
+   partiami i recznie przejrzec 142 pozostale miejsca bez GPS z raportu
+   `db_geocode_remaining_20260603_135807.csv`.
+2. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
+3. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
+   wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
+   ma stac sie "pamiatkowy", a nie tylko analityczny.
+4. Role admin/viewer i cache po rolach, jesli aplikacja ma byc pokazywana
+   komus poza adminem.
+5. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
+   dopracowac teksty/spacing albo dodac drobne deep linki z miejsc podrzednych,
+   jesli bedzie to faktycznie przydatne w pracy.
+6. Mala analityka kosztow: miesiace/lata z najwyzszymi kosztami albo wybrana
+   waluta bazowa, jesli kosztowy obraz podrozy ma byc wazniejszy.
 7. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-8. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
-   statystyk/filtry, jesli bedzie to przydatne w UX i testach.
-9. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+8. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
