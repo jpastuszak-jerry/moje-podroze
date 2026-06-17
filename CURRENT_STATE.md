@@ -12,11 +12,14 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
-- Ostatnio domkniete: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
+- Ostatnio domkniete i wypchniete na GitHub w commicie `22ba2d0 Refresh
+  backlog priorities`: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
   indeks backlogu z podzialem wg potencjalnej korzysci, wskazano aktywne
   tematy, parking i korekty statusow. Zaktualizowano m.in. status sekcyjnych
   endpointow statystyk, realnego PostgreSQL fixture, centrum brakow miejsc,
-  faz UI cleanupu, wydajnosci miejsc oraz Rocznika.
+  faz UI cleanupu, wydajnosci miejsc oraz Rocznika. GitHub Actions dla
+  `22ba2d0` byly zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl
+  12/12 OK i potwierdzil build `22ba2d0`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `17bd7c1 Cache map
   markers for faster filtering`: kolejny maly performance pass frontendu.
   Mapa buduje teraz markery Leafleta raz po pobraniu `/api/map-locations`, a
