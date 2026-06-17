@@ -39,6 +39,15 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   Weryfikacja procesu: commit `a02bf1e` zostal wypchniety, GitHub Actions byly
   zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i
   potwierdzil build `a02bf1e`.
+- Ostatnio domkniete w bazie Neon 2026-06-17: druga zaakceptowana partia
+  bogatszych opisow miejsc. Rozszerzono `address` dla 8 rekordow: Klima,
+  Kosciol sw. Wenery w Avoli, Porto di Mazara del Vallo, Cattedrale di San
+  Demetrio Megalomartire, Maribor, Wat Mahathat, Levanzo i Castellina in
+  Chianti. Zakres opisow po zmianie: ok. 467-540 znakow, `notes`, GPS i nazwy
+  miejsc nie byly ruszane. Backup i raport:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_batch2_backup_20260617_185017.json`
+  oraz
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_batch2_applied_20260617_185017.json`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `22ba2d0 Refresh
   backlog priorities`: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
   indeks backlogu z podzialem wg potencjalnej korzysci, wskazano aktywne
