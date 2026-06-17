@@ -48,6 +48,9 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_batch2_backup_20260617_185017.json`
   oraz
   `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_batch2_applied_20260617_185017.json`.
+  Weryfikacja procesu: commit `9bb56d1` zostal wypchniety, GitHub Actions byly
+  zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i
+  potwierdzil build `9bb56d1`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `22ba2d0 Refresh
   backlog priorities`: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
   indeks backlogu z podzialem wg potencjalnej korzysci, wskazano aktywne
