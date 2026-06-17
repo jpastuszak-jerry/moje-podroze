@@ -51,6 +51,17 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   Weryfikacja procesu: commit `9bb56d1` zostal wypchniety, GitHub Actions byly
   zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i
   potwierdzil build `9bb56d1`.
+- Ostatnio domkniete w bazie Neon 2026-06-17: finalna zatwierdzona partia
+  poprawianej kolekcji opisow miejsc. Rozszerzono `address` dla 17 rekordow:
+  Chiesa del Collegio dei Gesuiti, Colosseum, Berliner Dom, Red Beach,
+  Kreuzberg, Palazzo dei Normanni, Cala Minnola, Maglev, Sferro, Baixa, Gory
+  Sowie, Oia, Wignacourt Museum, Museo Carmen Thyssen Malaga, Kasbah di Mazara
+  del Vallo, Orebic i Broumov. Zakres opisow po zmianie: 486-591 znakow; zapis
+  kontrolny potwierdzil 17/17 rekordow i brak problemow kodowania. `notes`, GPS
+  i nazwy miejsc nie byly ruszane. Backup i raport:
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_final_backup_20260617_190216.json`
+  oraz
+  `C:\Users\admin\AppData\Local\Temp\moje_podroze_data_quality\rich_descriptions_final_applied_20260617_190216.json`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `22ba2d0 Refresh
   backlog priorities`: porzadkowy audyt `BACKLOG.md`. Dodano na gorze aktualny
   indeks backlogu z podzialem wg potencjalnej korzysci, wskazano aktywne
