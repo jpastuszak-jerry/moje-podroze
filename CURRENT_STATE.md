@@ -41,7 +41,8 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   przeszedl z samymi ostrzezeniami CRLF. Zwykly `node` w PATH w tej sesji byl
   niedostepny (`CommandNotFoundException`), wiec JS nadal sprawdzac przez Node
   REPL MCP albo po naprawie Node LTS w PATH. GitHub Actions dla `45f26d7` byly
-  zielone.
+  zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK po
+  deployu i potwierdzil build `efccbea`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `fc66b78 Speed up
   location list sorting`: maly performance pass dla glownej listy miejsc.
   Sortowanie po kraju/nazwie oraz opcje filtrow kraju/typu uzywaja teraz
@@ -303,33 +304,32 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Po deployu pakietu `wydajnosc statystyk + UX brakow miejsc`: uruchomic
-   `python tools/smoke_prod.py`.
-2. Po deployu obejrzec w produkcji: przelaczanie zakladek Statystyk
+1. Po deployu pakietu `wydajnosc statystyk + UX brakow miejsc` obejrzec w
+   produkcji: przelaczanie zakladek Statystyk
    (`/api/stats/section/...`) oraz `#/locations/todo` z grupowaniem po kraju i
    typie braku. Ewentualnie dopracowac teksty/spacing po realnym ekranie.
-3. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
+2. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
    wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
    ma stac sie "pamiatkowy", a nie tylko analityczny.
-4. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
+3. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
    dopracowac teksty/spacing albo dodac drobne deep linki z miejsc podrzednych,
    jesli bedzie to faktycznie przydatne w pracy.
-5. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
+4. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
    konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
    probki uzytkownikowi. Aktualnie 475 aktywnych miejsc ma brakujacy
    `address` albo `notes`.
-6. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
+5. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
    `ambiguous` i `manual_review_excluded`.
-7. Prawdziwe browser E2E po naprawie Node/Playwright:
+6. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-8. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+7. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-9. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
+8. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
    statystyk/filtry, jesli bedzie to przydatne w UX i testach.
-10. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+9. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
