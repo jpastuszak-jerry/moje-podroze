@@ -621,6 +621,64 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertNotIn('country_history', data)
         self.assertNotIn('yearbook', data)
 
+    def test_stats_section_endpoints_are_scoped(self):
+        period = _period_payload()
+
+        with (
+            patch.object(stats, '_period_overview', return_value=copy.deepcopy(period)),
+            patch.object(stats, '_participants_stats', return_value=copy.deepcopy(period['participants'])),
+            patch.object(stats, '_geography_rankings', return_value={
+                'top_countries': copy.deepcopy(period['top_countries']),
+                'top_places': copy.deepcopy(period['top_places']),
+            }),
+            patch.object(stats, '_data_quality', return_value=copy.deepcopy(_data_quality_payload())),
+            patch.object(stats, '_country_history', return_value=copy.deepcopy(_country_history_payload())),
+            patch.object(stats, '_country_milestones', return_value={
+                'new': [{'id': 1, 'name': 'Finland', 'first_visit': '2025-07-18', 'trips': 1}],
+                'returning': [],
+            }),
+            patch.object(stats, '_yearbook', return_value=copy.deepcopy(_yearbook_payload())),
+            patch.object(stats, 'query', side_effect=fake_stats_query),
+        ):
+            costs = self.client.get('/api/stats/section/costs?year=2025')
+            participants = self.client.get('/api/stats/section/participants?year=2025')
+            countries = self.client.get('/api/stats/section/countries?year=2025')
+            quality = self.client.get('/api/stats/section/quality?year=2025')
+            yearbook = self.client.get('/api/stats/section/yearbook?year=2025')
+            unknown = self.client.get('/api/stats/section/unknown')
+
+        self.assertEqual(costs.status_code, 200)
+        self.assertEqual(costs.headers['Cache-Control'], 'no-store')
+        costs_data = costs.get_json()
+        self.assertEqual(
+            {'year', 'by_year', 'amount_by_currency', 'cost_summary', 'top_expensive', 'cost_per_day'},
+            set(costs_data),
+        )
+        self.assertEqual(costs_data['year'], 2025)
+        self.assertNotIn('participants', costs_data)
+        self.assertNotIn('country_history', costs_data)
+
+        participants_data = participants.get_json()
+        self.assertEqual({'year', 'by_year', 'participants'}, set(participants_data))
+        self.assertEqual(participants_data['participants'][0]['name'], 'Anna')
+
+        countries_data = countries.get_json()
+        self.assertEqual(
+            {'year', 'by_year', 'top_countries', 'top_places', 'country_milestones', 'country_history'},
+            set(countries_data),
+        )
+        self.assertEqual(countries_data['country_history']['summary']['returning_countries'], 1)
+
+        quality_data = quality.get_json()
+        self.assertEqual({'year', 'by_year', 'data_quality'}, set(quality_data))
+        self.assertLessEqual({'total', 'counts', 'labels', 'needs_attention'}, set(quality_data['data_quality']))
+
+        yearbook_data = yearbook.get_json()
+        self.assertEqual({'year', 'by_year', 'yearbook'}, set(yearbook_data))
+        self.assertEqual(yearbook_data['yearbook'][0]['year'], 2025)
+
+        self.assertEqual(unknown.status_code, 404)
+
     def test_period_overview_reuses_base_rows_without_detail_queries(self):
         captured = []
 

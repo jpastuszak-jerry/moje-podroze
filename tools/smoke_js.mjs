@@ -408,8 +408,8 @@ assert.deepEqual(
   'router parses auxiliary location todo hashes',
 );
 assert.deepEqual(
-  JSON.parse(JSON.stringify(context.routeFromHash('#/locations/todo?missing=missing_gps&sort=visit_count_asc'))),
-  { name: 'locationTodo', params: { missing: 'missing_gps', sort: 'visit_count_asc' } },
+  JSON.parse(JSON.stringify(context.routeFromHash('#/locations/todo?missing=missing_gps&sort=visit_count_asc&group=country'))),
+  { name: 'locationTodo', params: { missing: 'missing_gps', sort: 'visit_count_asc', group: 'country' } },
   'router keeps location todo filter params from hashes',
 );
 assert.equal(context.routePath('travelDetail', { id: 42 }), '/travels/42', 'router builds travel detail paths');
@@ -761,11 +761,15 @@ context.api = async path => {
     }],
   };
 };
-vm.runInContext('currentLocationTodoFilter = "all"; currentLocationTodoSort = "priority"', context);
+vm.runInContext(
+  'currentLocationTodoFilter = "all"; currentLocationTodoSort = "priority"; currentLocationTodoGroup = "none"',
+  context,
+);
 await context.renderLocationTodo({ missing: 'missing_gps', sort: 'visit_count_asc' });
 assert.match(locationTodoView.innerHTML, /aux-filter-panel/, 'location todo uses compact filter panel');
 assert.match(locationTodoView.innerHTML, /location-todo-filter-select/, 'location todo filter is a select control');
 assert.match(locationTodoView.innerHTML, /location-todo-sort-select/, 'location todo exposes sort control');
+assert.match(locationTodoView.innerHTML, /location-todo-group-select/, 'location todo exposes grouping control');
 assert.match(locationTodoView.innerHTML, /badge-orange/, 'location todo renders colored GPS badges');
 assert.match(locationTodoView.innerHTML, /badge-purple/, 'location todo renders colored address badges');
 assert.match(locationTodoView.innerHTML, /worklist-action-btn/, 'location todo cards expose quick action buttons');
@@ -777,6 +781,24 @@ assert.ok(
 );
 assert.doesNotMatch(locationTodoView.innerHTML, /sort-btn/, 'location todo avoids horizontal chip filters');
 assert.match(locationTodoView.innerHTML, /worklist-list/, 'location todo uses worklist card list');
+vm.runInContext(
+  'currentLocationTodoFilter = "all"; currentLocationTodoSort = "priority"; currentLocationTodoGroup = "none"',
+  context,
+);
+await context.renderLocationTodo({ group: 'country' });
+assert.match(locationTodoView.innerHTML, /worklist-group/, 'location todo can group cards');
+assert.match(locationTodoView.innerHTML, /worklist-group-title">Finlandia/, 'location todo renders country group titles');
+assert.match(
+  vm.runInContext('locationTodoRouteQuery()', context),
+  /group=country/,
+  'location todo keeps grouping in the route query',
+);
+vm.runInContext(
+  'currentLocationTodoFilter = "all"; currentLocationTodoSort = "priority"; currentLocationTodoGroup = "none"',
+  context,
+);
+await context.renderLocationTodo({ group: 'missing' });
+assert.match(locationTodoView.innerHTML, /worklist-group-title">Bez GPS/, 'location todo can group by missing type');
 
 const trashBody = elementStub();
 context.document.getElementById = id => (id === 'trash-body' ? trashBody : null);
@@ -1256,17 +1278,19 @@ assert.doesNotMatch(overviewStats, /Koszty wed/, 'overview does not show cost se
 criticalScreens.add('stats-overview');
 
 const costsStats = await renderStatsSection('costs');
+assert.equal(apiCalls.at(-1), '/api/stats/section/costs', 'costs section uses the scoped stats endpoint');
 assert.match(costsStats, /Koszty wed/, 'costs section shows cost summary');
 assert.match(costsStats, /Top 10/, 'costs section shows expensive trips');
 assert.match(costsStats, /per dzie/, 'costs section shows cost per day');
 assert.doesNotMatch(costsStats, /Historia kraj/, 'costs section does not show country history');
 
 const participantsStats = await renderStatsSection('participants');
+assert.equal(apiCalls.at(-1), '/api/stats/section/participants', 'participants section uses the scoped stats endpoint');
 assert.match(participantsStats, /Uczestnicy/, 'participants section shows participant ranking');
 assert.match(participantsStats, /Anna/, 'participants section renders participant names');
 
 const countriesStats = await renderStatsSection('countries', { year: 2025 });
-assert.equal(apiCalls.at(-1), '/api/stats?year=2025', 'stats year filter is passed to API');
+assert.equal(apiCalls.at(-1), '/api/stats/section/countries?year=2025', 'stats year filter is passed to scoped API');
 assert.match(countriesStats, /Kraje w 2025/, 'country section keeps yearly country milestones');
 assert.match(countriesStats, /Historia kraj/, 'country section shows country history');
 assert.match(countriesStats, /Top kraj/, 'country section shows country ranking');
@@ -1283,10 +1307,11 @@ assert.doesNotMatch(yearbookStats, /Koszty wed/, 'yearbook section stays focused
 criticalScreens.add('stats-yearbook');
 
 const filteredYearbookStats = await renderStatsSection('yearbook', { year: 2025 });
-assert.equal(apiCalls.at(-1), '/api/stats?year=2025', 'yearbook section keeps year filter requests');
+assert.equal(apiCalls.at(-1), '/api/stats/section/yearbook?year=2025', 'yearbook section keeps year filter requests');
 assert.match(filteredYearbookStats, /2025/, 'yearbook year filter keeps the selected chapter visible');
 
 const qualityStats = await renderStatsSection('quality');
+assert.equal(apiCalls.at(-1), '/api/stats/section/quality', 'quality section uses the scoped stats endpoint');
 assert.match(qualityStats, /Jako/, 'quality section shows data quality card');
 assert.match(qualityStats, /Lista/, 'quality section keeps todo shortcut');
 assert.match(qualityStats, /Bez oceny/, 'quality section renders missing-data counters');

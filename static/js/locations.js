@@ -530,6 +530,7 @@ function onLocSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTime
 
 let currentLocationTodoFilter = getPref('locationTodoFilter', 'all');
 let currentLocationTodoSort = getPref('locationTodoSort', 'priority');
+let currentLocationTodoGroup = getPref('locationTodoGroup', 'none');
 
 const LOCATION_TODO_SORTS = [
   { key: 'priority', label: 'Priorytet' },
@@ -545,6 +546,19 @@ const LOCATION_TODO_BADGE_TONES = {
   missing_notes: 'blue',
   not_visited: 'green',
 };
+
+const LOCATION_TODO_GROUPS = [
+  { key: 'none', label: 'Bez grupowania' },
+  { key: 'country', label: 'Kraj' },
+  { key: 'missing', label: 'Typ braku' },
+];
+
+const LOCATION_TODO_MISSING_GROUP_ORDER = [
+  'missing_gps',
+  'missing_address',
+  'missing_notes',
+  'not_visited',
+];
 
 const LOCATION_TODO_ACTIONS = {
   missing_gps: { label: 'GPS', focus: 'gps' },
@@ -571,11 +585,20 @@ function setLocationTodoSort(sort) {
   renderLocationTodo();
 }
 
+function setLocationTodoGroup(group) {
+  currentLocationTodoGroup = group || 'none';
+  savePref('locationTodoGroup', currentLocationTodoGroup === 'none' ? null : currentLocationTodoGroup);
+  syncLocationTodoRoute();
+  renderLocationTodo();
+}
+
 function resetLocationTodoControls() {
   currentLocationTodoFilter = 'all';
   currentLocationTodoSort = 'priority';
+  currentLocationTodoGroup = 'none';
   savePref('locationTodoFilter', null);
   savePref('locationTodoSort', null);
+  savePref('locationTodoGroup', null);
   syncLocationTodoRoute();
   renderLocationTodo();
 }
@@ -583,10 +606,14 @@ function resetLocationTodoControls() {
 function renderLocationTodoControls({ filters, totalItems, visibleItems }) {
   const activeFilter = filters.find(f => f.key === currentLocationTodoFilter);
   const activeSort = LOCATION_TODO_SORTS.find(s => s.key === currentLocationTodoSort) || LOCATION_TODO_SORTS[0];
+  const activeGroup = LOCATION_TODO_GROUPS.find(g => g.key === currentLocationTodoGroup) || LOCATION_TODO_GROUPS[0];
   const details = [];
   if (activeFilter) details.push(activeFilter.label);
   if (activeSort.key !== 'priority') details.push(activeSort.label);
-  const hasActiveControls = currentLocationTodoFilter !== 'all' || currentLocationTodoSort !== 'priority';
+  if (activeGroup.key !== 'none') details.push(`Grupowanie: ${activeGroup.label}`);
+  const hasActiveControls = currentLocationTodoFilter !== 'all'
+    || currentLocationTodoSort !== 'priority'
+    || currentLocationTodoGroup !== 'none';
   return renderFilterPanel({
     controls: [
       {
@@ -606,7 +633,16 @@ function renderLocationTodoControls({ filters, totalItems, visibleItems }) {
         selectedValue: currentLocationTodoSort,
         valueKey: 'key',
       },
+      {
+        label: 'Grupowanie',
+        id: 'location-todo-group-select',
+        onchange: 'setLocationTodoGroup(this.value)',
+        options: LOCATION_TODO_GROUPS,
+        selectedValue: currentLocationTodoGroup,
+        valueKey: 'key',
+      },
     ],
+    gridClass: 'aux-filter-grid location-todo-filter-grid',
     summary: {
       count: visibleItems,
       countLabel: worklistCountLabel(visibleItems),
@@ -624,6 +660,9 @@ function locationTodoRouteQuery() {
   if (currentLocationTodoSort && currentLocationTodoSort !== 'priority') {
     parts.push(`sort=${encodeURIComponent(currentLocationTodoSort)}`);
   }
+  if (currentLocationTodoGroup && currentLocationTodoGroup !== 'none') {
+    parts.push(`group=${encodeURIComponent(currentLocationTodoGroup)}`);
+  }
   return parts.join('&');
 }
 
@@ -636,8 +675,10 @@ function syncLocationTodoRoute() {
 function applyLocationTodoRouteParams(params = {}) {
   const filter = params.missing || params.filter;
   const sort = params.sort;
+  const group = params.group;
   if (filter) currentLocationTodoFilter = filter;
   if (sort) currentLocationTodoSort = sort;
+  if (group) currentLocationTodoGroup = group;
 }
 
 function locationTodoPriorityScore(item) {
@@ -729,6 +770,74 @@ function locationTodoCardHtml(item, labels) {
   });
 }
 
+function locationTodoPrimaryMissingKey(item) {
+  const keys = item.missing_keys || [];
+  if (currentLocationTodoFilter !== 'all' && keys.includes(currentLocationTodoFilter)) {
+    return currentLocationTodoFilter;
+  }
+  return LOCATION_TODO_MISSING_GROUP_ORDER.find(key => keys.includes(key)) || keys[0] || 'other';
+}
+
+function locationTodoGroupInfo(item, labels) {
+  if (currentLocationTodoGroup === 'country') {
+    const label = item.country_name || 'Bez kraju';
+    return { key: `country:${label}`, label };
+  }
+  if (currentLocationTodoGroup === 'missing') {
+    const key = locationTodoPrimaryMissingKey(item);
+    return { key: `missing:${key}`, label: labels[key] || key };
+  }
+  return { key: 'all', label: '' };
+}
+
+function locationTodoGroupSortValue(group) {
+  if (currentLocationTodoGroup !== 'missing') return group.label;
+  const key = group.key.replace('missing:', '');
+  const index = LOCATION_TODO_MISSING_GROUP_ORDER.indexOf(key);
+  return index === -1 ? LOCATION_TODO_MISSING_GROUP_ORDER.length : index;
+}
+
+function groupLocationTodoItems(items, labels) {
+  if (currentLocationTodoGroup === 'none') {
+    return [{ key: 'all', label: '', items }];
+  }
+  const groups = new Map();
+  items.forEach(item => {
+    const info = locationTodoGroupInfo(item, labels);
+    if (!groups.has(info.key)) groups.set(info.key, { ...info, items: [] });
+    groups.get(info.key).items.push(item);
+  });
+  const grouped = [...groups.values()];
+  if (currentLocationTodoGroup === 'missing') {
+    grouped.sort((a, b) => {
+      const av = locationTodoGroupSortValue(a);
+      const bv = locationTodoGroupSortValue(b);
+      return (av - bv) || compareLocationTodoText(a.label, b.label);
+    });
+    return grouped;
+  }
+  grouped.sort((a, b) => compareLocationTodoText(a.label, b.label));
+  return grouped;
+}
+
+function renderLocationTodoGroupedList(items, labels) {
+  const groups = groupLocationTodoItems(items, labels);
+  if (currentLocationTodoGroup === 'none') {
+    return renderCardList(items, item => locationTodoCardHtml(item, labels), { className: 'card-list worklist-list' });
+  }
+  return `<div class="card-list worklist-list location-todo-grouped-list">
+    ${groups.map(group => `<section class="worklist-group">
+      <div class="worklist-group-header">
+        <div class="worklist-group-title">${escapeHtml(group.label)}</div>
+        <div class="worklist-group-count">${group.items.length} ${worklistCountLabel(group.items.length)}</div>
+      </div>
+      <div class="worklist-group-items">
+        ${group.items.map(item => locationTodoCardHtml(item, labels)).join('')}
+      </div>
+    </section>`).join('')}
+  </div>`;
+}
+
 async function renderLocationTodo(params = {}) {
   applyLocationTodoRouteParams(params);
   const view = document.getElementById('view');
@@ -748,6 +857,9 @@ async function renderLocationTodo(params = {}) {
   }
   if (!LOCATION_TODO_SORTS.some(s => s.key === currentLocationTodoSort)) {
     currentLocationTodoSort = 'priority';
+  }
+  if (!LOCATION_TODO_GROUPS.some(g => g.key === currentLocationTodoGroup)) {
+    currentLocationTodoGroup = 'none';
   }
   const filteredItems = (data.needs_attention || []).filter(item =>
     currentLocationTodoFilter === 'all' || (item.missing_keys || []).includes(currentLocationTodoFilter)
@@ -788,7 +900,7 @@ async function renderLocationTodo(params = {}) {
     return;
   }
 
-  html += renderCardList(items, item => locationTodoCardHtml(item, labels), { className: 'card-list worklist-list' });
+  html += renderLocationTodoGroupedList(items, labels);
   view.innerHTML = html;
 }
 

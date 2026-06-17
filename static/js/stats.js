@@ -114,7 +114,9 @@ function setStatsSection(sectionId) {
 }
 
 function statsApiPath() {
-  const endpoint = currentStatsSection === 'overview' ? '/api/stats/overview' : '/api/stats';
+  const endpoint = currentStatsSection === 'overview'
+    ? '/api/stats/overview'
+    : `/api/stats/section/${encodeURIComponent(currentStatsSection)}`;
   return endpoint + (currentStatsYear ? '?year=' + currentStatsYear : '');
 }
 

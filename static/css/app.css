@@ -234,6 +234,7 @@ body.auth-page {
   gap: 8px;
 }
 .aux-filter-grid.single { grid-template-columns: 1fr; }
+.location-todo-filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .aux-control {
   min-width: 0; display: flex; flex-direction: column; gap: 4px;
 }
@@ -255,6 +256,20 @@ body.auth-page {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .worklist-list { padding-bottom: 24px; }
+.location-todo-grouped-list { gap: 14px; }
+.worklist-group { display: flex; flex-direction: column; gap: 8px; }
+.worklist-group-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 2px;
+}
+.worklist-group-title {
+  min-width: 0; font-size: 12px; font-weight: 850; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.worklist-group-count {
+  flex-shrink: 0; font-size: 11px; font-weight: 750; color: var(--text3);
+}
+.worklist-group-items { display: flex; flex-direction: column; gap: 10px; }
 .worklist-card-title-row {
   display: flex; align-items: flex-start; gap: 8px;
 }
@@ -1949,6 +1964,7 @@ button.yearbook-highlight { cursor: pointer; }
   .travel-filter-summary { align-items: stretch; flex-direction: column; }
   .travel-filter-summary-text { align-items: flex-start; flex-direction: column; }
   .travel-filter-summary-text span { white-space: normal; }
+  .location-todo-filter-grid { grid-template-columns: 1fr; }
   .aux-filter-summary { align-items: stretch; flex-direction: column; }
   .aux-filter-summary-text { align-items: flex-start; flex-direction: column; }
   .aux-filter-summary-text span { white-space: normal; }

@@ -7,7 +7,7 @@ from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from statistics import median
 
-from flask import Blueprint, request
+from flask import Blueprint, jsonify, request
 
 from core import etag_json, get_db_write_version, query
 from stats_common import _day_series, _period_bounds, _series_params, _travel_period_clause
@@ -30,11 +30,13 @@ def _env_int(name, default):
 STATS_CACHE_TTL_SECONDS = max(0, _env_int('STATS_CACHE_TTL_SECONDS', 60))
 _stats_payload_cache = {}
 _stats_overview_cache = {}
+_stats_section_cache = {}
 
 
 def clear_stats_cache():
     _stats_payload_cache.clear()
     _stats_overview_cache.clear()
+    _stats_section_cache.clear()
 
 
 def _cache_key(year):
@@ -66,6 +68,15 @@ def _stats_payload(year):
 
 def _stats_overview_payload(year):
     return _cached_payload(_stats_overview_cache, year, _build_stats_overview_payload)
+
+
+def _stats_section_payload(section, year):
+    section_cache = _stats_section_cache.setdefault(section, {})
+    return _cached_payload(
+        section_cache,
+        year,
+        lambda selected_year: _build_stats_section_payload(section, selected_year),
+    )
 
 
 def _date_from_value(value):
@@ -300,6 +311,19 @@ def _period_stats(year=None):
     """Stats for all time or for activity overlapping the selected calendar year."""
     period, _travels, t_clause, t_params = _period_base(year)
 
+    geography_rankings = _geography_rankings(year, t_clause, t_params)
+    by_month = _period_by_month(year, t_clause, t_params)
+
+    return {
+        **period,
+        'participants': _participants_stats(year),
+        **geography_rankings,
+        'by_month': by_month,
+    }
+
+
+def _participants_stats(year=None):
+    t_clause, t_params = _travel_period_clause(year, 't')
     participant_day_series = _day_series('t.start_date', 't.end_date', year)
     participant_params = _series_params(year) + t_params
     participants = [dict(r) for r in query(f"""
@@ -319,16 +343,7 @@ def _period_stats(year=None):
     for p in participants:
         p['trips'] = int(p['trips'])
         p['days'] = int(p['days'])
-
-    geography_rankings = _geography_rankings(year, t_clause, t_params)
-    by_month = _period_by_month(year, t_clause, t_params)
-
-    return {
-        **period,
-        'participants': participants,
-        **geography_rankings,
-        'by_month': by_month,
-    }
+    return participants
 
 
 def _current_trip():
@@ -445,6 +460,8 @@ OVERVIEW_PERIOD_KEYS = (
     'progress',
 )
 
+STATS_SECTION_IDS = {'yearbook', 'countries', 'costs', 'participants', 'quality'}
+
 
 @bp.route('/api/stats')
 def get_stats():
@@ -456,6 +473,14 @@ def get_stats():
 def get_stats_overview():
     year = _parse_stats_year()
     return etag_json(_stats_overview_payload(year))
+
+
+@bp.route('/api/stats/section/<section>')
+def get_stats_section(section):
+    if section not in STATS_SECTION_IDS:
+        return jsonify({'error': 'Nieznana sekcja statystyk'}), 404
+    year = _parse_stats_year()
+    return etag_json(_stats_section_payload(section, year))
 
 
 def _build_stats_overview_payload(year):
@@ -475,6 +500,56 @@ def _build_stats_overview_payload(year):
         'current_trip': None if year else _current_trip(),
         'streak_months': 0 if year else _streak_months(),
     }
+
+
+def _stats_section_base(year):
+    return {
+        'year': year,
+        'by_year': _by_year(),
+    }
+
+
+def _build_stats_section_payload(section, year):
+    payload = _stats_section_base(year)
+
+    if section == 'yearbook':
+        return {
+            **payload,
+            'yearbook': _yearbook(),
+        }
+
+    if section == 'costs':
+        period = _period_overview(year)
+        return {
+            **payload,
+            'amount_by_currency': period['amount_by_currency'],
+            'cost_summary': period['cost_summary'],
+            'top_expensive': period['top_expensive'],
+            'cost_per_day': period['cost_per_day'],
+        }
+
+    if section == 'participants':
+        return {
+            **payload,
+            'participants': _participants_stats(year),
+        }
+
+    if section == 'countries':
+        t_clause, t_params = _travel_period_clause(year, 't')
+        return {
+            **payload,
+            **_geography_rankings(year, t_clause, t_params),
+            'country_milestones': _country_milestones(year),
+            'country_history': _country_history(year),
+        }
+
+    if section == 'quality':
+        return {
+            **payload,
+            'data_quality': _data_quality(year),
+        }
+
+    raise ValueError(f'Unknown stats section: {section}')
 
 
 def _build_stats_payload(year):

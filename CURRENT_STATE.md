@@ -25,6 +25,20 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   mapy i normalizacje wyszukiwania pickerow. GitHub Actions dla `17bd7c1`
   byly zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK
   i potwierdzil build `17bd7c1`.
+- Ostatnio domkniete: pakiet `wydajnosc statystyk + UX brakow miejsc`.
+  Backend dodal sekcyjne endpointy `/api/stats/section/<section>` dla
+  zakladek `yearbook`, `countries`, `costs`, `participants` i `quality`, a
+  `static/js/stats.js` przestal pobierac pelny `/api/stats` przy przelaczaniu
+  tych sekcji. Pelny `/api/stats` zostaje jako kompatybilny kontrakt. Widok
+  `#/locations/todo` ma teraz zapamietywane i deep-linkowane grupowanie kart po
+  kraju albo typie braku, obok dotychczasowego filtra i sortowania.
+- Weryfikacja lokalna tego pakietu: `python -m py_compile ...` dla glownych
+  modulow przeszedl, `python -m ruff check .` przeszedl,
+  `python -m unittest discover -s tests` przeszedl (59 testow, 7 skipow),
+  `tools/smoke_js.mjs` przeszedl przez Node REPL MCP, a `git diff --check`
+  przeszedl z samymi ostrzezeniami CRLF. Zwykly `node` w PATH w tej sesji byl
+  niedostepny (`CommandNotFoundException`), wiec JS nadal sprawdzac przez Node
+  REPL MCP albo po naprawie Node LTS w PATH.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `fc66b78 Speed up
   location list sorting`: maly performance pass dla glownej listy miejsc.
   Sortowanie po kraju/nazwie oraz opcje filtrow kraju/typu uzywaja teraz
@@ -279,37 +293,40 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   statystyki, kreator zapisu, edycje zakresu dat podrozy oraz CRUD miejsc.
 - Slabiej pokryte: prawdziwe E2E w przegladarce, importy danych i mniej typowe
   warianty zapisu/edycji w realnym PostgreSQL fixture.
-- `node` w normalnym PATH jest obecnie problematyczny: alias WindowsApps zwraca
-  `Odmowa dostepu`. JS smoke da sie uruchomic przez Node REPL MCP, ale docelowo
-  warto zainstalowac zwykly Node LTS w PATH.
+- `node` w normalnym PATH jest obecnie problematyczny: w poprzednich sesjach
+  alias WindowsApps zwracal `Odmowa dostepu`, a w tej sesji komenda byla
+  niedostepna (`CommandNotFoundException`). JS smoke da sie uruchomic przez
+  Node REPL MCP, ale docelowo warto zainstalowac zwykly Node LTS w PATH.
 
 ## Best Next Topics
 
-1. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
+1. Po pushu pakietu `wydajnosc statystyk + UX brakow miejsc`: sprawdzic
+   GitHub Actions i po deployu uruchomic `python tools/smoke_prod.py`.
+2. Po deployu obejrzec w produkcji: przelaczanie zakladek Statystyk
+   (`/api/stats/section/...`) oraz `#/locations/todo` z grupowaniem po kraju i
+   typie braku. Ewentualnie dopracowac teksty/spacing po realnym ekranie.
+3. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
    wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
    ma stac sie "pamiatkowy", a nie tylko analityczny.
-2. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
+4. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
    dopracowac teksty/spacing albo dodac drobne deep linki z miejsc podrzednych,
    jesli bedzie to faktycznie przydatne w pracy.
-3. Dalszy UX centrum brakow miejsc: szybkie akcje z kart albo lekki widok
-   grupowania po kraju/typie braku, zeby przechodzic od raportu do uzupelniania
-   danych bez wracania przez liste miejsc.
-4. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
+5. Ponowne uzupelnianie `address`/`notes` miejsc, ale tylko opisami
    konkretnymi dla danego miejsca. Pracowac malymi partiami, najpierw pokazac
    probki uzytkownikowi. Aktualnie 475 aktywnych miejsc ma brakujacy
    `address` albo `notes`.
-5. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
+6. Reczna weryfikacja 142 pozostalych miejsc bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`, zwlaszcza pozycji
    `ambiguous` i `manual_review_excluded`.
-6. Prawdziwe browser E2E po naprawie Node/Playwright:
+7. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-7. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+8. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-8. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
+9. Po refaktorze SPA: ewentualnie rozszerzyc deep linki o stan sekcji
    statystyk/filtry, jesli bedzie to przydatne w UX i testach.
-9. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+10. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
