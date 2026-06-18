@@ -139,6 +139,8 @@ assert.match(appCssSource, /\.location-passport\s*\{[\s\S]*grid-template-columns
 assert.match(appCssSource, /\.location-text-preview[\s\S]*-webkit-line-clamp:\s*3/, 'long location descriptions are clamped on mobile');
 assert.match(appCssSource, /\.location-card-description[\s\S]*-webkit-line-clamp:\s*2/, 'location cards keep descriptions to two lines');
 assert.match(appCssSource, /\.popup-description-text[\s\S]*-webkit-line-clamp:\s*3/, 'map popup descriptions stay compact');
+assert.match(appCssSource, /\.travel-route-map-pin[\s\S]*background:\s*#2563eb/, 'travel route markers use numbered blue pins');
+assert.match(appCssSource, /\.map-route-banner[\s\S]*justify-content:\s*space-between/, 'travel routes expose a compact map banner');
 assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\('pl', \{ sensitivity: 'base' \}\)/, 'location sorting reuses one Polish collator');
 assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
 assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
@@ -508,6 +510,12 @@ context.L = {
     };
   },
   tileLayer() { return { addTo() { context.__tileLayerAdded = true; return this; } }; },
+  layerGroup() {
+    return {
+      addTo() { context.__routeLayerCreated = true; return this; },
+      clearLayers() {},
+    };
+  },
   markerClusterGroup() {
     return {
       clearLayers() {},
@@ -527,24 +535,48 @@ assert.match(mapView.innerHTML, /id="map-toolbar"/, 'map render exposes toolbar 
 assert.equal(context.__mapOptions.options.zoomControl, true, 'map render keeps Leaflet zoom controls enabled');
 assert.equal(context.__mapInvalidated, true, 'map render invalidates Leaflet size after layout changes');
 assert.equal(context.__mapLoadCalled, true, 'map render still loads map locations');
+assert.equal(context.__routeLayerCreated, true, 'map render prepares a dedicated travel route layer');
 criticalScreens.add('map');
 
 let mapMarkerCreates = 0;
 let mapBatchAdds = 0;
+let routeMarkerAdds = 0;
+let routePolylineCoordinates = null;
+let routeFitBounds = null;
 const mapCounter = elementStub();
+const mapRouteBanner = elementStub();
+mapRouteBanner.hidden = true;
 const mapCluster = {
   clearLayers() {},
   addLayers(markers) { mapBatchAdds += markers.length; },
   getBounds() { return { isValid() { return false; } }; },
 };
-context.document.getElementById = id => (id === 'map-counter' ? mapCounter : null);
+const routeLayer = {
+  clearLayers() {},
+};
+const routeMap = {
+  fitBounds(bounds) { routeFitBounds = bounds; },
+  setView() {},
+};
+context.document.getElementById = id => {
+  if (id === 'map-counter') return mapCounter;
+  if (id === 'map-route-banner') return mapRouteBanner;
+  return null;
+};
 context.L.marker = () => {
   mapMarkerCreates += 1;
   return {
     bindPopup() { return this; },
+    addTo() { routeMarkerAdds += 1; return this; },
   };
 };
+context.L.polyline = coordinates => ({
+  addTo() { routePolylineCoordinates = coordinates; return this; },
+});
+context.L.latLngBounds = coordinates => ({ coordinates });
 context.__mapCluster = mapCluster;
+context.__routeLayer = routeLayer;
+context.__routeMap = routeMap;
 context.__mapLocations = [
   { id: 1, name: 'Helsinki', latitude: 60.17, longitude: 24.94, location_type: 'miasto', country_name: 'Finlandia' },
   { id: 2, name: 'Catania', latitude: 37.5, longitude: 15.08, location_type: 'miasto', country_name: 'Wlochy' },
@@ -568,6 +600,30 @@ const mapPopupHtml = context.createMapPopup({
   travel_names: 'Podróż pierwsza, Podróż druga, Podróż trzecia',
 });
 assert.match(mapPopupHtml, /popup-description-text/, 'map popup marks descriptions for compact rendering');
+context.__mapRoute = {
+  id: 7,
+  name: 'Finlandia',
+  start_date: '2025-07-18',
+  end_date: '2025-07-21',
+  stops: [
+    { location_id: 1, arrival_date: '2025-07-18', departure_date: '2025-07-19' },
+    { location_id: 2, arrival_date: '2025-07-20', departure_date: '2025-07-21' },
+    { location_id: 999, arrival_date: '2025-07-21', departure_date: '2025-07-21' },
+  ],
+};
+vm.runInContext(`
+  mapRouteLayer = __routeLayer;
+  map = __routeMap;
+  markerClusterGroup = __mapCluster;
+  allMapLocations = __mapLocations;
+  renderTravelMapRoute(__mapRoute);
+`, context);
+assert.equal(routeMarkerAdds, 2, 'travel route renders one numbered marker per place with GPS');
+assert.equal(routePolylineCoordinates.length, 2, 'travel route connects mapped stops with a line');
+assert.equal(routeFitBounds.coordinates.length, 2, 'travel route fits the map to its coordinates');
+assert.match(mapRouteBanner.innerHTML, /Finlandia/, 'travel route banner shows the trip name');
+assert.match(mapRouteBanner.innerHTML, /1 bez GPS/, 'travel route banner reports missing coordinates');
+assert.equal(mapCounter.textContent, '2/3 etapy', 'travel route counter shows mapped and total stops');
 assert.match(mapPopupHtml, /Szczegóły/, 'map popup keeps the full location detail action');
 
 const tabMap = elementStub();
@@ -918,7 +974,19 @@ const routeHtml = context.renderTravelRouteSection(sampleTravelDetail);
 assert.match(routeHtml, /travel-route-day/, 'travel detail groups route by day');
 assert.match(routeHtml, /data-route-day="2025-05-08"/, 'travel route keeps date group keys');
 assert.match(routeHtml, /travel-route-note/, 'travel route renders visit notes in compact details');
+assert.match(routeHtml, /showTravelRouteOnMap/, 'travel detail opens the ordered route on the map');
+assert.match(routeHtml, /Trasa na mapie/, 'travel detail labels the enhanced map action');
 assert.doesNotMatch(routeHtml, /style="/, 'travel route rows avoid inline styles');
+const routePayload = JSON.parse(decodeURIComponent(context.travelMapRoutePayload(
+  sampleTravelDetail,
+  context.sortedTravelLocations(sampleTravelDetail.locations),
+)));
+assert.equal(routePayload.name, 'Workation test', 'travel map payload keeps the trip name');
+assert.deepEqual(
+  routePayload.stops.map(stop => stop.location_id),
+  [101, 102],
+  'travel map payload preserves the chronological stop order',
+);
 const detailHtml = context.renderTravelDetail(sampleTravelDetail);
 assert.match(detailHtml, /travel-hero-stats/, 'travel detail renders the compact hero metrics');
 assert.match(detailHtml, /Notatki dzienne/, 'travel detail turns imported notes into daily blocks');

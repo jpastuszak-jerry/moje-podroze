@@ -284,9 +284,25 @@ function sortedTravelLocations(locations) {
   });
 }
 
+function travelMapRoutePayload(travel, locations) {
+  return encodeURIComponent(JSON.stringify({
+    id: travel.id,
+    name: travel.name || 'Podróż',
+    start_date: travel.start_date || null,
+    end_date: travel.end_date || null,
+    stops: (locations || []).map(location => ({
+      location_id: parseInt(location.location_id, 10),
+      name: location.location_name || '',
+      arrival_date: location.arrival_date || null,
+      departure_date: location.departure_date || null,
+    })).filter(stop => stop.location_id > 0),
+  }));
+}
+
 function renderTravelRouteSection(t) {
   const locations = sortedTravelLocations(t.locations || []);
   const ids = locations.map(l => parseInt(l.location_id, 10)).filter(Boolean);
+  const mapRoutePayload = ids.length ? travelMapRoutePayload(t, locations) : '';
   return `<div class="section travel-route-section" id="section-locations">
     <div class="section-header travel-route-header">
       <div>
@@ -294,7 +310,7 @@ function renderTravelRouteSection(t) {
         <div class="travel-section-sub">${locations.length ? `${locations.length} ${travelPlural(locations.length, 'wpis', 'wpisy', 'wpisów')} trasy` : 'Brak miejsc w podróży'}</div>
       </div>
       <div class="section-actions">
-        ${ids.length ? `<button class="section-action secondary" onclick="showTravelOnMap([${ids.join(',')}])">🗺 Mapa</button>` : ''}
+        ${mapRoutePayload ? `<button class="section-action secondary" onclick="showTravelRouteOnMap('${escapeAttr(mapRoutePayload)}')">🗺 Trasa na mapie</button>` : ''}
         <button class="section-action" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
       </div>
     </div>

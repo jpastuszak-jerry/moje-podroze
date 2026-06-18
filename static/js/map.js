@@ -3,6 +3,8 @@ let markerClusterGroup = null;
 let allMapLocations = [];
 let allMapMarkers = [];
 let pendingMapLocationIds = null;
+let pendingMapRoute = null;
+let mapRouteLayer = null;
 
 const MAP_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
   ? new Intl.Collator('pl', { sensitivity: 'base' })
@@ -30,6 +32,16 @@ function createColorIcon(locationType) {
   });
 }
 
+function createTravelRouteIcon(order) {
+  return L.divIcon({
+    className: 'travel-route-map-pin',
+    html: `<span>${order}</span>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -20],
+  });
+}
+
 function renderMap() {
   const view = document.getElementById('view');
   setMapViewMode(true);
@@ -48,6 +60,7 @@ function renderMap() {
         <button onclick="resetMapView()" class="icon-button map-btn" title="Pokaż wszystkie">🔄</button>
       </div>
     </div>
+    <div id="map-route-banner" class="map-route-banner" hidden></div>
     <div id="map-container"></div>
     <div id="map-legend">
       <span class="legend-item"><span class="legend-dot" style="background:#e74c3c"></span>Miasto</span>
@@ -68,6 +81,7 @@ function initMap() {
   }).addTo(map);
   markerClusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true });
   map.addLayer(markerClusterGroup);
+  mapRouteLayer = L.layerGroup().addTo(map);
   setTimeout(() => { if (map) map.invalidateSize(); }, 0);
 }
 
@@ -77,7 +91,11 @@ async function loadMapLocations() {
     allMapLocations = await res.json();
     buildMapFilters(allMapLocations);
     buildMapMarkerCache(allMapLocations);
-    if (pendingMapLocationIds) {
+    if (pendingMapRoute) {
+      const route = pendingMapRoute;
+      pendingMapRoute = null;
+      renderTravelMapRoute(route);
+    } else if (pendingMapLocationIds) {
       const ids = pendingMapLocationIds;
       pendingMapLocationIds = null;
       const filtered = allMapLocations.filter(l => ids.includes(l.id));
@@ -97,6 +115,17 @@ async function loadMapLocations() {
 function showTravelOnMap(locationIds) {
   pendingMapLocationIds = locationIds;
   showTab('map');
+}
+
+function showTravelRouteOnMap(encodedRoute) {
+  try {
+    pendingMapRoute = JSON.parse(decodeURIComponent(encodedRoute));
+    pendingMapLocationIds = null;
+    showTab('map');
+  } catch (err) {
+    console.error('Błąd danych trasy:', err);
+    showToast('Nie udało się otworzyć trasy na mapie', 'error');
+  }
 }
 
 function buildMapFilters(locations) {
@@ -125,6 +154,7 @@ function buildMapMarkerCache(locations) {
 }
 
 function renderCachedMapMarkers(markers) {
+  clearTravelMapRoute();
   markerClusterGroup.clearLayers();
   if (markerClusterGroup.addLayers) markerClusterGroup.addLayers(markers);
   else markers.forEach(marker => markerClusterGroup.addLayer(marker));
@@ -159,6 +189,114 @@ function createMapPopup(loc) {
   return h;
 }
 
+function createTravelRoutePopup(loc, stop, order) {
+  const dateLabel = stop.arrival_date
+    ? (stop.departure_date && stop.departure_date !== stop.arrival_date
+      ? `${fmtDate(stop.arrival_date)} – ${fmtDate(stop.departure_date)}`
+      : fmtDate(stop.arrival_date))
+    : 'bez daty wizyty';
+  return `<div class="map-popup travel-route-popup">
+    <div class="popup-route-step">Etap ${order} · ${escapeHtml(dateLabel)}</div>
+    <h3>${escapeHtml(loc.name)}</h3>
+    <div class="popup-meta">📍 ${escapeHtml(loc.country_name)} · ${escapeHtml(loc.location_type)}</div>
+    ${loc.address ? `<div class="popup-description"><span aria-hidden="true">📫</span><span class="popup-description-text">${escapeHtml(loc.address)}</span></div>` : ''}
+    <a class="popup-link" onclick="openLocation(${loc.id})">Szczegóły →</a>
+  </div>`;
+}
+
+function clearTravelMapRoute({ hideBanner = true } = {}) {
+  if (mapRouteLayer) mapRouteLayer.clearLayers();
+  const banner = document.getElementById('map-route-banner');
+  if (banner && hideBanner) {
+    banner.hidden = true;
+    banner.innerHTML = '';
+  }
+}
+
+function travelRouteDateLabel(route) {
+  if (!route?.start_date) return '';
+  if (route.end_date && route.end_date !== route.start_date) {
+    return `${fmtDate(route.start_date)} – ${fmtDate(route.end_date)}`;
+  }
+  return fmtDate(route.start_date);
+}
+
+function renderTravelMapRoute(route) {
+  clearTravelMapRoute({ hideBanner: false });
+  markerClusterGroup.clearLayers();
+
+  const locationsById = new Map(allMapLocations.map(location => [Number(location.id), location]));
+  const stops = (route.stops || []).map((stop, index) => {
+    const location = locationsById.get(Number(stop.location_id));
+    return location ? { ...stop, location, order: index + 1 } : null;
+  }).filter(Boolean);
+  const coordinates = stops.map(stop => [
+    Number(stop.location.latitude),
+    Number(stop.location.longitude),
+  ]);
+
+  stops.forEach(stop => {
+    L.marker(
+      [Number(stop.location.latitude), Number(stop.location.longitude)],
+      {
+        icon: createTravelRouteIcon(stop.order),
+        zIndexOffset: 100000 + (stop.order * 1000),
+        riseOnHover: true,
+        riseOffset: 100000,
+      },
+    )
+      .bindPopup(createTravelRoutePopup(stop.location, stop, stop.order), {
+        maxWidth: 280,
+        maxHeight: 220,
+        keepInView: true,
+        autoPanPadding: [18, 18],
+      })
+      .addTo(mapRouteLayer);
+  });
+
+  if (coordinates.length > 1) {
+    L.polyline(coordinates, {
+      color: '#2563eb',
+      weight: 4,
+      opacity: 0.82,
+      dashArray: '8 7',
+      lineJoin: 'round',
+    }).addTo(mapRouteLayer);
+  }
+
+  const totalStops = (route.stops || []).length;
+  const missingGps = Math.max(0, totalStops - stops.length);
+  const routeDate = travelRouteDateLabel(route);
+  const banner = document.getElementById('map-route-banner');
+  if (banner) {
+    banner.hidden = false;
+    banner.innerHTML = `<div class="map-route-banner-main">
+      <span class="map-route-banner-icon">🧭</span>
+      <div>
+        <strong>${escapeHtml(route.name || 'Trasa podróży')}</strong>
+        <span>${escapeHtml(routeDate)}${routeDate ? ' · ' : ''}${stops.length} ${polishPlural(stops.length, 'etap', 'etapy', 'etapów')}${missingGps ? ` · ${missingGps} bez GPS` : ''}</span>
+      </div>
+    </div>
+    <button type="button" class="map-route-close" onclick="showAllMapLocations()">Wszystkie miejsca</button>`;
+  }
+  document.getElementById('map-counter').textContent =
+    `${stops.length}/${totalStops} ${polishPlural(totalStops, 'etap', 'etapy', 'etapów')}`;
+
+  if (coordinates.length > 1) {
+    map.fitBounds(L.latLngBounds(coordinates), { padding: [42, 42], maxZoom: 12 });
+  } else if (coordinates.length === 1) {
+    map.setView(coordinates[0], 12);
+  } else {
+    document.getElementById('map-counter').textContent = 'brak GPS';
+  }
+}
+
+function showAllMapLocations() {
+  clearTravelMapRoute();
+  renderCachedMapMarkers(allMapMarkers);
+  if (allMapLocations.length > 0) fitMapToMarkers();
+}
+
 function filterMapMarkers() {
   const st = document.getElementById('map-filter-type').value;
   const sc = document.getElementById('map-filter-country').value;
@@ -178,8 +316,7 @@ function fitMapToMarkers() {
 function resetMapView() {
   document.getElementById('map-filter-type').value = '';
   document.getElementById('map-filter-country').value = '';
-  renderCachedMapMarkers(allMapMarkers);
-  if (allMapLocations.length > 0) fitMapToMarkers();
+  showAllMapLocations();
 }
 
 function goHome() {
