@@ -141,6 +141,7 @@ assert.match(appCssSource, /\.location-card-description[\s\S]*-webkit-line-clamp
 assert.match(appCssSource, /\.popup-description-text[\s\S]*-webkit-line-clamp:\s*3/, 'map popup descriptions stay compact');
 assert.match(appCssSource, /\.travel-route-map-pin[\s\S]*background:\s*#2563eb/, 'travel route markers use numbered blue pins');
 assert.match(appCssSource, /\.map-route-banner[\s\S]*justify-content:\s*space-between/, 'travel routes expose a compact map banner');
+assert.doesNotMatch(mapSource, /L\.polyline/, 'travel route does not imply real paths with straight lines');
 assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\('pl', \{ sensitivity: 'base' \}\)/, 'location sorting reuses one Polish collator');
 assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
 assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
@@ -541,7 +542,6 @@ criticalScreens.add('map');
 let mapMarkerCreates = 0;
 let mapBatchAdds = 0;
 let routeMarkerAdds = 0;
-let routePolylineCoordinates = null;
 let routeFitBounds = null;
 const mapCounter = elementStub();
 const mapRouteBanner = elementStub();
@@ -570,9 +570,6 @@ context.L.marker = () => {
     addTo() { routeMarkerAdds += 1; return this; },
   };
 };
-context.L.polyline = coordinates => ({
-  addTo() { routePolylineCoordinates = coordinates; return this; },
-});
 context.L.latLngBounds = coordinates => ({ coordinates });
 context.__mapCluster = mapCluster;
 context.__routeLayer = routeLayer;
@@ -619,7 +616,6 @@ vm.runInContext(`
   renderTravelMapRoute(__mapRoute);
 `, context);
 assert.equal(routeMarkerAdds, 2, 'travel route renders one numbered marker per place with GPS');
-assert.equal(routePolylineCoordinates.length, 2, 'travel route connects mapped stops with a line');
 assert.equal(routeFitBounds.coordinates.length, 2, 'travel route fits the map to its coordinates');
 assert.match(mapRouteBanner.innerHTML, /Finlandia/, 'travel route banner shows the trip name');
 assert.match(mapRouteBanner.innerHTML, /1 bez GPS/, 'travel route banner reports missing coordinates');

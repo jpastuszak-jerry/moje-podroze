@@ -254,16 +254,6 @@ function renderTravelMapRoute(route) {
       .addTo(mapRouteLayer);
   });
 
-  if (coordinates.length > 1) {
-    L.polyline(coordinates, {
-      color: '#2563eb',
-      weight: 4,
-      opacity: 0.82,
-      dashArray: '8 7',
-      lineJoin: 'round',
-    }).addTo(mapRouteLayer);
-  }
-
   const totalStops = (route.stops || []).length;
   const missingGps = Math.max(0, totalStops - stops.length);
   const routeDate = travelRouteDateLabel(route);
