@@ -12,6 +12,18 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `f09a511 Show travel
+  routes on the map`: przycisk w sekcji "Trasa i miejsca" otwiera teraz mape
+  podrozy z numerowanymi markerami zgodnymi z kolejnoscia wizyt, przerywana
+  linia laczaca etapy, popupami z numerem i data oraz panelem nazwy, zakresu
+  dat i liczby etapow. Miejsca bez GPS sa pomijane na mapie i liczone w
+  panelu; "Wszystkie miejsca" przywraca zwykle markery i klastry.
+  Browser smoke na prawdziwej podrozy Tirana/Kosowo potwierdzil 25 markerow,
+  linie, poprawny popup etapu 25, brak overflow na 390x844 oraz bezbledny
+  powrot do 528 miejsc. Lokalnie przeszly Ruff, 60 testow (7 skipow), smoke
+  JS i `git diff --check`. GitHub Actions byly zielone, a produkcyjny
+  `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil build
+  `f09a511`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `def76ae Compact
   location descriptions on mobile`: dlugie opisy na kartach listy miejsc sa
   ograniczone do 2 linii, a w profilu miejsca do 3 linii z natywnym
