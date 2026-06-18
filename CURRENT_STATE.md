@@ -12,6 +12,17 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `def76ae Compact
+  location descriptions on mobile`: dlugie opisy na kartach listy miejsc sa
+  ograniczone do 2 linii, a w profilu miejsca do 3 linii z natywnym
+  `Pokaz wiecej`/`Zwin opis`; krotkie opisy pozostaja w pelni widoczne.
+  Dymki mapy maja skrocony opis i liste podrozy, limit wysokosci, przewijanie
+  oraz `keepInView`, dzieki czemu nie wypadaja poza ekran iPhone'a. Browser
+  smoke na viewportcie 390x844 potwierdzil brak poziomego overflow, poprawne
+  rozwijanie oraz popup 177 px mieszczacy sie w obszarze mapy. Lokalnie
+  przeszly Ruff, 60 testow (7 skipow), smoke JS i `git diff --check`.
+  GitHub Actions byly zielone, a produkcyjny `python tools/smoke_prod.py`
+  przeszedl 12/12 OK i potwierdzil build `def76ae`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `c30d196 Add cost
   timeline and stats deep links`: sekcja Koszty pokazuje teraz koszty wedlug
   lat dla widoku "Wszystkie" oraz wedlug miesiecy dla wybranego roku, z
