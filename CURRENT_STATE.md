@@ -38,6 +38,19 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil build
   `9e2c1db`. In-app Browser nadal nie widzi lokalnego `127.0.0.1`, wiec po
   deployu pozostaje krotki reczny smoke na telefonie.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `85bbe7c Filter travel
+  map by day`: numerowana mapa podrozy ma teraz poziomo przewijany filtr
+  `Wszystkie` oraz dni, w ktorych zapisano miejsca, np. `Dzien 1`, `Dzien 2`,
+  `Dzien 5`. Wybranie dnia pokazuje tylko jego markery i dopasowuje widok
+  mapy, ale zachowuje globalne numery etapow calej podrozy. Miejsca sa
+  przypisywane do dnia wedlug `arrival_date`; osobno obslugiwane sa wpisy bez
+  daty. Lokalnie przeszly Ruff, 67 testow (8 skipow), smoke JS i
+  `git diff --check`. Smoke JS sprawdza filtrowanie dnia, globalny numer
+  markera i powrot do wszystkich dni. GitHub Actions byly zielone, a
+  produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil
+  build `85bbe7c`. In-app Browser otworzyl produkcyjny login na 390x844, ale
+  swieza sesja nie byla uwierzytelniona, wiec interakcyjnego smoke prywatnej
+  mapy nie wykonywano.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `def76ae Compact
   location descriptions on mobile`: dlugie opisy na kartach listy miejsc sa
   ograniczone do 2 linii, a w profilu miejsca do 3 linii z natywnym
@@ -413,9 +426,9 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Recznie sprawdzic na produkcji jedna podroz z kilkoma miejscami tego samego
-   dnia: przestawienie strzalkami, utrzymanie kolejnosci po odswiezeniu oraz
-   zgodna numeracje w `Trasa na mapie`.
+1. Recznie sprawdzic na produkcji dluzsza podroz w `Trasa na mapie`: przewijanie
+   filtrow dni na telefonie, wybranie kilku dni z rzedu, zachowanie globalnych
+   numerow etapow i powrot przez `Wszystkie`.
 2. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
    partiami i recznie przejrzec 142 pozostale miejsca bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`.
