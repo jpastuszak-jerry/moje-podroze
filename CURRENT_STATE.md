@@ -26,6 +26,18 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   JS i `git diff --check`. GitHub Actions byly zielone, a produkcyjny
   `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil build
   `1efe328`.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `9e2c1db Add manual
+  ordering for travel stops`: miejsca z ta sama data wizyty mozna teraz
+  porzadkowac strzalkami gora/dol w trybie `Kolejnosc` sekcji "Trasa i
+  miejsca". Kolejnosc jest trwale zapisywana w `travel_locations.visit_order`
+  przez wersjonowana migracje, obowiazuje jednoczesnie na liscie i numerowanych
+  markerach mapy, a nowe miejsce lub wpis przeniesiony na inny dzien trafia na
+  koniec tego dnia. Soft-deleted miejsca nie blokuja porzadkowania widocznych
+  wpisow. Lokalnie przeszly kompilacja Pythona, Ruff, 67 testow (8 skipow),
+  smoke JS i `git diff --check`. GitHub Actions byly zielone, a produkcyjny
+  `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil build
+  `9e2c1db`. In-app Browser nadal nie widzi lokalnego `127.0.0.1`, wiec po
+  deployu pozostaje krotki reczny smoke na telefonie.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `def76ae Compact
   location descriptions on mobile`: dlugie opisy na kartach listy miejsc sa
   ograniczone do 2 linii, a w profilu miejsca do 3 linii z natywnym
@@ -401,26 +413,29 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
+1. Recznie sprawdzic na produkcji jedna podroz z kilkoma miejscami tego samego
+   dnia: przestawienie strzalkami, utrzymanie kolejnosci po odswiezeniu oraz
+   zgodna numeracje w `Trasa na mapie`.
+2. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
    partiami i recznie przejrzec 142 pozostale miejsca bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`.
-2. Prawdziwe browser E2E po naprawie Node/Playwright:
+3. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-3. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
+4. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
    wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
    ma stac sie "pamiatkowy", a nie tylko analityczny.
-4. Role admin/viewer i cache po rolach, jesli aplikacja ma byc pokazywana
+5. Role admin/viewer i cache po rolach, jesli aplikacja ma byc pokazywana
    komus poza adminem.
-5. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
+6. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
    dopracowac teksty/spacing albo dodac drobne deep linki z miejsc podrzednych,
    jesli bedzie to faktycznie przydatne w pracy.
-6. Mala analityka kosztow: miesiace/lata z najwyzszymi kosztami albo wybrana
+7. Mala analityka kosztow: miesiace/lata z najwyzszymi kosztami albo wybrana
    waluta bazowa, jesli kosztowy obraz podrozy ma byc wazniejszy.
-7. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+8. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-8. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+9. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
