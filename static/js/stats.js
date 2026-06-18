@@ -103,14 +103,27 @@ const STATS_SECTIONS = [
 ];
 
 function setStatsYear(y) {
-  currentStatsYear = y;
-  renderStats();
+  navigateTo('stats', {
+    section: currentStatsSection,
+    year: y || null,
+  });
 }
 
 function setStatsSection(sectionId) {
   if (!STATS_SECTIONS.some(section => section.id === sectionId)) return;
-  currentStatsSection = sectionId;
-  renderStats();
+  navigateTo('stats', {
+    section: sectionId,
+    year: currentStatsYear,
+  });
+}
+
+function applyStatsRouteParams(params = {}) {
+  const section = STATS_SECTIONS.some(item => item.id === params.section)
+    ? params.section
+    : 'overview';
+  const year = parseInt(params.year, 10);
+  currentStatsSection = section;
+  currentStatsYear = year > 0 ? year : null;
 }
 
 function statsApiPath() {
@@ -159,6 +172,67 @@ function renderCostSummary(summary) {
     title: '💸 Koszty według walut',
     className: 'chart-card cost-summary-card',
     body: `<div class="cost-summary-list">${rows}</div>`,
+  });
+}
+
+function costPeriodLabel(period, mode) {
+  if (mode === 'month') {
+    return ['', 'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'][period] || String(period);
+  }
+  return String(period);
+}
+
+function renderCostTimeline(timeline) {
+  const series = timeline?.series || [];
+  if (!series.length) return '';
+  const mode = timeline.mode === 'month' ? 'month' : 'year';
+  const body = series.map(item => {
+    const points = item.points || [];
+    const maxTotal = Math.max(...points.map(point => Number(point.total) || 0), 1);
+    const bars = points.map(point => {
+      const total = Number(point.total) || 0;
+      const share = total > 0 ? Math.max(4, Math.round(total / maxTotal * 100)) : 0;
+      const amount = total > 0 ? formatCost(total, item.currency) : '–';
+      const tripLabel = `${point.trip_count || 0} ${pluralTrips(point.trip_count || 0)}`;
+      return `<div class="cost-period" title="${escapeAttr(`${costPeriodLabel(point.period, mode)}: ${amount} · ${tripLabel}`)}">
+        <div class="cost-period-track"><span style="--cost-share:${share}%"></span></div>
+        <strong>${escapeHtml(costPeriodLabel(point.period, mode))}</strong>
+        <span>${amount}</span>
+      </div>`;
+    }).join('');
+    const peak = item.peak;
+    const peakHtml = peak
+      ? `<div><span>Najdroższy ${mode === 'month' ? 'miesiąc' : 'rok'}</span><strong>${escapeHtml(costPeriodLabel(peak.period, mode))} · ${formatCost(peak.total, item.currency)}</strong></div>`
+      : '';
+    const yoy = item.year_over_year;
+    let yoyHtml = '';
+    if (yoy?.year) {
+      if (Number(yoy.previous_total) > 0) {
+        const delta = Number(yoy.delta) || 0;
+        const sign = delta > 0 ? '+' : '';
+        const percent = yoy.percent == null ? '' : ` (${sign}${Number(yoy.percent).toLocaleString('pl-PL')}%)`;
+        yoyHtml = `<div><span>${yoy.year} vs ${yoy.previous_year}</span><strong>${sign}${formatCost(delta, item.currency)}${percent}</strong></div>`;
+      } else {
+        yoyHtml = `<div><span>${yoy.year} vs ${yoy.previous_year}</span><strong>Brak kosztów w roku bazowym</strong></div>`;
+      }
+    }
+    return `<section class="cost-timeline-series">
+      <div class="cost-timeline-head">
+        <div>
+          <div class="cost-currency">${escapeHtml(item.currency)}</div>
+          <div class="cost-sub">Według ${mode === 'month' ? 'miesiąca' : 'roku'} rozpoczęcia podróży</div>
+        </div>
+        <div class="cost-timeline-summary">${peakHtml}${yoyHtml}</div>
+      </div>
+      <div class="cost-timeline-scroll">
+        <div class="cost-period-grid cost-period-grid-${mode}" style="--cost-period-count:${Math.max(points.length, 1)}">${bars}</div>
+      </div>
+    </section>`;
+  }).join('');
+  return renderSectionCard({
+    title: 'Koszty w czasie',
+    className: 'chart-card cost-timeline-card',
+    body,
   });
 }
 
@@ -609,7 +683,8 @@ function renderOverviewMetrics(s, prev, currentYear, currencies) {
   return `<div class="stats-grid">${cards.join('')}</div>`;
 }
 
-async function renderStats() {
+async function renderStats(params = null) {
+  if (params !== null) applyStatsRouteParams(params);
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
   const s = await api(statsApiPath());
@@ -661,6 +736,11 @@ async function renderStats() {
     }
   }
   if (currentStatsSection === 'costs') {
+    const costTimelineHtml = renderCostTimeline(s.cost_timeline);
+    if (costTimelineHtml) {
+      html += costTimelineHtml;
+      sectionItems++;
+    }
     const costSummaryHtml = renderCostSummary(s.cost_summary);
     if (costSummaryHtml) {
       html += costSummaryHtml;

@@ -412,9 +412,19 @@ assert.deepEqual(
   { name: 'locationTodo', params: { missing: 'missing_gps', sort: 'visit_count_asc', group: 'country' } },
   'router keeps location todo filter params from hashes',
 );
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.routeFromHash('#/stats?section=costs&year=2025'))),
+  { name: 'stats', params: { section: 'costs', year: '2025' } },
+  'router keeps stats section and year params from hashes',
+);
 assert.equal(context.routePath('travelDetail', { id: 42 }), '/travels/42', 'router builds travel detail paths');
 assert.equal(context.routePath('locationDetail', { id: 17 }), '/locations/17', 'router builds location detail paths');
 assert.equal(context.routePath('todo'), '/stats/todo', 'router builds stats todo path');
+assert.equal(
+  context.routePath('stats', { section: 'yearbook', year: 2024 }),
+  '/stats?section=yearbook&year=2024',
+  'router builds shareable stats paths',
+);
 
 const originalWindowLocation = context.window.location;
 const originalWindowHistory = context.window.history;
@@ -1079,6 +1089,27 @@ function statsPayload(overrides = {}) {
       median_trip: 600,
       avg_per_day: 150,
     }],
+    cost_timeline: {
+      mode: 'year',
+      basis: 'start_date',
+      year: null,
+      series: [{
+        currency: 'EUR',
+        points: [
+          { period: 2024, total: 800, trip_count: 1 },
+          { period: 2025, total: 1200, trip_count: 2 },
+        ],
+        peak: { period: 2025, total: 1200, trip_count: 2 },
+        year_over_year: {
+          year: 2025,
+          previous_year: 2024,
+          current_total: 1200,
+          previous_total: 800,
+          delta: 400,
+          percent: 50,
+        },
+      }],
+    },
     purposes: [{ name: 'Miasto', count: 4 }, { name: 'Natura', count: 2 }],
     participants: [{ id: 1, name: 'Anna', relation_type: 'Rodzina', trips: 5, days: 16 }],
     top_expensive: [{ name: 'Helsinki', amount: 1200, currency: 'EUR' }],
@@ -1279,10 +1310,42 @@ criticalScreens.add('stats-overview');
 
 const costsStats = await renderStatsSection('costs');
 assert.equal(apiCalls.at(-1), '/api/stats/section/costs', 'costs section uses the scoped stats endpoint');
+assert.match(costsStats, /Koszty w czasie/, 'costs section shows the cost timeline');
+assert.match(costsStats, /2025.*1.*200/s, 'cost timeline renders annual cost points');
+assert.match(costsStats, /2025 vs 2024/, 'cost timeline renders year-over-year comparison');
 assert.match(costsStats, /Koszty wed/, 'costs section shows cost summary');
 assert.match(costsStats, /Top 10/, 'costs section shows expensive trips');
 assert.match(costsStats, /per dzie/, 'costs section shows cost per day');
 assert.doesNotMatch(costsStats, /Historia kraj/, 'costs section does not show country history');
+
+statsResponse = statsPayload({
+  cost_timeline: {
+    mode: 'month',
+    basis: 'start_date',
+    year: 2025,
+    series: [{
+      currency: 'EUR',
+      points: Array.from({ length: 12 }, (_, index) => ({
+        period: index + 1,
+        total: index === 6 ? 1200 : 0,
+        trip_count: index === 6 ? 2 : 0,
+      })),
+      peak: { period: 7, total: 1200, trip_count: 2 },
+      year_over_year: {
+        year: 2025,
+        previous_year: 2024,
+        current_total: 1200,
+        previous_total: 800,
+        delta: 400,
+        percent: 50,
+      },
+    }],
+  },
+});
+await context.renderStats({ section: 'costs', year: '2025' });
+assert.equal(apiCalls.at(-1), '/api/stats/section/costs?year=2025', 'stats route params select scoped year data');
+assert.match(statsView.innerHTML, /Najdroższy miesiąc/, 'year-filtered costs switch the timeline to months');
+assert.match(statsView.innerHTML, /Lip/, 'monthly cost timeline renders month labels');
 
 const participantsStats = await renderStatsSection('participants');
 assert.equal(apiCalls.at(-1), '/api/stats/section/participants', 'participants section uses the scoped stats endpoint');

@@ -6,6 +6,7 @@ from unittest.mock import patch
 from pydantic import ValidationError
 
 from schemas import LocationCreate, TravelCreate, TravelLocationCreate
+import stats
 import stats_countries
 import stats_quality
 import stats_yearbook
@@ -192,6 +193,36 @@ class DateLogicSmokeTests(unittest.TestCase):
         self.assertEqual(chapter['story']['title'], 'Rok spokojnych rozdziałów')
         self.assertIn('2 podróże', chapter['story']['summary'])
         self.assertEqual(chapter['trips_list'][0]['id'], 1)
+
+    def test_cost_timeline_groups_years_months_and_yoy(self):
+        rows = [
+            {'year': 2024, 'month': 5, 'currency': 'PLN', 'trip_count': 1, 'total': 1000},
+            {'year': 2025, 'month': 2, 'currency': 'PLN', 'trip_count': 1, 'total': 800},
+            {'year': 2025, 'month': 7, 'currency': 'PLN', 'trip_count': 2, 'total': 2200},
+        ]
+        with patch.object(stats, 'query', return_value=rows):
+            all_time = stats._cost_timeline()
+            selected_year = stats._cost_timeline(2025)
+
+        annual = all_time['series'][0]
+        self.assertEqual(all_time['mode'], 'year')
+        self.assertEqual(
+            annual['points'],
+            [
+                {'period': 2024, 'total': 1000.0, 'trip_count': 1},
+                {'period': 2025, 'total': 3000.0, 'trip_count': 3},
+            ],
+        )
+        self.assertEqual(annual['peak']['period'], 2025)
+        self.assertEqual(annual['year_over_year']['delta'], 2000.0)
+        self.assertEqual(annual['year_over_year']['percent'], 200.0)
+
+        monthly = selected_year['series'][0]
+        self.assertEqual(selected_year['mode'], 'month')
+        self.assertEqual(len(monthly['points']), 12)
+        self.assertEqual(monthly['points'][1]['total'], 800.0)
+        self.assertEqual(monthly['points'][6]['trip_count'], 2)
+        self.assertEqual(monthly['peak']['period'], 7)
 
 
 class DataQualitySmokeTests(unittest.TestCase):

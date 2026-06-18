@@ -64,6 +64,29 @@ def _period_payload():
     }
 
 
+def _cost_timeline_payload(year=2025):
+    return {
+        'mode': 'month' if year else 'year',
+        'basis': 'start_date',
+        'year': year,
+        'series': [{
+            'currency': 'EUR',
+            'points': [
+                {'period': 7 if year else 2025, 'total': 1000.0, 'trip_count': 1},
+            ],
+            'peak': {'period': 7 if year else 2025, 'total': 1000.0, 'trip_count': 1},
+            'year_over_year': {
+                'year': 2025,
+                'previous_year': 2024,
+                'current_total': 1000.0,
+                'previous_total': 800.0,
+                'delta': 200.0,
+                'percent': 25.0,
+            },
+        }],
+    }
+
+
 def _data_quality_payload():
     return {
         'total': 1,
@@ -487,6 +510,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             patch.object(stats, '_streak_months', return_value=3),
             patch.object(stats, '_heatmap_data', return_value=[{'year': 2025, 'month': 7, 'days': 11}]),
             patch.object(stats, '_yearbook', return_value=copy.deepcopy(_yearbook_payload())),
+            patch.object(stats, '_cost_timeline', return_value=copy.deepcopy(_cost_timeline_payload())),
             patch.object(stats, 'query', side_effect=fake_stats_query),
         ):
             response = self.client.get('/api/stats?year=2025')
@@ -501,6 +525,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             'by_month', 'cost_per_day', 'progress', 'locations', 'by_year',
             'hall_of_fame', 'year', 'prev_period', 'current_trip', 'streak_months',
             'heatmap', 'data_quality', 'country_milestones', 'country_history', 'yearbook',
+            'cost_timeline',
         }
         self.assertLessEqual(expected_keys, set(data))
         self.assertEqual(data['year'], 2025)
@@ -638,6 +663,7 @@ class ApiContractSmokeTests(unittest.TestCase):
                 'returning': [],
             }),
             patch.object(stats, '_yearbook', return_value=copy.deepcopy(_yearbook_payload())),
+            patch.object(stats, '_cost_timeline', return_value=copy.deepcopy(_cost_timeline_payload())),
             patch.object(stats, 'query', side_effect=fake_stats_query),
         ):
             costs = self.client.get('/api/stats/section/costs?year=2025')
@@ -651,10 +677,15 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertEqual(costs.headers['Cache-Control'], 'no-store')
         costs_data = costs.get_json()
         self.assertEqual(
-            {'year', 'by_year', 'amount_by_currency', 'cost_summary', 'top_expensive', 'cost_per_day'},
+            {
+                'year', 'by_year', 'amount_by_currency', 'cost_summary',
+                'cost_timeline', 'top_expensive', 'cost_per_day',
+            },
             set(costs_data),
         )
         self.assertEqual(costs_data['year'], 2025)
+        self.assertEqual(costs_data['cost_timeline']['mode'], 'month')
+        self.assertEqual(costs_data['cost_timeline']['series'][0]['peak']['period'], 7)
         self.assertNotIn('participants', costs_data)
         self.assertNotIn('country_history', costs_data)
 

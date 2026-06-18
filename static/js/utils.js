@@ -798,7 +798,7 @@ function routeFromHash(hash) {
     return { name: 'todo', params: {} };
   }
   if (MAIN_ROUTES.includes(parts[0]) && parts.length === 1) {
-    return { name: parts[0], params: {} };
+    return { name: parts[0], params: parts[0] === 'stats' ? query : {} };
   }
   if (parts[0] === 'todo') return { name: 'todo', params: {} };
   if (parts[0] === 'locationTodo' || parts[0] === 'location-todo') {
@@ -813,6 +813,15 @@ function routePath(name, params = {}) {
   if ((name === 'location' || name === 'locationDetail') && id) return `/locations/${id}`;
   if (name === 'todo') return '/stats/todo';
   if (name === 'locationTodo') return '/locations/todo';
+  if (name === 'stats') {
+    const query = [];
+    if (params.section && params.section !== 'overview') {
+      query.push(`section=${encodeURIComponent(params.section)}`);
+    }
+    const year = parseInt(params.year, 10);
+    if (year > 0) query.push(`year=${year}`);
+    return '/stats' + (query.length ? '?' + query.join('&') : '');
+  }
   if (MAIN_ROUTES.includes(name)) return `/${name}`;
   return '/travels';
 }
@@ -946,7 +955,7 @@ function renderTab(tab, params = {}) {
   if (tab === 'travels') pending = renderTravels();
   else if (tab === 'locations') pending = renderLocations();
   else if (tab === 'map') pending = renderMap();
-  else if (tab === 'stats') pending = renderStats();
+  else if (tab === 'stats') pending = renderStats(params);
   else if (tab === 'todo') pending = renderTodo();
   else if (tab === 'locationTodo') pending = renderLocationTodo(params);
   if (view) {

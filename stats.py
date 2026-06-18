@@ -248,6 +248,93 @@ def _period_by_month(year, t_clause, t_params):
     return by_month
 
 
+def _cost_timeline(year=None):
+    rows = [dict(r) for r in query("""
+        SELECT EXTRACT(YEAR FROM start_date)::int AS year,
+               EXTRACT(MONTH FROM start_date)::int AS month,
+               UPPER(COALESCE(currency, 'PLN')) AS currency,
+               COUNT(*)::int AS trip_count,
+               ROUND(SUM(amount), 2) AS total
+        FROM travels
+        WHERE deleted_at IS NULL
+          AND amount > 0
+        GROUP BY year, month, currency
+        ORDER BY year, month, currency
+    """)]
+
+    by_currency = {}
+    for row in rows:
+        currency = row['currency']
+        by_currency.setdefault(currency, []).append({
+            'year': int(row['year']),
+            'month': int(row['month']),
+            'trip_count': int(row['trip_count']),
+            'total': round(float(row['total']), 2),
+        })
+
+    series = []
+    for currency, currency_rows in sorted(by_currency.items()):
+        annual = {}
+        for row in currency_rows:
+            bucket = annual.setdefault(row['year'], {'total': 0.0, 'trip_count': 0})
+            bucket['total'] += row['total']
+            bucket['trip_count'] += row['trip_count']
+
+        if year:
+            monthly = {
+                row['month']: row
+                for row in currency_rows
+                if row['year'] == year
+            }
+            points = [
+                {
+                    'period': month,
+                    'total': round(monthly.get(month, {}).get('total', 0), 2),
+                    'trip_count': int(monthly.get(month, {}).get('trip_count', 0)),
+                }
+                for month in range(1, 13)
+            ]
+            comparison_year = year
+        else:
+            points = [
+                {
+                    'period': point_year,
+                    'total': round(values['total'], 2),
+                    'trip_count': values['trip_count'],
+                }
+                for point_year, values in sorted(annual.items())
+            ]
+            comparison_year = max(annual) if annual else None
+
+        nonzero_points = [point for point in points if point['total'] > 0]
+        peak = max(nonzero_points, key=lambda point: point['total']) if nonzero_points else None
+        current_total = annual.get(comparison_year, {}).get('total', 0) if comparison_year else 0
+        previous_year = comparison_year - 1 if comparison_year else None
+        previous_total = annual.get(previous_year, {}).get('total', 0) if previous_year else 0
+        delta = current_total - previous_total
+
+        series.append({
+            'currency': currency,
+            'points': points,
+            'peak': peak,
+            'year_over_year': {
+                'year': comparison_year,
+                'previous_year': previous_year,
+                'current_total': round(current_total, 2),
+                'previous_total': round(previous_total, 2),
+                'delta': round(delta, 2),
+                'percent': round(delta / previous_total * 100, 1) if previous_total else None,
+            } if comparison_year else None,
+        })
+
+    return {
+        'mode': 'month' if year else 'year',
+        'basis': 'start_date',
+        'year': year,
+        'series': series,
+    }
+
+
 def _geography_rankings(year, t_clause, t_params):
     visit_day_series = _day_series('tl.arrival_date', 'tl.departure_date', year)
     visit_series_params = _series_params(year) + t_params
@@ -524,6 +611,7 @@ def _build_stats_section_payload(section, year):
             **payload,
             'amount_by_currency': period['amount_by_currency'],
             'cost_summary': period['cost_summary'],
+            'cost_timeline': _cost_timeline(year),
             'top_expensive': period['top_expensive'],
             'cost_per_day': period['cost_per_day'],
         }
@@ -569,6 +657,7 @@ def _build_stats_payload(year):
         'country_milestones': _country_milestones(year),
         'country_history': _country_history(year),
         'yearbook': _yearbook(),
+        'cost_timeline': _cost_timeline(year),
     }
 
 
