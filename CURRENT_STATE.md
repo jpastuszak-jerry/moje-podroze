@@ -12,6 +12,16 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `c30d196 Add cost
+  timeline and stats deep links`: sekcja Koszty pokazuje teraz koszty wedlug
+  lat dla widoku "Wszystkie" oraz wedlug miesiecy dla wybranego roku, z
+  najdrozszym okresem i porownaniem rok do roku. Statystyki zachowuja sekcje i
+  rok w URL, np. `#/stats?section=costs&year=2025`, takze po odswiezeniu.
+  Lokalnie przeszly kompilacja Pythona, Ruff, 60 testow (7 skipow), smoke JS
+  i `git diff --check`. Browser smoke potwierdzil desktop, mobile, deep link i
+  odswiezenie bez bledow konsoli. GitHub Actions byly zielone, a produkcyjny
+  `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil build
+  `c30d196`.
 - Ostatnio domkniete w bazie Neon 2026-06-17: kolejna ostrozna partia jakosci
   danych miejsc. Z losowej puli niepelnych miejsc wybrano 40 jednoznacznych
   rekordow i uzupelniono tylko pewne pola: 35 opisow w `address`, 39 notatek
