@@ -218,12 +218,38 @@ def _ensure_constraints(cur):
     print(f'[schema] constraints ensured: {len(SCHEMA_CONSTRAINT_STATEMENTS)}')
 
 
+def _add_travel_location_order(cur):
+    cur.execute("ALTER TABLE travel_locations ADD COLUMN IF NOT EXISTS visit_order INTEGER")
+    cur.execute("""
+        WITH ranked AS (
+            SELECT tl.id,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY tl.travel_id, tl.arrival_date
+                       ORDER BY l.name, tl.id
+                   ) AS visit_order
+            FROM travel_locations tl
+            JOIN locations l ON l.id = tl.location_id
+            WHERE tl.visit_order IS NULL
+        )
+        UPDATE travel_locations tl
+        SET visit_order = ranked.visit_order
+        FROM ranked
+        WHERE ranked.id = tl.id
+    """)
+    cur.execute("ALTER TABLE travel_locations ALTER COLUMN visit_order SET NOT NULL")
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_travel_locations_day_order
+        ON travel_locations (travel_id, arrival_date, visit_order)
+    """)
+
+
 SCHEMA_MIGRATIONS = (
     ('20260528_001_soft_delete_coordinates', 'Add soft delete and coordinates', _add_soft_delete_and_coordinates),
     ('20260528_002_rating_numeric', 'Convert rating to NUMERIC(2,1)', _migrate_rating_numeric),
     ('20260528_003_amount_numeric', 'Convert amount to NUMERIC(12,2)', _migrate_amount_numeric),
     ('20260528_004_indexes', 'Ensure FK and active-record indexes', _ensure_indexes),
     ('20260528_005_domain_constraints', 'Ensure domain CHECK constraints', _ensure_constraints),
+    ('20260618_006_travel_location_order', 'Add manual order for travel locations', _add_travel_location_order),
 )
 
 

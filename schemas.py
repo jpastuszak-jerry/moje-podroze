@@ -169,6 +169,10 @@ class TravelLocationUpdate(_TravelLocationFields):
     pass
 
 
+class TravelLocationOrderUpdate(BaseModel):
+    visit_ids: list[int] = Field(min_length=2)
+
+
 class ParticipantAdd(BaseModel):
     person_id: int
 

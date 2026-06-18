@@ -9,6 +9,9 @@ const TRAVEL_SORTS = [
   { key: 'todo', label: 'Do uzupełnienia' },
 ];
 
+let travelRouteOrderMode = false;
+let travelRouteOrderTravelId = null;
+
 async function renderTravels(q) {
   if (q !== undefined) currentSearch = q;
   const view = document.getElementById('view');
@@ -278,10 +281,33 @@ function renderTravelParticipantsSection(t) {
 
 function sortedTravelLocations(locations) {
   return [...(locations || [])].sort((a, b) => {
-    const dateCmp = String(a.arrival_date || '').localeCompare(String(b.arrival_date || ''));
+    const dateCmp = String(a.arrival_date || '9999-12-31').localeCompare(String(b.arrival_date || '9999-12-31'));
     if (dateCmp) return dateCmp;
+    const parsedAOrder = a.visit_order == null || a.visit_order === '' ? NaN : Number(a.visit_order);
+    const parsedBOrder = b.visit_order == null || b.visit_order === '' ? NaN : Number(b.visit_order);
+    const aOrder = Number.isFinite(parsedAOrder) ? parsedAOrder : Number.MAX_SAFE_INTEGER;
+    const bOrder = Number.isFinite(parsedBOrder) ? parsedBOrder : Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
     return String(a.location_name || '').localeCompare(String(b.location_name || ''), 'pl');
   });
+}
+
+function travelRouteDateKey(location) {
+  return location.arrival_date || 'no-date';
+}
+
+function groupTravelLocations(locations) {
+  const groups = [];
+  locations.forEach(location => {
+    const key = travelRouteDateKey(location);
+    let group = groups.find(item => item.key === key);
+    if (!group) {
+      group = { key, items: [] };
+      groups.push(group);
+    }
+    group.items.push(location);
+  });
+  return groups;
 }
 
 function travelMapRoutePayload(travel, locations) {
@@ -303,34 +329,31 @@ function renderTravelRouteSection(t) {
   const locations = sortedTravelLocations(t.locations || []);
   const ids = locations.map(l => parseInt(l.location_id, 10)).filter(Boolean);
   const mapRoutePayload = ids.length ? travelMapRoutePayload(t, locations) : '';
-  return `<div class="section travel-route-section" id="section-locations">
+  const groups = groupTravelLocations(locations);
+  const canReorder = groups.some(group => group.items.length > 1);
+  const isOrdering = canReorder && travelRouteOrderMode && travelRouteOrderTravelId === Number(t.id);
+  return `<div class="section travel-route-section${isOrdering ? ' is-ordering' : ''}" id="section-locations">
     <div class="section-header travel-route-header">
       <div>
         <div class="section-title">Trasa i miejsca</div>
         <div class="travel-section-sub">${locations.length ? `${locations.length} ${travelPlural(locations.length, 'wpis', 'wpisy', 'wpisów')} trasy` : 'Brak miejsc w podróży'}</div>
       </div>
       <div class="section-actions">
+        ${canReorder ? `<button class="section-action secondary travel-route-order-toggle" type="button"
+          aria-pressed="${isOrdering ? 'true' : 'false'}" onclick="toggleTravelRouteOrderMode(${t.id})">
+          ${isOrdering ? '✓ Gotowe' : '↕ Kolejność'}
+        </button>` : ''}
         ${mapRoutePayload ? `<button class="section-action secondary" onclick="showTravelRouteOnMap('${escapeAttr(mapRoutePayload)}')">🗺 Trasa na mapie</button>` : ''}
         <button class="section-action" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
       </div>
     </div>
     <div class="travel-route-list" id="locations-list">
-      ${locations.length ? renderTravelRouteGroups(t, locations) : `<div class="empty-locs inline-empty">Brak miejsc</div>`}
+      ${locations.length ? renderTravelRouteGroups(t, groups) : `<div class="empty-locs inline-empty">Brak miejsc</div>`}
     </div>
   </div>`;
 }
 
-function renderTravelRouteGroups(t, locations) {
-  const groups = [];
-  locations.forEach(location => {
-    const key = location.arrival_date || 'no-date';
-    let group = groups.find(item => item.key === key);
-    if (!group) {
-      group = { key, items: [] };
-      groups.push(group);
-    }
-    group.items.push(location);
-  });
+function renderTravelRouteGroups(t, groups) {
   return groups.map(group => {
     const title = group.key === 'no-date' ? 'Bez daty' : fmtDate(group.key);
     const day = group.key === 'no-date' ? '' : travelDayLabel(group.key, t.start_date);
@@ -342,12 +365,16 @@ function renderTravelRouteGroups(t, locations) {
         </div>
         <div class="travel-route-count">${group.items.length} ${travelPlural(group.items.length, 'miejsce', 'miejsca', 'miejsc')}</div>
       </div>
-      ${group.items.map(location => renderTravelLocationRow(t.id, location)).join('')}
+      ${group.items.map((location, index) => renderTravelLocationRow(t.id, location, {
+        canMoveUp: index > 0,
+        canMoveDown: index < group.items.length - 1,
+        showOrderControls: group.items.length > 1,
+      })).join('')}
     </div>`;
   }).join('');
 }
 
-function renderTravelLocationRow(travelId, l) {
+function renderTravelLocationRow(travelId, l, orderOptions = {}) {
   const type = l.location_type || '';
   const country = l.country_name || '';
   return `<div class="travel-route-row loc-row" id="tl-${l.id}"
@@ -370,10 +397,75 @@ function renderTravelLocationRow(travelId, l) {
         </div>
       </div>
       <div class="row-actions">
-        <button class="row-icon-button primary" onclick="openEditTravelLocation(${travelId}, ${l.id})" title="Edytuj wizytę">✎</button>
-        <button class="row-icon-button danger" onclick="removeLocationFromTravel(${travelId}, ${l.id})" title="Usuń z podróży">✕</button>
+        <div class="travel-route-order-actions">
+          ${orderOptions.showOrderControls ? `
+            <button class="row-icon-button primary" type="button"
+              onclick="moveTravelLocation(${travelId}, ${l.id}, -1)"
+              title="Przesuń wcześniej" aria-label="Przesuń ${escapeAttr(l.location_name)} wcześniej"
+              ${orderOptions.canMoveUp ? '' : 'disabled'}>↑</button>
+            <button class="row-icon-button primary" type="button"
+              onclick="moveTravelLocation(${travelId}, ${l.id}, 1)"
+              title="Przesuń później" aria-label="Przesuń ${escapeAttr(l.location_name)} później"
+              ${orderOptions.canMoveDown ? '' : 'disabled'}>↓</button>
+          ` : ''}
+        </div>
+        <div class="travel-route-edit-actions">
+          <button class="row-icon-button primary" onclick="openEditTravelLocation(${travelId}, ${l.id})" title="Edytuj wizytę">✎</button>
+          <button class="row-icon-button danger" onclick="removeLocationFromTravel(${travelId}, ${l.id})" title="Usuń z podróży">✕</button>
+        </div>
       </div>
     </div>`;
+}
+
+function rerenderCurrentTravelRoute() {
+  const section = document.getElementById('section-locations');
+  const travel = window._currentTravel;
+  if (!section || !travel?.id) return;
+  section.outerHTML = renderTravelRouteSection(travel);
+}
+
+function toggleTravelRouteOrderMode(travelId) {
+  const normalizedId = Number(travelId);
+  if (travelRouteOrderTravelId !== normalizedId) {
+    travelRouteOrderTravelId = normalizedId;
+    travelRouteOrderMode = true;
+  } else {
+    travelRouteOrderMode = !travelRouteOrderMode;
+  }
+  rerenderCurrentTravelRoute();
+}
+
+async function moveTravelLocation(travelId, visitId, direction) {
+  return withActionLock(`travel-location-order-${travelId}`, async () => {
+    const travel = window._currentTravel;
+    if (!travel || Number(travel.id) !== Number(travelId)) return;
+
+    const locations = sortedTravelLocations(travel.locations || []);
+    const current = locations.find(location => Number(location.id) === Number(visitId));
+    if (!current) return;
+
+    const dayKey = travelRouteDateKey(current);
+    const dayLocations = locations.filter(location => travelRouteDateKey(location) === dayKey);
+    const currentIndex = dayLocations.findIndex(location => Number(location.id) === Number(visitId));
+    const targetIndex = currentIndex + Number(direction);
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= dayLocations.length) return;
+
+    const reordered = [...dayLocations];
+    [reordered[currentIndex], reordered[targetIndex]] = [reordered[targetIndex], reordered[currentIndex]];
+    const visitIds = reordered.map(location => Number(location.id));
+    const response = await apiPut(`/api/travels/${travelId}/locations/order`, { visit_ids: visitIds });
+    if (response.error) {
+      toastApiError(response, 'Nie udało się zmienić kolejności miejsc');
+      return;
+    }
+
+    const orderById = new Map(visitIds.map((id, index) => [id, index + 1]));
+    travel.locations.forEach(location => {
+      const newOrder = orderById.get(Number(location.id));
+      if (newOrder) location.visit_order = newOrder;
+    });
+    rerenderCurrentTravelRoute();
+  });
 }
 
 function travelLocationNoteHtml(id, notes) {
@@ -445,6 +537,10 @@ async function openTravel(id, options = {}) {
     if (t && t.error) toast('Nie znaleziono podróży', 'error');
     showTab('travels');
     return;
+  }
+  if (travelRouteOrderTravelId !== Number(t.id)) {
+    travelRouteOrderMode = false;
+    travelRouteOrderTravelId = Number(t.id);
   }
   window._currentTravel = t;
   view.innerHTML = renderTravelDetail(t);

@@ -95,7 +95,8 @@ def _create_tables(conn):
             location_id INTEGER NOT NULL REFERENCES locations(id),
             arrival_date DATE,
             departure_date DATE,
-            notes TEXT
+            notes TEXT,
+            visit_order INTEGER NOT NULL DEFAULT 0
         )
         """,
         """
@@ -164,15 +165,15 @@ def _seed_fixture(conn):
         cur.executemany(
             """
             INSERT INTO travel_locations
-                (id, travel_id, location_id, arrival_date, departure_date, notes)
-            VALUES (%s, %s, %s, %s, %s, %s)
+                (id, travel_id, location_id, arrival_date, departure_date, notes, visit_order)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
             [
-                (1, 1, 1, '2025-07-18', '2025-07-20', 'Direct parent visit'),
-                (2, 1, 2, '2025-07-21', '2025-07-21', 'Child visit'),
-                (3, 1, 3, '2025-07-22', '2025-07-23', 'Second country'),
-                (4, 2, 2, '2025-08-01', '2025-08-02', 'Return through child'),
-                (5, 3, 1, '2024-01-01', '2024-01-02', 'Deleted travel is ignored'),
+                (1, 1, 1, '2025-07-18', '2025-07-20', 'Direct parent visit', 1),
+                (2, 1, 2, '2025-07-21', '2025-07-21', 'Child visit', 1),
+                (3, 1, 3, '2025-07-22', '2025-07-23', 'Second country', 1),
+                (4, 2, 2, '2025-08-01', '2025-08-02', 'Return through child', 1),
+                (5, 3, 1, '2024-01-01', '2024-01-02', 'Deleted travel is ignored', 1),
             ],
         )
         cur.executemany(
@@ -453,6 +454,47 @@ class PostgresIntegrationTests(unittest.TestCase):
                 [('Helsinki', '2025-09-10', '2025-09-11'), ('Tallinn', '2025-09-12', '2025-09-12')],
             )
             self.assertEqual(data['participants'], [{'id': 1, 'name': 'Anna', 'relation_type': 'Rodzina'}])
+        finally:
+            self._hard_delete_travel(travel_id)
+
+    def test_same_day_travel_locations_can_be_reordered(self):
+        create_response = self.client.post(
+            '/api/travels',
+            json=self._travel_payload(name='Ordered route integration trip'),
+        )
+        self.assertEqual(create_response.status_code, 201)
+        travel_id = create_response.get_json()['id']
+        try:
+            first = self.client.post(f'/api/travels/{travel_id}/locations', json={
+                'location_id': 1,
+                'arrival_date': '2025-09-02',
+                'departure_date': '2025-09-02',
+                'notes': 'First stop',
+            })
+            second = self.client.post(f'/api/travels/{travel_id}/locations', json={
+                'location_id': 3,
+                'arrival_date': '2025-09-02',
+                'departure_date': '2025-09-02',
+                'notes': 'Second stop',
+            })
+            self.assertEqual(first.status_code, 201)
+            self.assertEqual(second.status_code, 201)
+
+            first_id = first.get_json()['id']
+            second_id = second.get_json()['id']
+            reordered = self.client.put(
+                f'/api/travels/{travel_id}/locations/order',
+                json={'visit_ids': [second_id, first_id]},
+            )
+            self.assertEqual(reordered.status_code, 200)
+
+            detail = self.client.get(f'/api/travels/{travel_id}')
+            self.assertEqual(detail.status_code, 200)
+            locations = detail.get_json()['locations']
+            self.assertEqual(
+                [(location['location_name'], location['visit_order']) for location in locations],
+                [('Tallinn', 1), ('Helsinki', 2)],
+            )
         finally:
             self._hard_delete_travel(travel_id)
 

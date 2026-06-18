@@ -116,6 +116,7 @@ CREATE TABLE travel_locations (
     arrival_date DATE NOT NULL,
     departure_date DATE NOT NULL,
     notes TEXT,
+    visit_order INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT chk_travel_locations_dates_order CHECK (departure_date >= arrival_date)
 )""")
 

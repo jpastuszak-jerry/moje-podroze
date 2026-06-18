@@ -953,17 +953,19 @@ const sampleTravelDetail = {
     location_type: 'miasto',
     country_name: 'Włochy',
     arrival_date: '2025-05-08',
-    departure_date: '2025-05-10',
+    departure_date: '2025-05-08',
     notes: 'Baza wyjazdu.',
+    visit_order: 2,
   }, {
     id: 12,
     location_id: 102,
     location_name: 'Erice',
     location_type: 'miasto',
     country_name: 'Włochy',
-    arrival_date: '2025-05-09',
-    departure_date: '2025-05-09',
+    arrival_date: '2025-05-08',
+    departure_date: '2025-05-08',
     notes: 'Spacer po mieście.',
+    visit_order: 1,
   }],
 };
 const routeHtml = context.renderTravelRouteSection(sampleTravelDetail);
@@ -972,6 +974,9 @@ assert.match(routeHtml, /data-route-day="2025-05-08"/, 'travel route keeps date 
 assert.match(routeHtml, /travel-route-note/, 'travel route renders visit notes in compact details');
 assert.match(routeHtml, /showTravelRouteOnMap/, 'travel detail opens the ordered route on the map');
 assert.match(routeHtml, /Trasa na mapie/, 'travel detail labels the enhanced map action');
+assert.match(routeHtml, /toggleTravelRouteOrderMode/, 'same-day route exposes the ordering mode');
+assert.match(routeHtml, /moveTravelLocation\(7, 12, 1\)/, 'first same-day stop can move later');
+assert.match(routeHtml, /moveTravelLocation\(7, 11, -1\)/, 'last same-day stop can move earlier');
 assert.doesNotMatch(routeHtml, /style="/, 'travel route rows avoid inline styles');
 const routePayload = JSON.parse(decodeURIComponent(context.travelMapRoutePayload(
   sampleTravelDetail,
@@ -980,8 +985,29 @@ const routePayload = JSON.parse(decodeURIComponent(context.travelMapRoutePayload
 assert.equal(routePayload.name, 'Workation test', 'travel map payload keeps the trip name');
 assert.deepEqual(
   routePayload.stops.map(stop => stop.location_id),
-  [101, 102],
-  'travel map payload preserves the chronological stop order',
+  [102, 101],
+  'travel map payload preserves the saved same-day stop order',
+);
+const routeSectionStub = elementStub();
+context.document.getElementById = id => (id === 'section-locations' ? routeSectionStub : null);
+context.window._currentTravel = structuredClone(sampleTravelDetail);
+const routeOrderCalls = [];
+context.apiPut = async (path, body) => {
+  routeOrderCalls.push({ path, body });
+  return { ok: true };
+};
+await context.moveTravelLocation(7, 12, 1);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(routeOrderCalls)),
+  [{ path: '/api/travels/7/locations/order', body: { visit_ids: [11, 12] } }],
+  'route arrows save the complete reordered day',
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(
+    context.sortedTravelLocations(context.window._currentTravel.locations).map(location => location.id),
+  )),
+  [11, 12],
+  'successful route reorder updates the in-memory trip used by the map payload',
 );
 const detailHtml = context.renderTravelDetail(sampleTravelDetail);
 assert.match(detailHtml, /travel-hero-stats/, 'travel detail renders the compact hero metrics');

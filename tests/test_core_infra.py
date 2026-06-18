@@ -156,6 +156,7 @@ class CoreInfrastructureTests(unittest.TestCase):
         self.assertEqual(versions, sorted(versions))
         self.assertIn('20260528_001_soft_delete_coordinates', versions)
         self.assertIn('20260528_005_domain_constraints', versions)
+        self.assertIn('20260618_006_travel_location_order', versions)
 
     def test_schema_migration_runner_skips_applied_versions(self):
         calls = []

@@ -1150,11 +1150,13 @@ async function removeLocationFromTravel(travelId, tlid) {
     const res = await apiDelete(`/api/travels/${travelId}/locations/${tlid}`);
     if (res.error) { toastApiError(res, 'Nie udało się usunąć miejsca z podróży'); return; }
     const row = document.getElementById('tl-' + tlid);
-    const group = row?.closest('.travel-route-day');
     removeWithSlide(row, () => {
-      if (group && !group.querySelector('.loc-row')) group.remove();
-      const list = document.getElementById('locations-list');
-      if (list && !list.querySelector('.loc-row')) list.innerHTML = `<div class="empty-locs inline-empty">Brak miejsc</div>`;
+      if (window._currentTravel?.locations) {
+        window._currentTravel.locations = window._currentTravel.locations.filter(
+          location => Number(location.id) !== Number(tlid),
+        );
+      }
+      rerenderCurrentTravelRoute();
     });
   });
 }
@@ -1221,6 +1223,17 @@ async function saveEditTravelLocation(travelId, tlid) {
   }
   closeModal(document.getElementById('edit-tl-overlay'));
   toast('Zapisano', 'success');
+  const currentLocation = window._currentTravel?.locations?.find(
+    location => Number(location.id) === Number(tlid),
+  );
+  if (currentLocation) {
+    currentLocation.arrival_date = arrival;
+    currentLocation.departure_date = departure;
+    currentLocation.notes = notes;
+    if (res.visit_order != null) currentLocation.visit_order = Number(res.visit_order);
+    rerenderCurrentTravelRoute();
+    return;
+  }
   const row = document.getElementById('tl-' + tlid);
   if (row) {
     row.dataset.arrival = arrival || '';

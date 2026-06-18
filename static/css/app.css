@@ -1103,6 +1103,28 @@ body.auth-page {
 .travel-route-main {
   min-width: 0;
 }
+.travel-route-edit-actions,
+.travel-route-order-actions {
+  flex-direction: column; gap: 4px;
+}
+.travel-route-edit-actions {
+  display: flex;
+}
+.travel-route-order-actions {
+  display: none;
+}
+.travel-route-section.is-ordering .travel-route-edit-actions {
+  display: none;
+}
+.travel-route-section.is-ordering .travel-route-order-actions {
+  display: flex;
+}
+.travel-route-section.is-ordering .travel-route-row {
+  background: color-mix(in srgb, var(--blue-light) 34%, transparent);
+}
+.travel-route-order-actions .row-icon-button:disabled {
+  opacity: 0.25; cursor: default; pointer-events: none;
+}
 .travel-route-top {
   display: flex; justify-content: space-between; gap: 10px;
   align-items: flex-start;

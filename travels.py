@@ -8,6 +8,7 @@ from schemas import (
     ParticipantAdd,
     TravelCreate,
     TravelLocationCreate,
+    TravelLocationOrderUpdate,
     TravelLocationUpdate,
     TravelUpdate,
     TravelWizardCreate,
@@ -50,13 +51,14 @@ def get_travel(tid):
     travel = dict(row)
     travel['locations'] = [dict(r) for r in query("""
         SELECT tl.id, l.id AS location_id, l.name AS location_name, c.name AS country_name,
-               lt.name AS location_type, tl.arrival_date, tl.departure_date, tl.notes
+               lt.name AS location_type, tl.arrival_date, tl.departure_date, tl.notes,
+               tl.visit_order
         FROM travel_locations tl
         JOIN locations l ON tl.location_id = l.id
         JOIN countries c ON l.country_id = c.id
         JOIN location_types lt ON l.location_type_id = lt.id
         WHERE tl.travel_id = %s AND l.deleted_at IS NULL
-        ORDER BY tl.arrival_date
+        ORDER BY tl.arrival_date NULLS LAST, tl.visit_order, l.name, tl.id
     """, (tid,))]
     travel['participants'] = [dict(r) for r in query("""
         SELECT p.id, p.name, rt.name AS relation_type
@@ -122,12 +124,18 @@ def create_travel_from_wizard():
             ))
             new_id = cur.fetchone()[0]
 
+            visit_orders = {}
             for loc in payload.locations:
+                day_key = loc.arrival_date
+                visit_orders[day_key] = visit_orders.get(day_key, 0) + 1
                 cur.execute("""
                     INSERT INTO travel_locations
-                        (travel_id, location_id, arrival_date, departure_date, notes)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (new_id, loc.location_id, loc.arrival_date, loc.departure_date, loc.notes))
+                        (travel_id, location_id, arrival_date, departure_date, notes, visit_order)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    new_id, loc.location_id, loc.arrival_date, loc.departure_date,
+                    loc.notes, visit_orders[day_key],
+                ))
 
             for participant in payload.participants:
                 cur.execute("""
@@ -301,9 +309,15 @@ def add_location_to_travel(tid):
     try:
         new_id = execute("""
             INSERT INTO travel_locations
-                (travel_id, location_id, arrival_date, departure_date, notes)
-            VALUES (%s, %s, %s, %s, %s) RETURNING id
-        """, (tid, v.location_id, v.arrival_date, v.departure_date, v.notes))
+                (travel_id, location_id, arrival_date, departure_date, notes, visit_order)
+            SELECT %s, %s, %s, %s, %s, COALESCE(MAX(visit_order), 0) + 1
+            FROM travel_locations
+            WHERE travel_id = %s AND arrival_date IS NOT DISTINCT FROM %s
+            RETURNING id
+        """, (
+            tid, v.location_id, v.arrival_date, v.departure_date, v.notes,
+            tid, v.arrival_date,
+        ))
         return jsonify({'id': new_id}), 201
     except Exception as e:
         return db_error_response(e)
@@ -326,13 +340,91 @@ def update_location_in_travel(tid, tlid):
         if oor:
             return _out_of_range_response(oor)
     try:
-        execute("""
-            UPDATE travel_locations SET arrival_date=%s, departure_date=%s, notes=%s
-            WHERE id=%s AND travel_id=%s
-        """, (v.arrival_date, v.departure_date, v.notes, tlid, tid))
-        return jsonify({'ok': True})
+        visit_order = execute("""
+            UPDATE travel_locations AS tl
+            SET arrival_date=%s,
+                departure_date=%s,
+                notes=%s,
+                visit_order=CASE
+                    WHEN tl.arrival_date IS DISTINCT FROM %s THEN (
+                        SELECT COALESCE(MAX(other.visit_order), 0) + 1
+                        FROM travel_locations other
+                        WHERE other.travel_id = tl.travel_id
+                          AND other.id <> tl.id
+                          AND other.arrival_date IS NOT DISTINCT FROM %s
+                    )
+                    ELSE tl.visit_order
+                END
+            WHERE tl.id=%s AND tl.travel_id=%s
+            RETURNING visit_order
+        """, (
+            v.arrival_date, v.departure_date, v.notes,
+            v.arrival_date, v.arrival_date, tlid, tid,
+        ))
+        return jsonify({'ok': True, 'visit_order': visit_order})
     except Exception as e:
         return db_error_response(e)
+
+
+@bp.route('/api/travels/<int:tid>/locations/order', methods=['PUT'])
+def update_travel_location_order(tid):
+    try:
+        payload = TravelLocationOrderUpdate.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
+    if len(payload.visit_ids) != len(set(payload.visit_ids)):
+        return jsonify({'error': 'Lista kolejności nie może zawierać duplikatów'}), 400
+
+    db = get_db()
+    try:
+        with db.cursor() as cur:
+            cur.execute("""
+                SELECT tl.id, tl.arrival_date
+                FROM travel_locations tl
+                JOIN locations l ON l.id = tl.location_id AND l.deleted_at IS NULL
+                WHERE tl.travel_id=%s AND tl.id = ANY(%s)
+            """, (tid, payload.visit_ids))
+            selected = cur.fetchall()
+            if len(selected) != len(payload.visit_ids):
+                db.rollback()
+                return jsonify({'error': 'Nie znaleziono wszystkich wpisów trasy'}), 404
+
+            arrival_date = selected[0][1]
+            if any(row[1] != arrival_date for row in selected):
+                db.rollback()
+                return jsonify({'error': 'Kolejność można zmieniać tylko w obrębie jednego dnia'}), 400
+
+            cur.execute("""
+                SELECT tl.id
+                FROM travel_locations tl
+                JOIN locations l ON l.id = tl.location_id AND l.deleted_at IS NULL
+                WHERE tl.travel_id=%s AND tl.arrival_date IS NOT DISTINCT FROM %s
+            """, (tid, arrival_date))
+            day_ids = {row[0] for row in cur.fetchall()}
+            if day_ids != set(payload.visit_ids):
+                db.rollback()
+                return jsonify({'error': 'Prześlij pełną kolejność miejsc z tego dnia'}), 400
+
+            orders = list(range(1, len(payload.visit_ids) + 1))
+            cur.execute("""
+                UPDATE travel_locations tl
+                SET visit_order = ordered.visit_order
+                FROM unnest(%s::int[], %s::int[]) AS ordered(id, visit_order)
+                WHERE tl.travel_id=%s AND tl.id=ordered.id
+            """, (payload.visit_ids, orders, tid))
+            if cur.rowcount != len(payload.visit_ids):
+                raise RuntimeError('Nie zapisano pełnej kolejności miejsc')
+
+        db.commit()
+        mark_db_write()
+        return jsonify({
+            'ok': True,
+            'visit_ids': payload.visit_ids,
+            'arrival_date': str(arrival_date) if arrival_date else None,
+        })
+    except Exception as e:
+        db.rollback()
+        return db_error_response(e, 'Nie udało się zapisać kolejności miejsc')
 
 
 @bp.route('/api/travels/<int:tid>/participants', methods=['POST'])
