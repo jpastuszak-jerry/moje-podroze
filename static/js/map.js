@@ -5,6 +5,8 @@ let allMapMarkers = [];
 let pendingMapLocationIds = null;
 let pendingMapRoute = null;
 let mapRouteLayer = null;
+let activeTravelMapRoute = null;
+let activeTravelMapDay = 'all';
 
 const MAP_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
   ? new Intl.Collator('pl', { sensitivity: 'base' })
@@ -213,6 +215,58 @@ function clearTravelMapRoute({ hideBanner = true } = {}) {
   }
 }
 
+function travelRouteDayKey(stop) {
+  return stop?.arrival_date || 'no-date';
+}
+
+function travelRouteDayMeta(route, dayKey) {
+  if (dayKey === 'all') {
+    return {
+      key: 'all',
+      label: 'Wszystkie',
+      dateLabel: travelRouteDateLabel(route),
+    };
+  }
+  if (dayKey === 'no-date') {
+    return { key: dayKey, label: 'Bez daty', dateLabel: '' };
+  }
+  const dayNumber = route?.start_date ? daysCount(route.start_date, dayKey) : 0;
+  return {
+    key: dayKey,
+    label: dayNumber > 0 ? `Dzień ${dayNumber}` : fmtDate(dayKey),
+    dateLabel: fmtDate(dayKey),
+  };
+}
+
+function travelRouteDayOptions(route) {
+  const keys = [];
+  const seen = new Set();
+  (route?.stops || []).forEach(stop => {
+    const key = travelRouteDayKey(stop);
+    if (seen.has(key)) return;
+    seen.add(key);
+    keys.push(key);
+  });
+  return keys.map(key => travelRouteDayMeta(route, key));
+}
+
+function renderTravelRouteDayFilters(route, selectedDayKey) {
+  const options = travelRouteDayOptions(route);
+  if (options.length < 2) return '';
+  const allOptions = [travelRouteDayMeta(route, 'all'), ...options];
+  return `<div class="map-route-days" role="group" aria-label="Pokaż dzień podróży">
+    ${allOptions.map(option => {
+      const active = option.key === selectedDayKey;
+      return `<button type="button" class="map-route-day${active ? ' active' : ''}"
+        aria-pressed="${active ? 'true' : 'false'}"
+        onclick="filterTravelMapRouteDay('${escapeAttr(option.key)}')">
+        <strong>${escapeHtml(option.label)}</strong>
+        ${option.key !== 'all' && option.dateLabel ? `<span>${escapeHtml(option.dateLabel)}</span>` : ''}
+      </button>`;
+    }).join('')}
+  </div>`;
+}
+
 function travelRouteDateLabel(route) {
   if (!route?.start_date) return '';
   if (route.end_date && route.end_date !== route.start_date) {
@@ -221,15 +275,21 @@ function travelRouteDateLabel(route) {
   return fmtDate(route.start_date);
 }
 
-function renderTravelMapRoute(route) {
+function renderTravelMapRoute(route, selectedDayKey = 'all') {
+  activeTravelMapRoute = route;
+  activeTravelMapDay = selectedDayKey;
   clearTravelMapRoute({ hideBanner: false });
   markerClusterGroup.clearLayers();
 
   const locationsById = new Map(allMapLocations.map(location => [Number(location.id), location]));
-  const stops = (route.stops || []).map((stop, index) => {
+  const orderedStops = (route.stops || []).map((stop, index) => {
     const location = locationsById.get(Number(stop.location_id));
-    return location ? { ...stop, location, order: index + 1 } : null;
-  }).filter(Boolean);
+    return { ...stop, location: location || null, order: index + 1 };
+  });
+  const selectedStops = selectedDayKey === 'all'
+    ? orderedStops
+    : orderedStops.filter(stop => travelRouteDayKey(stop) === selectedDayKey);
+  const stops = selectedStops.filter(stop => stop.location);
   const coordinates = stops.map(stop => [
     Number(stop.location.latitude),
     Number(stop.location.longitude),
@@ -254,20 +314,26 @@ function renderTravelMapRoute(route) {
       .addTo(mapRouteLayer);
   });
 
-  const totalStops = (route.stops || []).length;
+  const totalStops = selectedStops.length;
   const missingGps = Math.max(0, totalStops - stops.length);
-  const routeDate = travelRouteDateLabel(route);
+  const selectedDay = travelRouteDayMeta(route, selectedDayKey);
+  const routeDate = selectedDayKey === 'all'
+    ? selectedDay.dateLabel
+    : [selectedDay.label, selectedDay.dateLabel].filter(Boolean).join(' · ');
   const banner = document.getElementById('map-route-banner');
   if (banner) {
     banner.hidden = false;
-    banner.innerHTML = `<div class="map-route-banner-main">
-      <span class="map-route-banner-icon">🧭</span>
-      <div>
-        <strong>${escapeHtml(route.name || 'Trasa podróży')}</strong>
-        <span>${escapeHtml(routeDate)}${routeDate ? ' · ' : ''}${stops.length} ${polishPlural(stops.length, 'etap', 'etapy', 'etapów')}${missingGps ? ` · ${missingGps} bez GPS` : ''}</span>
+    banner.innerHTML = `<div class="map-route-banner-top">
+      <div class="map-route-banner-main">
+        <span class="map-route-banner-icon">🧭</span>
+        <div>
+          <strong>${escapeHtml(route.name || 'Trasa podróży')}</strong>
+          <span>${escapeHtml(routeDate)}${routeDate ? ' · ' : ''}${totalStops} ${polishPlural(totalStops, 'etap', 'etapy', 'etapów')}${missingGps ? ` · ${missingGps} bez GPS` : ''}</span>
+        </div>
       </div>
+      <button type="button" class="map-route-close" onclick="showAllMapLocations()">Wszystkie miejsca</button>
     </div>
-    <button type="button" class="map-route-close" onclick="showAllMapLocations()">Wszystkie miejsca</button>`;
+    ${renderTravelRouteDayFilters(route, selectedDayKey)}`;
   }
   document.getElementById('map-counter').textContent =
     `${stops.length}/${totalStops} ${polishPlural(totalStops, 'etap', 'etapy', 'etapów')}`;
@@ -281,7 +347,16 @@ function renderTravelMapRoute(route) {
   }
 }
 
+function filterTravelMapRouteDay(dayKey) {
+  if (!activeTravelMapRoute) return;
+  const selectedDayKey = dayKey || 'all';
+  if (selectedDayKey === activeTravelMapDay) return;
+  renderTravelMapRoute(activeTravelMapRoute, selectedDayKey);
+}
+
 function showAllMapLocations() {
+  activeTravelMapRoute = null;
+  activeTravelMapDay = 'all';
   clearTravelMapRoute();
   renderCachedMapMarkers(allMapMarkers);
   if (allMapLocations.length > 0) fitMapToMarkers();

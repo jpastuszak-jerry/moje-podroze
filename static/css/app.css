@@ -901,11 +901,14 @@ body.auth-page {
   font-size: 12px; font-weight: 900; line-height: 1;
 }
 .map-route-banner {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  display: block;
   padding: 9px 16px; background: #eff6ff; color: #1e3a8a;
   border-bottom: 1px solid #bfdbfe; flex-shrink: 0;
 }
 .map-route-banner[hidden] { display: none; }
+.map-route-banner-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
 .map-route-banner-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .map-route-banner-icon { font-size: 20px; flex: 0 0 auto; }
 .map-route-banner-main div { min-width: 0; }
@@ -922,6 +925,30 @@ body.auth-page {
   background: #fff; color: #1d4ed8;
   font: inherit; font-size: 11px; font-weight: 800; cursor: pointer;
 }
+.map-route-days {
+  display: flex; gap: 6px; overflow-x: auto;
+  margin-top: 8px; padding: 1px 0 2px;
+  scrollbar-width: none; overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.map-route-days::-webkit-scrollbar { display: none; }
+.map-route-day {
+  min-height: 30px; padding: 5px 10px; flex: 0 0 auto;
+  border: 1px solid #bfdbfe; border-radius: 16px;
+  background: rgba(255,255,255,0.72); color: #1d4ed8;
+  font: inherit; cursor: pointer;
+}
+.map-route-day strong {
+  display: block; font-size: 11px; line-height: 1.15; white-space: nowrap;
+}
+.map-route-day span {
+  display: block; margin-top: 1px;
+  color: #5676a8; font-size: 9px; line-height: 1.1; white-space: nowrap;
+}
+.map-route-day.active {
+  border-color: #2563eb; background: #2563eb; color: #fff;
+}
+.map-route-day.active span { color: #dbeafe; }
 @media (max-width: 600px) {
   #map-toolbar { flex-direction: column; align-items: flex-start; }
   .map-toolbar-right {
@@ -930,7 +957,8 @@ body.auth-page {
   }
   .map-filter-select { flex: 1; min-width: 0; max-width: none; }
   .map-btn { width: 34px; padding: 0; }
-  .map-route-banner { align-items: flex-start; padding: 8px 12px; }
+  .map-route-banner { padding: 8px 12px; }
+  .map-route-banner-top { align-items: flex-start; }
   .map-route-banner-main div > span { white-space: normal; }
   .map-route-close { padding-left: 8px; padding-right: 8px; }
 }

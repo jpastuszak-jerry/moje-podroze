@@ -140,7 +140,8 @@ assert.match(appCssSource, /\.location-text-preview[\s\S]*-webkit-line-clamp:\s*
 assert.match(appCssSource, /\.location-card-description[\s\S]*-webkit-line-clamp:\s*2/, 'location cards keep descriptions to two lines');
 assert.match(appCssSource, /\.popup-description-text[\s\S]*-webkit-line-clamp:\s*3/, 'map popup descriptions stay compact');
 assert.match(appCssSource, /\.travel-route-map-pin[\s\S]*background:\s*#2563eb/, 'travel route markers use numbered blue pins');
-assert.match(appCssSource, /\.map-route-banner[\s\S]*justify-content:\s*space-between/, 'travel routes expose a compact map banner');
+assert.match(appCssSource, /\.map-route-banner-top[\s\S]*justify-content:\s*space-between/, 'travel routes expose a compact map banner');
+assert.match(appCssSource, /\.map-route-days[\s\S]*overflow-x:\s*auto/, 'travel route day filters scroll horizontally on narrow screens');
 assert.doesNotMatch(mapSource, /L\.polyline/, 'travel route does not imply real paths with straight lines');
 assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\('pl', \{ sensitivity: 'base' \}\)/, 'location sorting reuses one Polish collator');
 assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
@@ -542,7 +543,9 @@ criticalScreens.add('map');
 let mapMarkerCreates = 0;
 let mapBatchAdds = 0;
 let routeMarkerAdds = 0;
+const routeMarkerOrders = [];
 let routeFitBounds = null;
+let routeSetView = null;
 const mapCounter = elementStub();
 const mapRouteBanner = elementStub();
 mapRouteBanner.hidden = true;
@@ -556,15 +559,16 @@ const routeLayer = {
 };
 const routeMap = {
   fitBounds(bounds) { routeFitBounds = bounds; },
-  setView() {},
+  setView(coordinates, zoom) { routeSetView = { coordinates, zoom }; },
 };
 context.document.getElementById = id => {
   if (id === 'map-counter') return mapCounter;
   if (id === 'map-route-banner') return mapRouteBanner;
   return null;
 };
-context.L.marker = () => {
+context.L.marker = (_coordinates, options = {}) => {
   mapMarkerCreates += 1;
+  if (options.icon?.html) routeMarkerOrders.push(options.icon.html);
   return {
     bindPopup() { return this; },
     addTo() { routeMarkerAdds += 1; return this; },
@@ -619,7 +623,24 @@ assert.equal(routeMarkerAdds, 2, 'travel route renders one numbered marker per p
 assert.equal(routeFitBounds.coordinates.length, 2, 'travel route fits the map to its coordinates');
 assert.match(mapRouteBanner.innerHTML, /Finlandia/, 'travel route banner shows the trip name');
 assert.match(mapRouteBanner.innerHTML, /1 bez GPS/, 'travel route banner reports missing coordinates');
+assert.match(mapRouteBanner.innerHTML, /map-route-days/, 'multi-day travel route exposes day filters');
+assert.match(mapRouteBanner.innerHTML, /Dzień 1/, 'travel route day filters use inclusive trip day numbers');
+assert.match(mapRouteBanner.innerHTML, /Dzień 3/, 'travel route day filters preserve gaps between visited days');
 assert.equal(mapCounter.textContent, '2/3 etapy', 'travel route counter shows mapped and total stops');
+context.filterTravelMapRouteDay('2025-07-20');
+assert.equal(routeMarkerAdds, 3, 'day filter renders only the marker assigned to the selected day');
+assert.equal(routeMarkerOrders.at(-1), '<span>2</span>', 'day filter preserves the marker global route number');
+assert.deepEqual(
+  JSON.parse(JSON.stringify(routeSetView)),
+  { coordinates: [37.5, 15.08], zoom: 12 },
+  'single-day filter centers its only mapped stop',
+);
+assert.equal(mapCounter.textContent, '1/1 etap', 'day filter counter describes only the selected day');
+assert.match(mapRouteBanner.innerHTML, /map-route-day active/, 'selected day is marked active in the route banner');
+assert.match(mapRouteBanner.innerHTML, /Dzień 3/, 'selected day summary stays tied to the trip day number');
+context.filterTravelMapRouteDay('all');
+assert.equal(routeMarkerAdds, 5, 'all-days filter restores every mapped route stop');
+assert.equal(mapCounter.textContent, '2/3 etapy', 'all-days filter restores the full route counter');
 assert.match(mapPopupHtml, /Szczegóły/, 'map popup keeps the full location detail action');
 
 const tabMap = elementStub();
