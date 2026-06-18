@@ -110,7 +110,12 @@ function buildMapFilters(locations) {
 
 function createMapMarker(loc) {
   const icon = createColorIcon(loc.location_type);
-  const marker = L.marker([loc.latitude, loc.longitude], { icon }).bindPopup(createMapPopup(loc), { maxWidth: 280 });
+  const marker = L.marker([loc.latitude, loc.longitude], { icon }).bindPopup(createMapPopup(loc), {
+    maxWidth: 280,
+    maxHeight: 220,
+    keepInView: true,
+    autoPanPadding: [18, 18],
+  });
   marker._locData = loc;
   return marker;
 }
@@ -149,7 +154,7 @@ function createMapPopup(loc) {
     h += `</div>`;
   }
   if (loc.travel_names) h += `<div class="popup-travels">Podróże: ${escapeHtml(loc.travel_names)}</div>`;
-  if (loc.address) h += `<div class="popup-meta" style="margin-top:3px">📫 ${escapeHtml(loc.address)}</div>`;
+  if (loc.address) h += `<div class="popup-description"><span aria-hidden="true">📫</span><span class="popup-description-text">${escapeHtml(loc.address)}</span></div>`;
   h += `<a class="popup-link" onclick="openLocation(${loc.id})">Szczegóły →</a></div>`;
   return h;
 }

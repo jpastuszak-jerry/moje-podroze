@@ -136,6 +136,9 @@ assert.match(appCssSource, /\.yearbook-story\s*\{[\s\S]*grid-template-columns:\s
 assert.match(appCssSource, /\.yearbook-month-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(12/, 'yearbook month rhythm uses a stable 12-column grid');
 assert.match(appCssSource, /@media\s*\(max-width:\s*620px\)[\s\S]*\.yearbook-trip\s*\{[\s\S]*flex-direction:\s*column/, 'mobile yearbook trips stack long names and metadata');
 assert.match(appCssSource, /\.location-passport\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/, 'location detail has a structured passport layout');
+assert.match(appCssSource, /\.location-text-preview[\s\S]*-webkit-line-clamp:\s*3/, 'long location descriptions are clamped on mobile');
+assert.match(appCssSource, /\.location-card-description[\s\S]*-webkit-line-clamp:\s*2/, 'location cards keep descriptions to two lines');
+assert.match(appCssSource, /\.popup-description-text[\s\S]*-webkit-line-clamp:\s*3/, 'map popup descriptions stay compact');
 assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\('pl', \{ sensitivity: 'base' \}\)/, 'location sorting reuses one Polish collator');
 assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
 assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
@@ -556,6 +559,16 @@ vm.runInContext(`
 assert.equal(mapMarkerCreates, 2, 'map creates Leaflet markers once per loaded location');
 assert.equal(mapBatchAdds, 3, 'map filtering reuses cached markers in batches');
 assert.equal(mapCounter.textContent, '1 miejsc', 'map counter follows the filtered marker count');
+const mapPopupHtml = context.createMapPopup({
+  id: 3,
+  name: 'Long place',
+  country_name: 'Polska',
+  location_type: 'muzeum',
+  address: 'Bardzo długi opis miejsca, który na małym ekranie powinien pozostać w zwartej formie.',
+  travel_names: 'Podróż pierwsza, Podróż druga, Podróż trzecia',
+});
+assert.match(mapPopupHtml, /popup-description-text/, 'map popup marks descriptions for compact rendering');
+assert.match(mapPopupHtml, /Szczegóły/, 'map popup keeps the full location detail action');
 
 const tabMap = elementStub();
 const tabTravels = elementStub();
@@ -641,9 +654,11 @@ const locationCardHtml = context.locCardHtml({
   country_name: 'Finlandia',
   visit_count: 1,
   last_visit: '2025-07-21',
+  address: 'Market Square and harbour.',
 }, true);
 assert.match(locationCardHtml, /openLocation\(10\)/, 'location cards keep click navigation');
 assert.match(locationCardHtml, /card-chevron/, 'location cards use shared trailing affordance');
+assert.match(locationCardHtml, /location-card-description/, 'location cards mark descriptions for compact rendering');
 assert.doesNotMatch(locationCardHtml, /style="color:var\(--text3\)/, 'location cards avoid inline chevron styles');
 const locationProfileHtml = context.renderLocationDetailProfile({
   id: 10,
@@ -682,6 +697,15 @@ assert.match(locationProfileHtml, /Pierwsza wizyta/, 'location detail profile sh
 assert.match(locationProfileHtml, /Google Maps/, 'location detail profile keeps external map link');
 assert.match(locationProfileHtml, /Paszport miejsca/, 'location detail profile shows a place passport');
 assert.match(locationProfileHtml, /Kompletne/, 'location detail profile shows data completeness status');
+const longLocationText = 'Długi opis miejsca. '.repeat(20);
+const expandableLocationText = context.renderLocationExpandableText(longLocationText);
+assert.match(expandableLocationText, /<details class="location-expandable-text">/, 'long location descriptions are collapsible');
+assert.match(expandableLocationText, /location-text-preview/, 'collapsible location descriptions keep a short preview');
+assert.doesNotMatch(
+  context.renderLocationExpandableText('Krótki opis.'),
+  /location-expandable-text/,
+  'short location descriptions stay fully visible',
+);
 const incompleteLocationProfileHtml = context.renderLocationDetailProfile({
   id: 12,
   name: 'Unknown pier',

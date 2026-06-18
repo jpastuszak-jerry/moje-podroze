@@ -398,6 +398,21 @@ function renderLocationChildren(loc) {
   </div>`;
 }
 
+function renderLocationExpandableText(text, className = '') {
+  const value = String(text || '').trim();
+  const escaped = escapeHtml(value);
+  if (value.length <= 180) {
+    return `<strong class="${escapeAttr(className)}">${escaped}</strong>`;
+  }
+  return `<details class="location-expandable-text">
+    <summary>
+      <span class="location-text-preview ${escapeAttr(className)}">${escaped}</span>
+      <span class="location-text-toggle" aria-hidden="true"></span>
+    </summary>
+    <div class="location-text-full ${escapeAttr(className)}">${escaped}</div>
+  </details>`;
+}
+
 function renderLocationDetailProfile(loc, directVisits, childVisits) {
   const hasGps = locationHasGps(loc);
   const quality = locationQuality(loc);
@@ -449,12 +464,12 @@ function renderLocationDetailProfile(loc, directVisits, childVisits) {
         <span>Region / miasto</span>
         <button type="button" class="location-meta-link" onclick="openLocation(${loc.parent_location_id})">${escapeHtml(loc.parent_name)}</button>
       </div>` : ''}
-      ${loc.address ? `<div class="location-meta-item wide"><span>Adres</span><strong>${escapeHtml(loc.address)}</strong></div>` : ''}
+      ${loc.address ? `<div class="location-meta-item wide"><span>Opis / adres</span>${renderLocationExpandableText(loc.address)}</div>` : ''}
       <div class="location-meta-item wide">
         <span>Współrzędne GPS</span>
         <strong class="mono-detail">${escapeHtml(gpsText)}${hasGps ? ` <a class="text-link" href="${mapsHref}" target="_blank" rel="noopener">Google Maps</a>` : ''}</strong>
       </div>
-      ${loc.notes ? `<div class="location-meta-item wide"><span>Notatki</span><strong class="notes-text">${escapeHtml(loc.notes)}</strong></div>` : ''}
+      ${loc.notes ? `<div class="location-meta-item wide"><span>Notatki</span>${renderLocationExpandableText(loc.notes, 'notes-text')}</div>` : ''}
     </div>
   </div>`;
 }
@@ -499,7 +514,7 @@ function locCardHtml(l, showCountry = false) {
     subtitles: [
       { html: `${country}${type}${parent}` },
       locVisitSummary(l),
-      l.address || '',
+      l.address ? { text: l.address, className: 'card-subtitle location-card-description' } : '',
     ],
     metaHtml: gpsBadge ? `<div class="card-meta">${gpsBadge}</div>` : '',
     trailingHtml: '<div class="card-chevron">›</div>',
