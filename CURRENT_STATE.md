@@ -12,6 +12,24 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `d771c2a Speed up
+  large data views`: pakiet wydajnosciowy oparty na pomiarach rzeczywistej
+  bazy. `/api/locations`, `/api/locations/todo` i `/api/map-locations` maja
+  teraz krotki cache procesu uniewazniany wersja zapisow DB, a `etag_json()`
+  serializuje odpowiedz tylko raz. Powtorne czasy test clienta spadly
+  medianowo z ok. 138-161 ms do 5-14 ms, czyli 10-26 razy. Frontend
+  wspoldzieli zaladowane miejsca, podroze, liste brakow i dane mapy, usuwa
+  cache po zapisie albo pull-to-refresh, wyszukuje miejsca lokalnie oraz
+  wykorzystuje ponownie markery Leafleta. Lista 711 miejsc renderuje sie
+  partiami po 60 kart, pomija koszt ukladu poza ekranem i animuje tylko
+  pierwsza partie. Browser smoke na prawdziwej bazie potwierdzil 711 kart,
+  29 krajow, lokalne wyszukiwanie `Helsinki` do 3 wynikow, 504 karty brakow,
+  530 miejsc mapy oraz brak poziomego overflow na 390x844. Lokalnie przeszly
+  kompilacja Pythona, Ruff, 72 testy (9 skipow), smoke JS i
+  `git diff --check`. GitHub Actions byly zielone, a produkcyjny
+  `python tools/smoke_prod.py` przeszedl 12/12 OK i potwierdzil build
+  `d771c2a`. Render potwierdzil kompresje Brotli, wiec nie dodawano osobnej
+  biblioteki kompresujacej.
 - Ostatnio domkniete i wypchniete na GitHub w commitach `f09a511 Show travel
   routes on the map` i korekcie `1efe328 Remove misleading travel route
   lines`: przycisk w sekcji "Trasa i miejsca" otwiera teraz mape podrozy z
@@ -444,10 +462,9 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 1. Recznie sprawdzic na produkcji dluzsza podroz w `Trasa na mapie`: przewijanie
    filtrow dni na telefonie, wybranie kilku dni z rzedu, zachowanie globalnych
    numerow etapow i powrot przez `Wszystkie`.
-2. Wydajnosc oparta na pomiarach: zmierzyc produkcyjne czasy `/api/travels`,
-   `/api/locations`, `/api/map-locations` i sekcji statystyk oraz czas
-   renderowania najwiekszych list; optymalizowac tylko potwierdzone waskie
-   gardla.
+2. Recznie porownac na produkcji pierwsze i kolejne wejscie w `Miejsca`,
+   `Miejsca do uzupelnienia` i `Mape`; kolejne optymalizacje robic tylko,
+   jesli po pakiecie `d771c2a` nadal widac konkretne opoznienie.
 3. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
    partiami i recznie przejrzec 142 pozostale miejsca bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`.
