@@ -477,6 +477,27 @@ class ApiContractSmokeTests(unittest.TestCase):
             todo_response = self.client.get('/api/stats/todo')
         self.assertEqual(todo_response.headers['Cache-Control'], 'no-store')
 
+    def test_custom_validation_errors_are_json_serializable_and_return_400(self):
+        invalid_travel = self.client.post('/api/travels', json={
+            'name': 'Invalid rating',
+            'start_date': '2025-07-18',
+            'end_date': '2025-07-19',
+            'rating': 4.3,
+        })
+        invalid_location = self.client.post('/api/locations', json={
+            'name': ' ',
+            'country_id': 1,
+            'location_type_id': 1,
+        })
+        invalid_person = self.client.post('/api/persons', json={'name': ' '})
+
+        for response in (invalid_travel, invalid_location, invalid_person):
+            self.assertEqual(response.status_code, 400)
+            data = response.get_json()
+            self.assertIn('Niepoprawne dane', data['error'])
+            self.assertIsInstance(data['details'], list)
+            self.assertNotIn('ctx', data['details'][0])
+
     def test_service_worker_receives_no_store_policy_from_backend(self):
         response = self.client.get('/sw.js')
 

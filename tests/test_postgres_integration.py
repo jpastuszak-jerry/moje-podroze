@@ -602,6 +602,104 @@ class PostgresIntegrationTests(unittest.TestCase):
 
         self.assertEqual(self.client.get(f'/api/locations/{location_id}').status_code, 404)
 
+    def test_dictionary_person_and_location_foreign_keys_are_protected(self):
+        country_id = None
+        location_type_id = None
+        relation_type_id = None
+        person_id = None
+        location_id = None
+        travel_id = None
+
+        try:
+            country = self.client.post('/api/countries', json={'name': 'Fixture FK country'})
+            location_type = self.client.post('/api/location_types', json={'name': 'Fixture FK type'})
+            relation_type = self.client.post('/api/relation_types', json={'name': 'Fixture FK relation'})
+            self.assertEqual(country.status_code, 201)
+            self.assertEqual(location_type.status_code, 201)
+            self.assertEqual(relation_type.status_code, 201)
+            country_id = country.get_json()['id']
+            location_type_id = location_type.get_json()['id']
+            relation_type_id = relation_type.get_json()['id']
+
+            person = self.client.post('/api/persons', json={
+                'name': 'Fixture FK person',
+                'relation_type_id': relation_type_id,
+            })
+            self.assertEqual(person.status_code, 201)
+            person_id = person.get_json()['id']
+
+            location = self.client.post('/api/locations', json=self._location_payload(
+                name='Fixture FK location',
+                country_id=country_id,
+                location_type_id=location_type_id,
+                latitude=62.10000,
+                longitude=26.10000,
+            ))
+            self.assertEqual(location.status_code, 201)
+            location_id = location.get_json()['id']
+
+            travel = self.client.post(
+                '/api/travels',
+                json=self._travel_payload(name='Fixture FK travel'),
+            )
+            self.assertEqual(travel.status_code, 201)
+            travel_id = travel.get_json()['id']
+
+            add_location = self.client.post(f'/api/travels/{travel_id}/locations', json={
+                'location_id': location_id,
+                'arrival_date': '2025-09-02',
+                'departure_date': '2025-09-02',
+                'notes': 'FK protection',
+            })
+            add_person = self.client.post(
+                f'/api/travels/{travel_id}/participants',
+                json={'person_id': person_id},
+            )
+            self.assertEqual(add_location.status_code, 201)
+            self.assertEqual(add_person.status_code, 201)
+
+            protected_deletes = (
+                self.client.delete(f'/api/countries/{country_id}'),
+                self.client.delete(f'/api/location_types/{location_type_id}'),
+                self.client.delete(f'/api/relation_types/{relation_type_id}'),
+                self.client.delete(f'/api/persons/{person_id}'),
+                self.client.delete(f'/api/locations/{location_id}?hard=1'),
+            )
+            for response in protected_deletes:
+                self.assertEqual(response.status_code, 409)
+
+            self._hard_delete_travel(travel_id)
+            travel_id = None
+            self.assertEqual(self.client.delete(f'/api/persons/{person_id}').status_code, 200)
+            person_id = None
+            self._hard_delete_location(location_id)
+            location_id = None
+            self.assertEqual(
+                self.client.delete(f'/api/relation_types/{relation_type_id}').status_code,
+                200,
+            )
+            relation_type_id = None
+            self.assertEqual(
+                self.client.delete(f'/api/location_types/{location_type_id}').status_code,
+                200,
+            )
+            location_type_id = None
+            self.assertEqual(self.client.delete(f'/api/countries/{country_id}').status_code, 200)
+            country_id = None
+        finally:
+            if travel_id is not None:
+                self._hard_delete_travel(travel_id)
+            if person_id is not None:
+                self.client.delete(f'/api/persons/{person_id}')
+            if location_id is not None:
+                self._hard_delete_location(location_id)
+            if relation_type_id is not None:
+                self.client.delete(f'/api/relation_types/{relation_type_id}')
+            if location_type_id is not None:
+                self.client.delete(f'/api/location_types/{location_type_id}')
+            if country_id is not None:
+                self.client.delete(f'/api/countries/{country_id}')
+
 
 if __name__ == '__main__':
     unittest.main()

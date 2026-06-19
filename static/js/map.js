@@ -89,8 +89,13 @@ function initMap() {
 
 async function loadMapLocations() {
   try {
-    const res = await fetch('/api/map-locations');
-    allMapLocations = await res.json();
+    const data = await api('/api/map-locations');
+    if (!Array.isArray(data)) {
+      toastApiError(data, 'Nie udało się wczytać miejsc na mapie');
+      document.getElementById('map-counter').textContent = 'błąd';
+      return;
+    }
+    allMapLocations = data;
     buildMapFilters(allMapLocations);
     buildMapMarkerCache(allMapLocations);
     if (pendingMapRoute) {
@@ -126,7 +131,7 @@ function showTravelRouteOnMap(encodedRoute) {
     showTab('map');
   } catch (err) {
     console.error('Błąd danych trasy:', err);
-    showToast('Nie udało się otworzyć trasy na mapie', 'error');
+    toast('Nie udało się otworzyć trasy na mapie', 'error');
   }
 }
 

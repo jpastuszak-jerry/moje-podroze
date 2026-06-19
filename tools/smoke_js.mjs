@@ -143,6 +143,8 @@ assert.match(appCssSource, /\.travel-route-map-pin[\s\S]*background:\s*#2563eb/,
 assert.match(appCssSource, /\.map-route-banner-top[\s\S]*justify-content:\s*space-between/, 'travel routes expose a compact map banner');
 assert.match(appCssSource, /\.map-route-days[\s\S]*overflow-x:\s*auto/, 'travel route day filters scroll horizontally on narrow screens');
 assert.doesNotMatch(mapSource, /L\.polyline/, 'travel route does not imply real paths with straight lines');
+assert.match(mapSource, /const data = await api\('\/api\/map-locations'\)/, 'map loading uses the shared API error handling');
+assert.doesNotMatch(mapSource, /showToast\(/, 'map error paths use the existing toast helper');
 assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\('pl', \{ sensitivity: 'base' \}\)/, 'location sorting reuses one Polish collator');
 assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
 assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
@@ -642,6 +644,17 @@ context.filterTravelMapRouteDay('all');
 assert.equal(routeMarkerAdds, 5, 'all-days filter restores every mapped route stop');
 assert.equal(mapCounter.textContent, '2/3 etapy', 'all-days filter restores the full route counter');
 assert.match(mapPopupHtml, /Szczegóły/, 'map popup keeps the full location detail action');
+let malformedRouteToast = null;
+context.toast = (message, type) => { malformedRouteToast = { message, type }; };
+const originalConsoleError = context.console.error;
+context.console.error = () => {};
+context.showTravelRouteOnMap('%E0%A4%A');
+context.console.error = originalConsoleError;
+assert.deepEqual(
+  malformedRouteToast,
+  { message: 'Nie udało się otworzyć trasy na mapie', type: 'error' },
+  'malformed route payload reports a user-facing error without throwing',
+);
 
 const tabMap = elementStub();
 const tabTravels = elementStub();
@@ -1100,6 +1113,71 @@ assert.match(travelDetailView.innerHTML, /Trasa i miejsca/, 'travel detail scree
 assert.match(travelDetailView.innerHTML, /Uczestnicy/, 'travel detail screen renders participants section');
 assert.match(travelDetailView.innerHTML, /Notatki dzienne/, 'travel detail screen renders daily notes');
 criticalScreens.add('travel-detail');
+
+const editTravelLocationElements = {
+  'etl-save-btn': elementStub(),
+  'etl-arrival': { value: '2025-05-09' },
+  'etl-departure': { value: '2025-05-09' },
+  'etl-notes': { value: 'Zmieniony dzień trasy' },
+  'edit-tl-overlay': elementStub(),
+  'section-locations': elementStub(),
+};
+const editTravelLocationCalls = [];
+context.window._currentTravel = JSON.parse(JSON.stringify(sampleTravelDetail));
+context.document.getElementById = id => editTravelLocationElements[id] || null;
+context.apiPut = async (path, body) => {
+  editTravelLocationCalls.push({ path, body });
+  return { ok: true, visit_order: 1 };
+};
+context.closeModal = () => {};
+context.toast = () => {};
+await context.saveEditTravelLocation(7, 12);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(editTravelLocationCalls)),
+  [{
+    path: '/api/travels/7/locations/12',
+    body: {
+      arrival_date: '2025-05-09',
+      departure_date: '2025-05-09',
+      notes: 'Zmieniony dzień trasy',
+    },
+  }],
+  'editing a route stop sends the new visit dates',
+);
+const editedTravelLocation = context.window._currentTravel.locations.find(location => location.id === 12);
+assert.equal(editedTravelLocation.arrival_date, '2025-05-09', 'edited stop updates the in-memory map payload date');
+assert.equal(editedTravelLocation.visit_order, 1, 'edited stop adopts the order returned by the backend');
+assert.match(
+  editTravelLocationElements['section-locations'].outerHTML,
+  /data-route-day="2025-05-09"/,
+  'editing a stop immediately rerenders its new day group',
+);
+
+const removedTravelLocationRow = elementStub();
+const removeTravelRouteSection = elementStub();
+context.window._currentTravel = JSON.parse(JSON.stringify(sampleTravelDetail));
+context.document.getElementById = id => {
+  if (id === 'tl-12') return removedTravelLocationRow;
+  if (id === 'section-locations') return removeTravelRouteSection;
+  return null;
+};
+context.askConfirm = async () => true;
+context.apiDelete = async path => {
+  assert.equal(path, '/api/travels/7/locations/12', 'route stop removal targets the selected visit');
+  return {};
+};
+await context.removeLocationFromTravel(7, 12);
+await new Promise(resolve => setTimeout(resolve, 260));
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.window._currentTravel.locations.map(location => location.id))),
+  [11],
+  'removing a route stop also removes it from the in-memory map payload',
+);
+assert.doesNotMatch(
+  removeTravelRouteSection.outerHTML,
+  /Erice/,
+  'removing a stop immediately rerenders the route without the deleted place',
+);
 
 vm.runInContext(fs.readFileSync(todoPath, 'utf8'), context, { filename: todoPath });
 const todoView = elementStub();

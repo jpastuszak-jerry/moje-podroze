@@ -25,6 +25,7 @@ def _env_int(name, default):
 
 DB_POOL_MINCONN = max(1, _env_int('DB_POOL_MINCONN', 1))
 DB_POOL_MAXCONN = max(DB_POOL_MINCONN, _env_int('DB_POOL_MAXCONN', 5))
+SCHEMA_MIGRATION_LOCK_ID = 0x4D505F534348454D
 
 _db_pool = None
 _db_pool_lock = Lock()
@@ -139,11 +140,12 @@ def etag_json(payload):
 
 def validation_error_response(e: ValidationError):
     """Consistent Pydantic validation error shape for the API."""
-    first = e.errors()[0] if e.errors() else {}
+    details = e.errors(include_url=False, include_context=False)
+    first = details[0] if details else {}
     field = '.'.join(str(p) for p in first.get('loc', [])) or 'pole'
     return jsonify({
         'error': f'Niepoprawne dane: {field} - {first.get("msg", "błąd walidacji")}',
-        'details': e.errors(),
+        'details': details,
     }), 400
 
 
@@ -156,6 +158,7 @@ def ensure_schema():
         conn = psycopg2.connect(DATABASE_URL)
         conn.autocommit = False
         with conn.cursor() as cur:
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", (SCHEMA_MIGRATION_LOCK_ID,))
             applied_now = run_schema_migrations(cur)
         conn.commit()
         if applied_now:

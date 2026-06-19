@@ -13,6 +13,7 @@ class FakeDb:
         self.closed = 0
         self.rollbacks = 0
         self.commits = 0
+        self.last_cursor = None
 
     def rollback(self):
         self.rollbacks += 1
@@ -24,7 +25,8 @@ class FakeDb:
         self.closed = 1
 
     def cursor(self):
-        return FakeCursor(self)
+        self.last_cursor = FakeCursor(self)
+        return self.last_cursor
 
 
 class FakePool:
@@ -183,6 +185,25 @@ class CoreInfrastructureTests(unittest.TestCase):
         self.assertEqual(applied_now, ['002'])
         self.assertIn('002', cursor.applied)
         self.assertTrue(any('CREATE TABLE IF NOT EXISTS schema_migrations' in sql for sql, _ in cursor.executed))
+
+    def test_ensure_schema_serializes_parallel_startup_migrations(self):
+        db = FakeDb()
+
+        with (
+            patch.object(core, 'DATABASE_URL', 'postgresql://example'),
+            patch.object(core.psycopg2, 'connect', return_value=db),
+            patch.object(core, 'run_schema_migrations', return_value=[]) as run_migrations,
+            patch('builtins.print'),
+        ):
+            core.ensure_schema()
+
+        self.assertEqual(db.commits, 1)
+        self.assertEqual(db.closed, 1)
+        self.assertEqual(
+            db.last_cursor.executed[0],
+            ("SELECT pg_advisory_xact_lock(%s)", (core.SCHEMA_MIGRATION_LOCK_ID,)),
+        )
+        run_migrations.assert_called_once_with(db.last_cursor)
 
     def test_ensure_schema_does_not_crash_when_migration_connection_is_closed(self):
         class ClosedMigrationDb(FakeDb):
