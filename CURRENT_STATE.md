@@ -51,6 +51,21 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   build `85bbe7c`. In-app Browser otworzyl produkcyjny login na 390x844, ale
   swieza sesja nie byla uwierzytelniona, wiec interakcyjnego smoke prywatnej
   mapy nie wykonywano.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `5405553 Harden
+  validation migrations and route state`: pakiet stabilizacyjny po mapie
+  tras. Wspolna odpowiedz walidacji Pydantic usuwa nieserializowalny kontekst
+  `ValueError`, dzieki czemu bledna ocena, pusta nazwa miejsca lub osoby
+  zwracaja teraz JSON HTTP 400 zamiast awarii 500. Migracje startowe sa
+  serializowane transakcyjna blokada advisory PostgreSQL, wiec rownolegle
+  startujace workery Gunicorna nie wykonuja tej samej migracji jednoczesnie.
+  Mapa korzysta ze wspolnej obslugi bledow API i poprawnego helpera `toast`.
+  Smoke JS sprawdza tez spojnosc payloadu mapy po zmianie dnia i usunieciu
+  miejsca z trasy oraz awaryjna sciezke blednego payloadu mapy. Lokalnie
+  przeszly kompilacja Pythona, Ruff, 70 testow (9 skipow), smoke JS i
+  `git diff --check`; realny PostgreSQL fixture przeszedl 9/9, w tym ochrone
+  FK dla slownikow, osoby i miejsca uzywanego w podrozy. GitHub Actions byly
+  zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i
+  potwierdzil build `5405553`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `def76ae Compact
   location descriptions on mobile`: dlugie opisy na kartach listy miejsc sa
   ograniczone do 2 linii, a w profilu miejsca do 3 linii z natywnym
@@ -429,26 +444,30 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 1. Recznie sprawdzic na produkcji dluzsza podroz w `Trasa na mapie`: przewijanie
    filtrow dni na telefonie, wybranie kilku dni z rzedu, zachowanie globalnych
    numerow etapow i powrot przez `Wszystkie`.
-2. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
+2. Wydajnosc oparta na pomiarach: zmierzyc produkcyjne czasy `/api/travels`,
+   `/api/locations`, `/api/map-locations` i sekcji statystyk oraz czas
+   renderowania najwiekszych list; optymalizowac tylko potwierdzone waskie
+   gardla.
+3. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
    partiami i recznie przejrzec 142 pozostale miejsca bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`.
-3. Prawdziwe browser E2E po naprawie Node/Playwright:
+4. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-4. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
+5. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
    wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
    ma stac sie "pamiatkowy", a nie tylko analityczny.
-5. Role admin/viewer i cache po rolach, jesli aplikacja ma byc pokazywana
+6. Role admin/viewer i cache po rolach, jesli aplikacja ma byc pokazywana
    komus poza adminem.
-6. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
+7. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
    dopracowac teksty/spacing albo dodac drobne deep linki z miejsc podrzednych,
    jesli bedzie to faktycznie przydatne w pracy.
-7. Mala analityka kosztow: miesiace/lata z najwyzszymi kosztami albo wybrana
+8. Mala analityka kosztow: miesiace/lata z najwyzszymi kosztami albo wybrana
    waluta bazowa, jesli kosztowy obraz podrozy ma byc wazniejszy.
-8. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+9. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-9. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+10. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
