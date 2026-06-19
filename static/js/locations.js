@@ -3,6 +3,7 @@ let currentLocationSort = getPref('locSort', 'country_name');
 let currentLocationSearch = '';
 let currentLocationCountry = getPref('locCountry', '');
 let currentLocationType = getPref('locType', '');
+let locationListRenderGeneration = 0;
 
 const LOCATION_QUALITY_LABELS = {
   all: 'Wszystkie',
@@ -64,13 +65,12 @@ async function renderLocations(q) {
     searchInput.value = currentLocationSearch || '';
   }
   const list = document.getElementById('loc-list');
-  list.innerHTML = skeletonCards(4);
-  const locs = await api('/api/locations' + (currentLocationSearch ? '?q='+encodeURIComponent(currentLocationSearch) : ''));
+  if (!allLocationsCacheLoaded) list.innerHTML = skeletonCards(4);
+  const locs = await getAllLocations();
   if (isApiError(locs)) {
     list.innerHTML = emptyState({ icon: '📍', title: 'Nie udało się wczytać miejsc', message: locs.error });
     return;
   }
-  allLocationsCache = Array.isArray(locs) ? locs : [];
   populateLocationFilters(allLocationsCache);
   applyLocationFilters();
 }
@@ -274,6 +274,13 @@ function applyLocationFilters() {
   savePref('locCountry', country);
   const quality = currentLocationQualityFilter || 'all';
   let locs = Array.isArray(allLocationsCache) ? [...allLocationsCache] : [];
+  const search = String(currentLocationSearch || '').trim().toLocaleLowerCase('pl');
+  if (search) {
+    locs = locs.filter(l =>
+      String(l.name || '').toLocaleLowerCase('pl').includes(search)
+      || String(l.country_name || '').toLocaleLowerCase('pl').includes(search)
+    );
+  }
   if (type) locs = locs.filter(l => l.location_type === type);
   if (country) locs = locs.filter(l => l.country_name === country);
   if (quality === 'missing_gps') locs = locs.filter(l => !locationHasGps(l));
@@ -292,7 +299,6 @@ function applyLocationFilters() {
   updateLocQualityButtons();
   updateLocationFilterSummary(locs.length);
   renderLocList(locs);
-  applyRestoreScroll();
 }
 
 function locVisitCountLabel(count) {
@@ -521,24 +527,88 @@ function locCardHtml(l, showCountry = false) {
   });
 }
 
+function locationCardBatches(locs, batchSize = 60) {
+  if (currentLocationSort !== 'country_name') {
+    const batches = [];
+    for (let i = 0; i < locs.length; i += batchSize) {
+      batches.push(renderCardList(
+        locs.slice(i, i + batchSize),
+        l => locCardHtml(l, true),
+        {
+          className: `card-list progressive-card-list${batches.length === 0 ? ' animate-card-list' : ''}`,
+        },
+      ));
+    }
+    return batches;
+  }
+
+  const grouped = {};
+  locs.forEach(l => {
+    if (!grouped[l.country_name]) grouped[l.country_name] = [];
+    grouped[l.country_name].push(l);
+  });
+  const batches = [];
+  Object.entries(grouped).forEach(([country, items]) => {
+    for (let i = 0; i < items.length; i += batchSize) {
+      const header = i === 0
+        ? `<div class="country-header">${escapeHtml(country)}</div>`
+        : '';
+      batches.push(header + renderCardList(
+        items.slice(i, i + batchSize),
+        l => locCardHtml(l),
+        {
+          className: `card-list compact-card-list progressive-card-list${batches.length === 0 ? ' animate-card-list' : ''}`,
+        },
+      ));
+    }
+  });
+  return batches;
+}
+
+function renderLocationBatches(list, batches) {
+  const generation = ++locationListRenderGeneration;
+  list.innerHTML = '';
+  if (typeof list.insertAdjacentHTML !== 'function') {
+    list.innerHTML = batches.join('');
+    applyRestoreScroll();
+    return;
+  }
+
+  let index = 0;
+  const appendNext = () => {
+    if (
+      generation !== locationListRenderGeneration
+      || document.getElementById('loc-list') !== list
+    ) return;
+    const end = Math.min(index + 2, batches.length);
+    while (index < end) {
+      list.insertAdjacentHTML('beforeend', batches[index]);
+      index += 1;
+    }
+    if (index < batches.length) {
+      const schedule = typeof window !== 'undefined' && window.requestIdleCallback
+        ? callback => window.requestIdleCallback(callback, { timeout: 80 })
+        : callback => setTimeout(callback, 0);
+      schedule(appendNext);
+    } else {
+      applyRestoreScroll();
+    }
+  };
+  appendNext();
+}
+
 function renderLocList(locs) {
   const list = document.getElementById('loc-list');
   if (!locs.length) {
+    locationListRenderGeneration += 1;
     const hasFilter = locationFilterActiveLabels().length > 0;
     list.innerHTML = hasFilter
       ? emptyState({ icon: '🔍', title: 'Brak wyników', message: 'Spróbuj innego zapytania albo wyczyść filtry.' })
       : emptyState({ icon: '📍', title: 'Brak miejsc', message: 'Dodaj pierwsze miejsce do swojej kolekcji podróży.', ctaLabel: '＋ Nowe miejsce', ctaOnclick: 'openNewLocationModal()' });
+    applyRestoreScroll();
     return;
   }
-  if (currentLocationSort !== 'country_name') {
-    list.innerHTML = renderCardList(locs, l => locCardHtml(l, true));
-    return;
-  }
-  const grouped = {};
-  locs.forEach(l => { if (!grouped[l.country_name]) grouped[l.country_name] = []; grouped[l.country_name].push(l); });
-  list.innerHTML = Object.entries(grouped).map(([country, items]) => `
-    <div class="country-header">${escapeHtml(country)}</div>
-    ${renderCardList(items, l => locCardHtml(l), { className: 'card-list compact-card-list' })}`).join('');
+  renderLocationBatches(list, locationCardBatches(locs));
 }
 
 function onLocSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => renderLocations(val), 400); }
@@ -546,6 +616,25 @@ function onLocSearch(val) { clearTimeout(searchTimeout); searchTimeout = setTime
 let currentLocationTodoFilter = getPref('locationTodoFilter', 'all');
 let currentLocationTodoSort = getPref('locationTodoSort', 'priority');
 let currentLocationTodoGroup = getPref('locationTodoGroup', 'none');
+let locationTodoDataCache = null;
+let locationTodoLoadPromise = null;
+
+async function getLocationTodoData() {
+  if (locationTodoDataCache) return locationTodoDataCache;
+  if (locationTodoLoadPromise) return locationTodoLoadPromise;
+  locationTodoLoadPromise = api('/api/locations/todo').then(data => {
+    if (data && !data.error) locationTodoDataCache = data;
+    return data;
+  }).finally(() => {
+    locationTodoLoadPromise = null;
+  });
+  return locationTodoLoadPromise;
+}
+
+registerDataCacheInvalidator(() => {
+  locationTodoDataCache = null;
+  locationTodoLoadPromise = null;
+});
 
 const LOCATION_TODO_SORTS = [
   { key: 'priority', label: 'Priorytet' },
@@ -856,8 +945,10 @@ function renderLocationTodoGroupedList(items, labels) {
 async function renderLocationTodo(params = {}) {
   applyLocationTodoRouteParams(params);
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="page-header"><div class="page-title">Miejsca do uzupełnienia</div></div>` + skeletonCards(3);
-  const data = await api('/api/locations/todo');
+  if (!locationTodoDataCache) {
+    view.innerHTML = `<div class="page-header"><div class="page-title">Miejsca do uzupełnienia</div></div>` + skeletonCards(3);
+  }
+  const data = await getLocationTodoData();
   if (data.error) {
     view.innerHTML = emptyState({ icon: '📍', title: 'Nie udało się wczytać listy', message: data.error });
     return;
@@ -995,7 +1086,7 @@ async function openEditLocationModal(id, options = {}) {
     api('/api/locations/' + id),
     api('/api/countries'),
     api('/api/location_types'),
-    api('/api/locations')
+    getAllLocations()
   ]);
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'edit-loc-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
@@ -1254,7 +1345,7 @@ async function openNewLocationModal(travelId, travelStart, travelEnd) {
   if (!beginOverlayOpen('new-loc-overlay')) return;
   try {
   document.getElementById('loc-picker-overlay')?.remove();
-  const [countries, locTypes, allLocs] = await Promise.all([api('/api/countries'), api('/api/location_types'), api('/api/locations')]);
+  const [countries, locTypes, allLocs] = await Promise.all([api('/api/countries'), api('/api/location_types'), getAllLocations()]);
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'new-loc-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Nowe miejsce</span>
@@ -1341,7 +1432,7 @@ async function saveNewLocation() {
 async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
   if (!beginOverlayOpen('loc-picker-overlay')) return;
   try {
-  const locs = await api('/api/locations');
+  const locs = await getAllLocations();
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'loc-picker-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Dodaj miejsce do podróży</span>

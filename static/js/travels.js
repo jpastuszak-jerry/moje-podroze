@@ -11,6 +11,33 @@ const TRAVEL_SORTS = [
 
 let travelRouteOrderMode = false;
 let travelRouteOrderTravelId = null;
+const travelListCache = new Map();
+const travelListLoadPromises = new Map();
+
+function travelListCacheKey(q = '') {
+  return String(q || '').trim().toLocaleLowerCase('pl');
+}
+
+async function getTravelList(q = '') {
+  const key = travelListCacheKey(q);
+  if (travelListCache.has(key)) return travelListCache.get(key);
+  if (travelListLoadPromises.has(key)) return travelListLoadPromises.get(key);
+
+  const path = '/api/travels' + (q ? '?q=' + encodeURIComponent(q) : '');
+  const pending = api(path).then(data => {
+    if (Array.isArray(data)) travelListCache.set(key, data);
+    return data;
+  }).finally(() => {
+    travelListLoadPromises.delete(key);
+  });
+  travelListLoadPromises.set(key, pending);
+  return pending;
+}
+
+registerDataCacheInvalidator(() => {
+  travelListCache.clear();
+  travelListLoadPromises.clear();
+});
 
 async function renderTravels(q) {
   if (q !== undefined) currentSearch = q;
@@ -28,8 +55,14 @@ async function renderTravels(q) {
     searchInput.value = currentSearch || '';
   }
   const list = document.getElementById('travel-list');
-  list.innerHTML = skeletonCards(4);
-  let travels = await api('/api/travels' + (currentSearch ? '?q='+encodeURIComponent(currentSearch) : ''));
+  if (!travelListCache.has(travelListCacheKey(currentSearch))) {
+    list.innerHTML = skeletonCards(4);
+  }
+  let travels = await getTravelList(currentSearch);
+  if (!Array.isArray(travels)) {
+    list.innerHTML = emptyState({ icon: '✈️', title: 'Nie udało się wczytać podróży', message: travels?.error || 'Spróbuj ponownie.' });
+    return;
+  }
   const years = [...new Set(travels.map(t => t.start_date && String(t.start_date).slice(0,4)).filter(Boolean))]
     .sort((a, b) => Number(b) - Number(a));
   if (currentTravelYear && !years.includes(String(currentTravelYear))) currentTravelYear = null;

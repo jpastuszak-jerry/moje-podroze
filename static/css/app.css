@@ -328,6 +328,13 @@ body.auth-page {
 .icon-button:hover { color: var(--blue); }
 .card-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
 .compact-card-list { padding-top: 4px; padding-bottom: 4px; }
+.progressive-card-list { padding-bottom: 0; }
+#loc-list > .progressive-card-list:last-child { padding-bottom: 12px; }
+.progressive-card-list:not(.animate-card-list) > .card { animation: none; }
+.card-list > .card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
+}
 .card { background: var(--card); border-radius: var(--radius);
   box-shadow: var(--shadow); overflow: hidden; cursor: pointer;
   transition: transform .1s, opacity .1s; }
@@ -2324,6 +2331,7 @@ button.yearbook-highlight { cursor: pointer; }
 .card-list > *:nth-child(5) { animation-delay: 140ms; }
 .card-list > *:nth-child(6) { animation-delay: 175ms; }
 .card-list > *:nth-child(n+7) { animation-delay: 210ms; }
+.card-list > *:nth-child(n+13) { animation: none; }
 .card-leaving {
   animation: card-slide-out .24s cubic-bezier(.4,0,.2,1) forwards !important;
   pointer-events: none;

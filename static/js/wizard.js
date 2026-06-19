@@ -254,7 +254,7 @@ function wizardStep0Save() {
 async function wizardStep1Render(body) {
   body.innerHTML = skeletonCards(3);
   const [locs, countries, locTypes] = await Promise.all([
-    api('/api/locations'),
+    getAllLocations(),
     api('/api/countries'),
     api('/api/location_types'),
   ]);
@@ -387,7 +387,7 @@ async function wizardOpenNewLocation() {
   document.getElementById('wiz-new-loc-overlay')?.remove();
   const countries = wizardState.countries.length ? wizardState.countries : await api('/api/countries');
   const locTypes  = wizardState.locTypes.length  ? wizardState.locTypes  : await api('/api/location_types');
-  const allLocs   = wizardState.allLocs.length   ? wizardState.allLocs   : await api('/api/locations');
+  const allLocs   = wizardState.allLocs.length   ? wizardState.allLocs   : await getAllLocations();
   wizardState.countries = countries;
   wizardState.locTypes  = locTypes;
   wizardState.allLocs   = allLocs;

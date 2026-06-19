@@ -1,13 +1,62 @@
 """Blueprint /api/locations: CRUD miejsc, mapa miejsc."""
 
+import os
+import time
+
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
-from core import db_error_response, etag_json, execute, execute_rowcount, query, validation_error_response
+from core import (
+    db_error_response,
+    etag_json,
+    execute,
+    execute_rowcount,
+    get_db_write_version,
+    query,
+    validation_error_response,
+)
 from schemas import LocationCreate, LocationUpdate
 
 
 bp = Blueprint('locations', __name__)
+
+
+def _env_int(name, default):
+    try:
+        return int(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+
+
+LOCATION_READ_CACHE_TTL_SECONDS = max(0, _env_int('LOCATION_READ_CACHE_TTL_SECONDS', 60))
+_location_read_cache = {}
+
+
+def clear_location_read_cache():
+    _location_read_cache.clear()
+
+
+def _cached_location_payload(name, builder):
+    if LOCATION_READ_CACHE_TTL_SECONDS <= 0:
+        return builder()
+
+    now = time.monotonic()
+    cache_key = (get_db_write_version(), id(query))
+    cached = _location_read_cache.get(name)
+    if (
+        cached
+        and cached['cache_key'] == cache_key
+        and cached['expires_at'] > now
+    ):
+        return cached['payload']
+
+    payload = builder()
+    _location_read_cache[name] = {
+        'cache_key': cache_key,
+        'expires_at': now + LOCATION_READ_CACHE_TTL_SECONDS,
+        'payload': payload,
+    }
+    return payload
 
 
 LOCATION_VISIT_STATS_CTE = """
@@ -92,6 +141,12 @@ def _location_quality(loc):
 @bp.route('/api/locations')
 def get_locations():
     q = request.args.get('q', '').strip()
+    if not q:
+        return etag_json(_cached_location_payload('locations', _build_locations_payload))
+    return etag_json(_build_locations_payload(q))
+
+
+def _build_locations_payload(q=''):
     base_sql = LOCATION_VISIT_STATS_CTE + """
             SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type,
                    l.address, l.notes, l.latitude, l.longitude,
@@ -121,11 +176,15 @@ def get_locations():
         if loc.get('last_visit'):
             loc['last_visit'] = str(loc['last_visit'])
         locs.append(loc)
-    return etag_json(locs)
+    return locs
 
 
 @bp.route('/api/locations/todo')
 def get_locations_todo():
+    return etag_json(_cached_location_payload('locations_todo', _build_locations_todo_payload))
+
+
+def _build_locations_todo_payload():
     rows = [dict(r) for r in query(LOCATION_VISIT_COUNT_CTE + """
         SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type,
                l.address, l.notes, l.latitude, l.longitude, l.parent_location_id,
@@ -172,12 +231,12 @@ def get_locations_todo():
             })
 
     needs_attention.sort(key=lambda loc: (loc['missing_count'], loc['country_name'], loc['name']), reverse=True)
-    return etag_json({
+    return {
         'total': len(rows),
         'counts': counts,
         'labels': {key: label for key, label, _ in checks},
         'needs_attention': needs_attention,
-    })
+    }
 
 
 @bp.route('/api/locations/<int:lid>')
@@ -357,6 +416,10 @@ def restore_location(lid):
 
 @bp.route('/api/map-locations')
 def get_map_locations():
+    return etag_json(_cached_location_payload('map_locations', _build_map_locations_payload))
+
+
+def _build_map_locations_payload():
     rows = query(LOCATION_VISIT_STATS_CTE + """
         SELECT l.id, l.name, l.latitude, l.longitude,
                l.address, l.notes,
@@ -374,4 +437,4 @@ def get_map_locations():
           AND l.deleted_at IS NULL
         ORDER BY c.name, l.name
     """)
-    return etag_json([dict(r) for r in rows])
+    return [dict(r) for r in rows]

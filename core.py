@@ -1,14 +1,13 @@
 """Shared backend infrastructure: DB access, JSON helpers and schema startup."""
 
 import hashlib
-import json
 import os
 from threading import Lock
 
 import psycopg2
 import psycopg2.extras
 import psycopg2.pool
-from flask import Response, g, jsonify, request
+from flask import Response, current_app, g, jsonify, request
 from pydantic import ValidationError
 import schema_migrations
 
@@ -126,13 +125,17 @@ def db_error_response(e, default_msg='Błąd bazy danych'):
 
 
 def etag_json(payload):
-    """Return JSON with a strong ETag and 304 support for fresh clients."""
-    raw = json.dumps(payload, sort_keys=True, default=str).encode('utf-8')
+    """Return compact JSON with a strong ETag and 304 support."""
+    raw = current_app.json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(',', ':'),
+    ).encode('utf-8')
     etag = '"' + hashlib.md5(raw).hexdigest() + '"'
     if request.headers.get('If-None-Match', '') == etag:
         resp = Response(status=304)
     else:
-        resp = jsonify(payload)
+        resp = Response(raw, content_type='application/json; charset=utf-8')
     resp.headers['ETag'] = etag
     resp.headers['Cache-Control'] = 'no-cache'
     return resp

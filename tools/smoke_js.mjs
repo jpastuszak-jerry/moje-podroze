@@ -121,8 +121,10 @@ function count(haystack, needle) {
 }
 
 const appCssSource = fs.readFileSync(appCssPath, 'utf8');
+const utilsSource = fs.readFileSync(utilsPath, 'utf8');
 const locationsSource = fs.readFileSync(locationsPath, 'utf8');
 const mapSource = fs.readFileSync(mapPath, 'utf8');
+const travelsSource = fs.readFileSync(travelsPath, 'utf8');
 const wizardSource = fs.readFileSync(wizardPath, 'utf8');
 assert.match(appCssSource, /#view\.map-view-mode\s*\{\s*overflow:\s*hidden;/, 'mobile map view disables page scroll');
 assert.match(appCssSource, /\.map-screen-shell[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/, 'map screen uses a dedicated flex shell');
@@ -142,16 +144,25 @@ assert.match(appCssSource, /\.popup-description-text[\s\S]*-webkit-line-clamp:\s
 assert.match(appCssSource, /\.travel-route-map-pin[\s\S]*background:\s*#2563eb/, 'travel route markers use numbered blue pins');
 assert.match(appCssSource, /\.map-route-banner-top[\s\S]*justify-content:\s*space-between/, 'travel routes expose a compact map banner');
 assert.match(appCssSource, /\.map-route-days[\s\S]*overflow-x:\s*auto/, 'travel route day filters scroll horizontally on narrow screens');
+assert.match(appCssSource, /\.card-list > \.card[\s\S]*content-visibility:\s*auto/, 'large card lists skip offscreen layout work');
+assert.match(appCssSource, /nth-child\(n\+13\)[\s\S]*animation:\s*none/, 'large card lists stop animating offscreen cards');
 assert.doesNotMatch(mapSource, /L\.polyline/, 'travel route does not imply real paths with straight lines');
-assert.match(mapSource, /const data = await api\('\/api\/map-locations'\)/, 'map loading uses the shared API error handling');
+assert.match(mapSource, /function getMapLocationsData\(\)[\s\S]*mapLocationsLoaded[\s\S]*api\('\/api\/map-locations'\)/, 'map data is reused between map entries');
 assert.doesNotMatch(mapSource, /showToast\(/, 'map error paths use the existing toast helper');
+assert.match(utilsSource, /function getAllLocations\([\s\S]*allLocationsCacheLoaded[\s\S]*api\('\/api\/locations'\)/, 'location data has an in-memory session cache');
+assert.match(utilsSource, /function refreshCurrentView\(\)\s*\{\s*invalidateFrontendDataCaches\(\)/, 'pull to refresh clears in-memory data caches');
 assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\('pl', \{ sensitivity: 'base' \}\)/, 'location sorting reuses one Polish collator');
 assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
 assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
 assert.match(locationsSource, /function compareLocationTodoText\(a, b\)\s*\{\s*return compareLocationText\(a, b\);\s*\}/, 'location worklist reuses the main text comparator');
 assert.match(locationsSource, /function filterLocPicker\(q\)[\s\S]*const query = String\(q \|\| ''\)\.trim\(\)\.toLowerCase\(\)/, 'location picker normalizes search text once');
+assert.match(locationsSource, /const search = String\(currentLocationSearch[\s\S]*toLocaleLowerCase\('pl'\)/, 'location search filters the cached list locally');
+assert.match(locationsSource, /function getLocationTodoData\(\)[\s\S]*locationTodoDataCache/, 'location worklist reuses its loaded payload');
+assert.match(locationsSource, /function renderLocationBatches\(list, batches\)[\s\S]*requestIdleCallback[\s\S]*setTimeout/, 'large location lists render in responsive batches');
+assert.match(locationsSource, /function locationCardBatches\(locs, batchSize = 60\)/, 'location cards have a bounded render batch size');
 assert.match(mapSource, /function buildMapMarkerCache\(locations\)[\s\S]*allMapMarkers = \(locations \|\| \[\]\)\.map\(createMapMarker\)/, 'map markers are cached after loading data');
 assert.match(mapSource, /if \(markerClusterGroup\.addLayers\) markerClusterGroup\.addLayers\(markers\)/, 'map marker rendering can add cached markers in batch');
+assert.match(travelsSource, /function getTravelList\(q = ''\)[\s\S]*travelListCache\.has\(key\)/, 'travel sorting and year filters reuse loaded data');
 assert.match(wizardSource, /function wizardFilterPicker\(q\)[\s\S]*const query = String\(q \|\| ''\)\.trim\(\)\.toLowerCase\(\)/, 'wizard picker normalizes search text once');
 
 const originalGetElementById = context.document.getElementById;
@@ -188,6 +199,27 @@ assert.equal(count(fourAndHalfStars, 'star-half'), 1, '4.5 rating has one half s
 assert.equal(count(context.stars(5), 'star-empty'), 0, '5.0 rating has no empty stars');
 
 assert.equal(context.decorateApiError({}, 409).status, 409, 'API errors keep HTTP status');
+
+const originalApi = context.api;
+let allLocationsApiCalls = 0;
+context.api = async path => {
+  assert.equal(path, '/api/locations', 'location cache fetches the full list endpoint');
+  allLocationsApiCalls += 1;
+  return [{ id: 1, name: 'Helsinki' }];
+};
+context.invalidateFrontendDataCaches();
+const [cachedLocationsA, cachedLocationsB] = await Promise.all([
+  context.getAllLocations(),
+  context.getAllLocations(),
+]);
+await context.getAllLocations();
+assert.equal(allLocationsApiCalls, 1, 'location cache deduplicates concurrent and repeated loads');
+assert.equal(cachedLocationsA, cachedLocationsB, 'location cache shares the loaded array');
+context.invalidateFrontendDataCaches();
+await context.getAllLocations();
+assert.equal(allLocationsApiCalls, 2, 'location cache reloads after invalidation');
+context.api = originalApi;
+context.invalidateFrontendDataCaches();
 assert.equal(context.apiErrorMessage({ error: 'Not found', status: 404 }).includes('Not found'), false);
 assert.equal(context.apiErrorMessage({ error: 'offline' }).startsWith('Brak'), true);
 
@@ -733,6 +765,24 @@ assert.equal(context.worklistCountLabel(1), 'pozycja', 'worklist count label han
 assert.equal(context.worklistCountLabel(3), 'pozycje', 'worklist count label handles plural rows');
 assert.equal(context.polishPlural(12, 'wizyta', 'wizyty', 'wizyt'), 'wizyt', 'polishPlural handles teen endings');
 assert.equal(context.polishPlural(22, 'wizyta', 'wizyty', 'wizyt'), 'wizyty', 'polishPlural handles later few endings');
+const progressiveLocationList = elementStub();
+let progressiveLocationAppends = 0;
+progressiveLocationList.insertAdjacentHTML = (_position, html) => {
+  progressiveLocationAppends += 1;
+  progressiveLocationList.innerHTML += html;
+};
+context.document.getElementById = id => (id === 'loc-list' ? progressiveLocationList : null);
+context.__progressiveLocations = Array.from({ length: 130 }, (_, index) => ({
+  id: index + 1,
+  name: `Miejsce ${index + 1}`,
+  country_name: 'Polska',
+  location_type: 'miasto',
+  visit_count: 0,
+}));
+vm.runInContext('currentLocationSort = "name_asc"; renderLocList(__progressiveLocations);', context);
+await new Promise(resolve => setTimeout(resolve, 20));
+assert.equal(progressiveLocationAppends, 3, 'large location lists append three bounded batches');
+assert.match(progressiveLocationList.innerHTML, /Miejsce 130/, 'progressive rendering eventually includes the final location');
 const locationCardHtml = context.locCardHtml({
   id: 10,
   name: 'Helsinki',
@@ -854,8 +904,10 @@ assert.match(newLocationOverlays[0].innerHTML, /Nowe miejsce/, 'add-location mod
 
 const locationTodoView = elementStub();
 context.document.getElementById = id => (id === 'view' ? locationTodoView : null);
+let locationTodoApiCalls = 0;
 context.api = async path => {
   assert.equal(path, '/api/locations/todo', 'location todo fetches the expected endpoint');
+  locationTodoApiCalls += 1;
   return {
     total: 3,
     labels: { missing_gps: 'Bez GPS', missing_address: 'Bez adresu', missing_notes: 'Bez notatek', not_visited: 'Bez wizyt' },
@@ -919,6 +971,7 @@ vm.runInContext(
 );
 await context.renderLocationTodo({ group: 'missing' });
 assert.match(locationTodoView.innerHTML, /worklist-group-title">Bez GPS/, 'location todo can group by missing type');
+assert.equal(locationTodoApiCalls, 1, 'location todo controls reuse the loaded worklist');
 
 const trashBody = elementStub();
 context.document.getElementById = id => (id === 'trash-body' ? trashBody : null);
@@ -1099,6 +1152,8 @@ assert.match(travelScreenView.innerHTML, /page-title/, 'travel list screen rende
 assert.match(travelScreenControls.innerHTML, /travel-filter-grid/, 'travel list screen renders filters');
 assert.match(travelScreenList.innerHTML, /Workation test/, 'travel list screen renders trip cards');
 assert.match(travelScreenList.innerHTML, /openTravel\(7\)/, 'travel list cards link to trip detail');
+await context.renderTravels();
+assert.deepEqual(travelScreenApiCalls, ['/api/travels'], 'travel list reuses loaded data for repeated rendering');
 criticalScreens.add('travels-list');
 
 const travelDetailView = elementStub();

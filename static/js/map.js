@@ -2,6 +2,8 @@ let map = null;
 let markerClusterGroup = null;
 let allMapLocations = [];
 let allMapMarkers = [];
+let mapLocationsLoaded = false;
+let mapLocationsLoadPromise = null;
 let pendingMapLocationIds = null;
 let pendingMapRoute = null;
 let mapRouteLayer = null;
@@ -11,6 +13,28 @@ let activeTravelMapDay = 'all';
 const MAP_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
   ? new Intl.Collator('pl', { sensitivity: 'base' })
   : null;
+
+async function getMapLocationsData() {
+  if (mapLocationsLoaded) return allMapLocations;
+  if (mapLocationsLoadPromise) return mapLocationsLoadPromise;
+  mapLocationsLoadPromise = api('/api/map-locations').then(data => {
+    if (Array.isArray(data)) {
+      allMapLocations = data;
+      mapLocationsLoaded = true;
+    }
+    return data;
+  }).finally(() => {
+    mapLocationsLoadPromise = null;
+  });
+  return mapLocationsLoadPromise;
+}
+
+registerDataCacheInvalidator(() => {
+  allMapLocations = [];
+  allMapMarkers = [];
+  mapLocationsLoaded = false;
+  mapLocationsLoadPromise = null;
+});
 
 function compareMapText(a, b) {
   const left = String(a || '');
@@ -89,15 +113,16 @@ function initMap() {
 
 async function loadMapLocations() {
   try {
-    const data = await api('/api/map-locations');
+    const data = await getMapLocationsData();
     if (!Array.isArray(data)) {
       toastApiError(data, 'Nie udało się wczytać miejsc na mapie');
       document.getElementById('map-counter').textContent = 'błąd';
       return;
     }
-    allMapLocations = data;
     buildMapFilters(allMapLocations);
-    buildMapMarkerCache(allMapLocations);
+    if (allMapMarkers.length !== allMapLocations.length) {
+      buildMapMarkerCache(allMapLocations);
+    }
     if (pendingMapRoute) {
       const route = pendingMapRoute;
       pendingMapRoute = null;

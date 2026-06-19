@@ -25,6 +25,18 @@ let currentSearch = '';
 let currentTravelYear = getPref('travelYear', null);
 
 let allLocationsCache = [];
+let allLocationsCacheLoaded = false;
+let allLocationsLoadPromise = null;
+
+const DATA_CACHE_INVALIDATORS = new Set();
+
+function registerDataCacheInvalidator(invalidator) {
+  if (typeof invalidator === 'function') DATA_CACHE_INVALIDATORS.add(invalidator);
+}
+
+function invalidateFrontendDataCaches() {
+  DATA_CACHE_INVALIDATORS.forEach(invalidator => invalidator());
+}
 
 const MAP_TYPE_COLORS = {
   'miasto':'#e74c3c','wyspa':'#3498db','region':'#2ecc71',
@@ -57,6 +69,33 @@ async function api(path) {
     return [];
   }
 }
+
+async function getAllLocations({ force = false } = {}) {
+  if (force) {
+    allLocationsCache = [];
+    allLocationsCacheLoaded = false;
+    allLocationsLoadPromise = null;
+  }
+  if (allLocationsCacheLoaded) return allLocationsCache;
+  if (allLocationsLoadPromise) return allLocationsLoadPromise;
+
+  allLocationsLoadPromise = api('/api/locations').then(data => {
+    if (Array.isArray(data)) {
+      allLocationsCache = data;
+      allLocationsCacheLoaded = true;
+    }
+    return data;
+  }).finally(() => {
+    allLocationsLoadPromise = null;
+  });
+  return allLocationsLoadPromise;
+}
+
+registerDataCacheInvalidator(() => {
+  allLocationsCache = [];
+  allLocationsCacheLoaded = false;
+  allLocationsLoadPromise = null;
+});
 
 function isApiError(value) {
   return !!(value && !Array.isArray(value) && value.error);
@@ -124,7 +163,9 @@ async function _mutationFetch(path, opts) {
     const body = await r.json().catch(() => ({}));
     return decorateApiError(body, r.status);
   }
-  return r.json().catch(() => ({}));
+  const body = await r.json().catch(() => ({}));
+  invalidateFrontendDataCaches();
+  return body;
 }
 
 async function apiPost(path, body) {
@@ -156,6 +197,7 @@ async function apiDelete(path) {
     const body = await r.json().catch(() => ({}));
     return decorateApiError(body, r.status);
   }
+  invalidateFrontendDataCaches();
   return {};
 }
 
@@ -887,6 +929,7 @@ function trackViewScroll() {
 }
 
 function refreshCurrentView() {
+  invalidateFrontendDataCaches();
   if (typeof window !== 'undefined' && window.location) {
     return renderRoute(routeFromHash(window.location.hash));
   }
