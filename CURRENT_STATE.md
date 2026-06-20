@@ -12,6 +12,23 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `6c9dad1 Harden cache
+  and async view state`: pakiet stabilizacyjny po optymalizacji duzych widokow.
+  Frontend wersjonuje cache, wiec odpowiedz rozpoczeta przed zapisem nie moze
+  po zapisie ponownie zapamietac starych danych. Spoznione odpowiedzi listy
+  podrozy, miejsc, mapy, statystyk, list brakow i szczegolow sa ignorowane po
+  zmianie ekranu albo rozpoczeciu nowszego renderu. Udane POST/PUT/DELETE
+  czyszcza cache, a bledne mutacje go zachowuja. `Procfile` jawnie wymusza
+  jeden worker Gunicorna, zgodnie z procesowym cache backendu. Realny
+  PostgreSQL fixture potwierdzil zmiane ETag i odswiezenie `/api/locations`
+  po dodaniu, edycji, soft delete i restore. Browser smoke wykonal szybkie
+  sekwencje `Miejsca -> Mapa -> Podroze` oraz
+  `Mapa -> Statystyki -> Miejsca` na desktopie i 390x844 bez bledow konsoli,
+  nadpisania widoku ani overflow. Lokalnie przeszly kompilacja Pythona, Ruff,
+  74 testy (9 skipow), smoke JS, `git diff --check` i realny PostgreSQL 9/9.
+  Kontrolny pomiar zachowal cieple czasy ok. 4-10 ms. GitHub Actions byly
+  zielone, a produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK i
+  potwierdzil build `6c9dad1`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `d771c2a Speed up
   large data views`: pakiet wydajnosciowy oparty na pomiarach rzeczywistej
   bazy. `/api/locations`, `/api/locations/todo` i `/api/map-locations` maja
@@ -464,7 +481,7 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
    numerow etapow i powrot przez `Wszystkie`.
 2. Recznie porownac na produkcji pierwsze i kolejne wejscie w `Miejsca`,
    `Miejsca do uzupelnienia` i `Mape`; kolejne optymalizacje robic tylko,
-   jesli po pakiecie `d771c2a` nadal widac konkretne opoznienie.
+   jesli po pakietach `d771c2a` i `6c9dad1` nadal widac konkretne opoznienie.
 3. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
    partiami i recznie przejrzec 142 pozostale miejsca bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`.
