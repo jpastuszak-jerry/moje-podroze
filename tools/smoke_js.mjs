@@ -151,6 +151,8 @@ assert.match(mapSource, /function getMapLocationsData\(\)[\s\S]*mapLocationsLoad
 assert.doesNotMatch(mapSource, /showToast\(/, 'map error paths use the existing toast helper');
 assert.match(utilsSource, /function getAllLocations\([\s\S]*allLocationsCacheLoaded[\s\S]*api\('\/api\/locations'\)/, 'location data has an in-memory session cache');
 assert.match(utilsSource, /function refreshCurrentView\(\)\s*\{\s*invalidateFrontendDataCaches\(\)/, 'pull to refresh clears in-memory data caches');
+assert.match(utilsSource, /frontendDataCacheVersion \+= 1/, 'successful writes can invalidate in-flight frontend reads');
+assert.match(utilsSource, /requestVersion !== getFrontendDataCacheVersion\(\)[\s\S]*return getAllLocations\(\)/, 'stale location responses are replaced with a fresh request');
 assert.match(locationsSource, /const LOCATION_COLLATOR[\s\S]*new Intl\.Collator\('pl', \{ sensitivity: 'base' \}\)/, 'location sorting reuses one Polish collator');
 assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return compareLocationText\(a\.name, b\.name\);\s*\}/, 'location name sorting uses the shared text comparator');
 assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
@@ -160,9 +162,12 @@ assert.match(locationsSource, /const search = String\(currentLocationSearch[\s\S
 assert.match(locationsSource, /function getLocationTodoData\(\)[\s\S]*locationTodoDataCache/, 'location worklist reuses its loaded payload');
 assert.match(locationsSource, /function renderLocationBatches\(list, batches\)[\s\S]*requestIdleCallback[\s\S]*setTimeout/, 'large location lists render in responsive batches');
 assert.match(locationsSource, /function locationCardBatches\(locs, batchSize = 60\)/, 'location cards have a bounded render batch size');
+assert.match(locationsSource, /renderGeneration !== locationScreenRenderGeneration[\s\S]*document\.getElementById\('loc-list'\) !== list/, 'late location responses cannot render into a replaced view');
 assert.match(mapSource, /function buildMapMarkerCache\(locations\)[\s\S]*allMapMarkers = \(locations \|\| \[\]\)\.map\(createMapMarker\)/, 'map markers are cached after loading data');
 assert.match(mapSource, /if \(markerClusterGroup\.addLayers\) markerClusterGroup\.addLayers\(markers\)/, 'map marker rendering can add cached markers in batch');
+assert.match(mapSource, /loadGeneration !== mapLoadGeneration[\s\S]*currentTab !== 'map'[\s\S]*map-container/, 'late map responses are ignored after navigation');
 assert.match(travelsSource, /function getTravelList\(q = ''\)[\s\S]*travelListCache\.has\(key\)/, 'travel sorting and year filters reuse loaded data');
+assert.match(travelsSource, /renderGeneration !== travelListRenderGeneration[\s\S]*travel-list/, 'late travel searches cannot replace newer results');
 assert.match(wizardSource, /function wizardFilterPicker\(q\)[\s\S]*const query = String\(q \|\| ''\)\.trim\(\)\.toLowerCase\(\)/, 'wizard picker normalizes search text once');
 
 const originalGetElementById = context.document.getElementById;
@@ -218,6 +223,47 @@ assert.equal(cachedLocationsA, cachedLocationsB, 'location cache shares the load
 context.invalidateFrontendDataCaches();
 await context.getAllLocations();
 assert.equal(allLocationsApiCalls, 2, 'location cache reloads after invalidation');
+
+let resolveStaleLocations;
+let staleLocationApiCalls = 0;
+context.invalidateFrontendDataCaches();
+context.api = async path => {
+  assert.equal(path, '/api/locations', 'stale location cache test uses the list endpoint');
+  staleLocationApiCalls += 1;
+  if (staleLocationApiCalls === 1) {
+    return new Promise(resolve => { resolveStaleLocations = resolve; });
+  }
+  return [{ id: 2, name: 'Fresh location' }];
+};
+const staleLocationLoad = context.getAllLocations();
+context.invalidateFrontendDataCaches();
+resolveStaleLocations([{ id: 1, name: 'Stale location' }]);
+const refreshedLocations = await staleLocationLoad;
+assert.equal(staleLocationApiCalls, 2, 'in-flight location data is reloaded after invalidation');
+assert.equal(refreshedLocations[0].name, 'Fresh location', 'stale location data never repopulates the cache');
+
+const originalFetch = context.fetch;
+let mutationInvalidations = 0;
+context.registerDataCacheInvalidator(() => { mutationInvalidations += 1; });
+context.fetch = async () => ({
+  status: 200,
+  ok: true,
+  async json() { return { ok: true }; },
+});
+await context.apiPost('/api/locations', { name: 'Test' });
+assert.equal(mutationInvalidations, 1, 'successful mutations invalidate frontend caches');
+await context.apiPut('/api/locations/1', { name: 'Updated' });
+assert.equal(mutationInvalidations, 2, 'successful edits invalidate frontend caches');
+await context.apiDelete('/api/locations/1');
+assert.equal(mutationInvalidations, 3, 'successful deletes invalidate frontend caches');
+context.fetch = async () => ({
+  status: 409,
+  ok: false,
+  async json() { return { error: 'conflict' }; },
+});
+await context.apiPut('/api/locations/1', { name: 'Test' });
+assert.equal(mutationInvalidations, 3, 'failed mutations keep valid frontend caches');
+context.fetch = originalFetch;
 context.api = originalApi;
 context.invalidateFrontendDataCaches();
 assert.equal(context.apiErrorMessage({ error: 'Not found', status: 404 }).includes('Not found'), false);
@@ -626,6 +672,7 @@ vm.runInContext(`
 assert.equal(mapMarkerCreates, 2, 'map creates Leaflet markers once per loaded location');
 assert.equal(mapBatchAdds, 3, 'map filtering reuses cached markers in batches');
 assert.equal(mapCounter.textContent, '1 miejsc', 'map counter follows the filtered marker count');
+
 const mapPopupHtml = context.createMapPopup({
   id: 3,
   name: 'Long place',
@@ -783,6 +830,33 @@ vm.runInContext('currentLocationSort = "name_asc"; renderLocList(__progressiveLo
 await new Promise(resolve => setTimeout(resolve, 20));
 assert.equal(progressiveLocationAppends, 3, 'large location lists append three bounded batches');
 assert.match(progressiveLocationList.innerHTML, /Miejsce 130/, 'progressive rendering eventually includes the final location');
+
+const staleLocationView = elementStub();
+const staleLocationList = elementStub();
+let activeLocationList = staleLocationList;
+let resolveLateLocationRender;
+context.document.getElementById = id => {
+  if (id === 'view') return staleLocationView;
+  if (id === 'loc-list') return activeLocationList;
+  return null;
+};
+context.api = async path => {
+  assert.equal(path, '/api/locations', 'late location render test uses the list endpoint');
+  return new Promise(resolve => { resolveLateLocationRender = resolve; });
+};
+context.invalidateFrontendDataCaches();
+const lateLocationRender = context.renderLocations('');
+activeLocationList = null;
+resolveLateLocationRender([{
+  id: 999,
+  name: 'Late location',
+  country_name: 'Polska',
+  location_type: 'miasto',
+  visit_count: 0,
+}]);
+await lateLocationRender;
+assert.doesNotMatch(staleLocationList.innerHTML, /Late location/, 'late location responses do not update a replaced view');
+
 const locationCardHtml = context.locCardHtml({
   id: 10,
   name: 'Helsinki',
@@ -934,7 +1008,7 @@ context.api = async path => {
   };
 };
 vm.runInContext(
-  'currentLocationTodoFilter = "all"; currentLocationTodoSort = "priority"; currentLocationTodoGroup = "none"',
+  'currentTab = "locationTodo"; currentLocationTodoFilter = "all"; currentLocationTodoSort = "priority"; currentLocationTodoGroup = "none"',
   context,
 );
 await context.renderLocationTodo({ missing: 'missing_gps', sort: 'visit_count_asc' });
@@ -1162,6 +1236,7 @@ context.api = async path => {
   assert.equal(path, '/api/travels/7', 'travel detail fetches the selected trip');
   return sampleTravelDetail;
 };
+vm.runInContext('currentTab = "travelDetail"', context);
 await context.openTravel(7);
 assert.match(travelDetailView.innerHTML, /travel-detail-hero/, 'travel detail screen renders the hero');
 assert.match(travelDetailView.innerHTML, /Trasa i miejsca/, 'travel detail screen renders route section');
@@ -1253,7 +1328,7 @@ context.api = async path => {
     }],
   };
 };
-vm.runInContext('currentTodoYear = null; currentTodoFilter = "all"', context);
+vm.runInContext('currentTab = "todo"; currentTodoYear = null; currentTodoFilter = "all"', context);
 await context.renderTodo();
 assert.match(todoView.innerHTML, /aux-filter-panel/, 'travel todo uses compact filter panel');
 assert.match(todoView.innerHTML, /todo-year-select/, 'travel todo year filter is a select control');
@@ -1559,7 +1634,7 @@ vm.runInContext('api = __statsApi', context);
 async function renderStatsSection(section, { year = null, payload = statsPayload() } = {}) {
   statsResponse = payload;
   vm.runInContext(
-    `currentStatsSection = ${JSON.stringify(section)}; currentStatsYear = ${year == null ? 'null' : Number(year)};`,
+    `currentTab = "stats"; currentStatsSection = ${JSON.stringify(section)}; currentStatsYear = ${year == null ? 'null' : Number(year)};`,
     context,
   );
   await context.renderStats();

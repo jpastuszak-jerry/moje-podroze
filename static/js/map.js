@@ -4,6 +4,7 @@ let allMapLocations = [];
 let allMapMarkers = [];
 let mapLocationsLoaded = false;
 let mapLocationsLoadPromise = null;
+let mapLoadGeneration = 0;
 let pendingMapLocationIds = null;
 let pendingMapRoute = null;
 let mapRouteLayer = null;
@@ -17,16 +18,21 @@ const MAP_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
 async function getMapLocationsData() {
   if (mapLocationsLoaded) return allMapLocations;
   if (mapLocationsLoadPromise) return mapLocationsLoadPromise;
-  mapLocationsLoadPromise = api('/api/map-locations').then(data => {
+  const requestVersion = getFrontendDataCacheVersion();
+  const pending = api('/api/map-locations').then(data => {
+    if (requestVersion !== getFrontendDataCacheVersion()) {
+      return getMapLocationsData();
+    }
     if (Array.isArray(data)) {
       allMapLocations = data;
       mapLocationsLoaded = true;
     }
     return data;
   }).finally(() => {
-    mapLocationsLoadPromise = null;
+    if (mapLocationsLoadPromise === pending) mapLocationsLoadPromise = null;
   });
-  return mapLocationsLoadPromise;
+  mapLocationsLoadPromise = pending;
+  return pending;
 }
 
 registerDataCacheInvalidator(() => {
@@ -69,6 +75,7 @@ function createTravelRouteIcon(order) {
 }
 
 function renderMap() {
+  const loadGeneration = ++mapLoadGeneration;
   const view = document.getElementById('view');
   setMapViewMode(true);
   resetViewScroll(view);
@@ -96,7 +103,7 @@ function renderMap() {
     </div>
     </div>`;
   initMap();
-  loadMapLocations();
+  loadMapLocations(loadGeneration);
 }
 
 function initMap() {
@@ -111,9 +118,14 @@ function initMap() {
   setTimeout(() => { if (map) map.invalidateSize(); }, 0);
 }
 
-async function loadMapLocations() {
+async function loadMapLocations(loadGeneration = mapLoadGeneration) {
   try {
     const data = await getMapLocationsData();
+    if (
+      loadGeneration !== mapLoadGeneration
+      || currentTab !== 'map'
+      || !document.getElementById('map-container')
+    ) return;
     if (!Array.isArray(data)) {
       toastApiError(data, 'Nie udało się wczytać miejsc na mapie');
       document.getElementById('map-counter').textContent = 'błąd';
@@ -139,8 +151,14 @@ async function loadMapLocations() {
       else document.getElementById('map-counter').textContent = '0 miejsc';
     }
   } catch (err) {
+    if (
+      loadGeneration !== mapLoadGeneration
+      || currentTab !== 'map'
+      || !document.getElementById('map-container')
+    ) return;
     console.error('Błąd mapy:', err);
-    document.getElementById('map-counter').textContent = 'błąd';
+    const counter = document.getElementById('map-counter');
+    if (counter) counter.textContent = 'błąd';
   }
 }
 

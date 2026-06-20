@@ -1,4 +1,5 @@
 const CHART_PALETTE = ['#1a6fdb','#f97316','#059669','#7c3aed','#e11d48','#0891b2','#d97706','#9f1239'];
+let statsRenderGeneration = 0;
 
 function svgDonut(data, { nameKey = 'name', valueKey = 'count' } = {}) {
   if (!data || !data.length) return '';
@@ -684,10 +685,15 @@ function renderOverviewMetrics(s, prev, currentYear, currencies) {
 }
 
 async function renderStats(params = null) {
+  const renderGeneration = ++statsRenderGeneration;
   if (params !== null) applyStatsRouteParams(params);
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Statystyki</div></div>` + skeletonCards(3);
   const s = await api(statsApiPath());
+  if (
+    renderGeneration !== statsRenderGeneration
+    || currentTab !== 'stats'
+  ) return;
   if (s.error) {
     view.innerHTML = emptyState({ icon: '📊', title: 'Nie udało się wczytać statystyk', message: s.error });
     return;

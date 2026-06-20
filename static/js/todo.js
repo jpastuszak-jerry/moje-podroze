@@ -1,5 +1,6 @@
 let currentTodoFilter = 'all';
 let currentTodoYear = null;
+let todoRenderGeneration = 0;
 
 function openTodoView(year = null) {
   currentTodoYear = year || null;
@@ -70,9 +71,14 @@ function todoWorklistCardHtml(item) {
 }
 
 async function renderTodo() {
+  const renderGeneration = ++todoRenderGeneration;
   const view = document.getElementById('view');
   view.innerHTML = `<div class="page-header"><div class="page-title">Do uzupełnienia</div></div>` + skeletonCards(3);
   const data = await api('/api/stats/todo' + (currentTodoYear ? '?year=' + currentTodoYear : ''));
+  if (
+    renderGeneration !== todoRenderGeneration
+    || currentTab !== 'todo'
+  ) return;
   if (data.error) {
     view.innerHTML = emptyState({ icon: '✍️', title: 'Nie udało się wczytać listy', message: data.error });
     return;

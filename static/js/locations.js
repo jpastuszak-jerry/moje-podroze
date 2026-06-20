@@ -3,7 +3,9 @@ let currentLocationSort = getPref('locSort', 'country_name');
 let currentLocationSearch = '';
 let currentLocationCountry = getPref('locCountry', '');
 let currentLocationType = getPref('locType', '');
+let locationScreenRenderGeneration = 0;
 let locationListRenderGeneration = 0;
+let locationDetailRenderGeneration = 0;
 
 const LOCATION_QUALITY_LABELS = {
   all: 'Wszystkie',
@@ -24,6 +26,7 @@ const LOCATION_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
   : null;
 
 async function renderLocations(q) {
+  const renderGeneration = ++locationScreenRenderGeneration;
   if (q !== undefined) currentLocationSearch = q || '';
   const view = document.getElementById('view');
   if (!document.getElementById('loc-list')) {
@@ -67,6 +70,10 @@ async function renderLocations(q) {
   const list = document.getElementById('loc-list');
   if (!allLocationsCacheLoaded) list.innerHTML = skeletonCards(4);
   const locs = await getAllLocations();
+  if (
+    renderGeneration !== locationScreenRenderGeneration
+    || document.getElementById('loc-list') !== list
+  ) return;
   if (isApiError(locs)) {
     list.innerHTML = emptyState({ icon: '📍', title: 'Nie udało się wczytać miejsc', message: locs.error });
     return;
@@ -618,17 +625,23 @@ let currentLocationTodoSort = getPref('locationTodoSort', 'priority');
 let currentLocationTodoGroup = getPref('locationTodoGroup', 'none');
 let locationTodoDataCache = null;
 let locationTodoLoadPromise = null;
+let locationTodoRenderGeneration = 0;
 
 async function getLocationTodoData() {
   if (locationTodoDataCache) return locationTodoDataCache;
   if (locationTodoLoadPromise) return locationTodoLoadPromise;
-  locationTodoLoadPromise = api('/api/locations/todo').then(data => {
+  const requestVersion = getFrontendDataCacheVersion();
+  const pending = api('/api/locations/todo').then(data => {
+    if (requestVersion !== getFrontendDataCacheVersion()) {
+      return getLocationTodoData();
+    }
     if (data && !data.error) locationTodoDataCache = data;
     return data;
   }).finally(() => {
-    locationTodoLoadPromise = null;
+    if (locationTodoLoadPromise === pending) locationTodoLoadPromise = null;
   });
-  return locationTodoLoadPromise;
+  locationTodoLoadPromise = pending;
+  return pending;
 }
 
 registerDataCacheInvalidator(() => {
@@ -943,12 +956,18 @@ function renderLocationTodoGroupedList(items, labels) {
 }
 
 async function renderLocationTodo(params = {}) {
+  const renderGeneration = ++locationTodoRenderGeneration;
   applyLocationTodoRouteParams(params);
   const view = document.getElementById('view');
   if (!locationTodoDataCache) {
     view.innerHTML = `<div class="page-header"><div class="page-title">Miejsca do uzupełnienia</div></div>` + skeletonCards(3);
   }
   const data = await getLocationTodoData();
+  if (
+    renderGeneration !== locationTodoRenderGeneration
+    || document.getElementById('view') !== view
+    || currentTab !== 'locationTodo'
+  ) return;
   if (data.error) {
     view.innerHTML = emptyState({ icon: '📍', title: 'Nie udało się wczytać listy', message: data.error });
     return;
@@ -1016,10 +1035,15 @@ async function openLocation(id, options = {}) {
     return;
   }
   setMapViewMode(false);
+  const renderGeneration = ++locationDetailRenderGeneration;
   const view = document.getElementById('view');
   resetViewScroll(view);
   view.innerHTML = skeletonCards(3);
   const loc = await api('/api/locations/' + id);
+  if (
+    renderGeneration !== locationDetailRenderGeneration
+    || currentTab !== 'locationDetail'
+  ) return;
   if (!loc || !loc.id || isApiError(loc)) {
     if (loc && loc.error) toast('Nie znaleziono miejsca', 'error');
     showTab('locations');

@@ -122,6 +122,16 @@ class CoreInfrastructureTests(unittest.TestCase):
         self.assertEqual(db.commits, 1)
         self.assertEqual(core.get_db_write_version(), 1)
 
+    def test_execute_rowcount_commits_and_marks_write_version(self):
+        db = FakeDb()
+
+        with patch.object(core, 'get_db', return_value=db):
+            result = core.execute_rowcount('UPDATE locations SET deleted_at = NOW()')
+
+        self.assertEqual(result, 3)
+        self.assertEqual(db.commits, 1)
+        self.assertEqual(core.get_db_write_version(), 1)
+
     def test_schema_index_statements_cover_fk_and_active_record_queries(self):
         statements = '\n'.join(core.SCHEMA_INDEX_STATEMENTS)
         for fragment in (

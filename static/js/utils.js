@@ -29,12 +29,18 @@ let allLocationsCacheLoaded = false;
 let allLocationsLoadPromise = null;
 
 const DATA_CACHE_INVALIDATORS = new Set();
+let frontendDataCacheVersion = 0;
 
 function registerDataCacheInvalidator(invalidator) {
   if (typeof invalidator === 'function') DATA_CACHE_INVALIDATORS.add(invalidator);
 }
 
+function getFrontendDataCacheVersion() {
+  return frontendDataCacheVersion;
+}
+
 function invalidateFrontendDataCaches() {
+  frontendDataCacheVersion += 1;
   DATA_CACHE_INVALIDATORS.forEach(invalidator => invalidator());
 }
 
@@ -79,16 +85,21 @@ async function getAllLocations({ force = false } = {}) {
   if (allLocationsCacheLoaded) return allLocationsCache;
   if (allLocationsLoadPromise) return allLocationsLoadPromise;
 
-  allLocationsLoadPromise = api('/api/locations').then(data => {
+  const requestVersion = getFrontendDataCacheVersion();
+  const pending = api('/api/locations').then(data => {
+    if (requestVersion !== getFrontendDataCacheVersion()) {
+      return getAllLocations();
+    }
     if (Array.isArray(data)) {
       allLocationsCache = data;
       allLocationsCacheLoaded = true;
     }
     return data;
   }).finally(() => {
-    allLocationsLoadPromise = null;
+    if (allLocationsLoadPromise === pending) allLocationsLoadPromise = null;
   });
-  return allLocationsLoadPromise;
+  allLocationsLoadPromise = pending;
+  return pending;
 }
 
 registerDataCacheInvalidator(() => {

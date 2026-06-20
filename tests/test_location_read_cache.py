@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import locations
@@ -48,6 +49,13 @@ class LocationReadCacheTests(unittest.TestCase):
             second = locations._cached_location_payload('locations', build_payload)
 
         self.assertEqual((first, second), (1, 2))
+
+    def test_deploy_uses_one_worker_for_process_local_cache_consistency(self):
+        procfile = Path(__file__).resolve().parents[1] / 'Procfile'
+        command = procfile.read_text(encoding='utf-8').strip()
+
+        self.assertIn('gunicorn app:app', command)
+        self.assertIn('--workers 1', command)
 
 
 if __name__ == '__main__':

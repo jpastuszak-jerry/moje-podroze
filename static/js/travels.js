@@ -11,6 +11,8 @@ const TRAVEL_SORTS = [
 
 let travelRouteOrderMode = false;
 let travelRouteOrderTravelId = null;
+let travelListRenderGeneration = 0;
+let travelDetailRenderGeneration = 0;
 const travelListCache = new Map();
 const travelListLoadPromises = new Map();
 
@@ -24,11 +26,17 @@ async function getTravelList(q = '') {
   if (travelListLoadPromises.has(key)) return travelListLoadPromises.get(key);
 
   const path = '/api/travels' + (q ? '?q=' + encodeURIComponent(q) : '');
+  const requestVersion = getFrontendDataCacheVersion();
   const pending = api(path).then(data => {
+    if (requestVersion !== getFrontendDataCacheVersion()) {
+      return getTravelList(q);
+    }
     if (Array.isArray(data)) travelListCache.set(key, data);
     return data;
   }).finally(() => {
-    travelListLoadPromises.delete(key);
+    if (travelListLoadPromises.get(key) === pending) {
+      travelListLoadPromises.delete(key);
+    }
   });
   travelListLoadPromises.set(key, pending);
   return pending;
@@ -40,6 +48,7 @@ registerDataCacheInvalidator(() => {
 });
 
 async function renderTravels(q) {
+  const renderGeneration = ++travelListRenderGeneration;
   if (q !== undefined) currentSearch = q;
   const view = document.getElementById('view');
   if (!document.getElementById('travel-list')) {
@@ -59,6 +68,10 @@ async function renderTravels(q) {
     list.innerHTML = skeletonCards(4);
   }
   let travels = await getTravelList(currentSearch);
+  if (
+    renderGeneration !== travelListRenderGeneration
+    || document.getElementById('travel-list') !== list
+  ) return;
   if (!Array.isArray(travels)) {
     list.innerHTML = emptyState({ icon: '✈️', title: 'Nie udało się wczytać podróży', message: travels?.error || 'Spróbuj ponownie.' });
     return;
@@ -562,10 +575,15 @@ async function openTravel(id, options = {}) {
     return;
   }
   setMapViewMode(false);
+  const renderGeneration = ++travelDetailRenderGeneration;
   const view = document.getElementById('view');
   resetViewScroll(view);
   view.innerHTML = skeletonCards(3);
   const t = await api('/api/travels/' + id);
+  if (
+    renderGeneration !== travelDetailRenderGeneration
+    || currentTab !== 'travelDetail'
+  ) return;
   if (!t || !t.id) {
     if (t && t.error) toast('Nie znaleziono podróży', 'error');
     showTab('travels');

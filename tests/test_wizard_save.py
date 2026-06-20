@@ -85,13 +85,17 @@ class WizardSaveEndpointTests(unittest.TestCase):
     def test_wizard_save_commits_travel_locations_and_participants(self):
         db = RecordingDb()
 
-        with patch.object(travels, 'get_db', return_value=db):
+        with (
+            patch.object(travels, 'get_db', return_value=db),
+            patch.object(travels, 'mark_db_write') as mark_db_write,
+        ):
             response = self.client.post('/api/travels/wizard', json=wizard_payload())
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.get_json()['id'], 123)
         self.assertEqual(db.commits, 1)
         self.assertEqual(db.rollbacks, 0)
+        mark_db_write.assert_called_once_with()
         statements = [sql for sql, _ in db.statements]
         self.assertTrue(any(sql.startswith('INSERT INTO travels ') for sql in statements))
         self.assertTrue(any(sql.startswith('INSERT INTO travel_locations ') for sql in statements))

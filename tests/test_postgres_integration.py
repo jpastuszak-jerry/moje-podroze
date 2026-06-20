@@ -543,11 +543,34 @@ class PostgresIntegrationTests(unittest.TestCase):
             self._hard_delete_travel(travel_id)
 
     def test_location_create_duplicate_update_delete_restore_and_hard_delete(self):
+        def active_location_names():
+            response = self.client.get('/api/locations')
+            self.assertEqual(response.status_code, 200)
+            return {item['name'] for item in response.get_json()}
+
+        initial_list = self.client.get('/api/locations')
+        self.assertEqual(initial_list.status_code, 200)
+        initial_etag = initial_list.headers['ETag']
+        self.assertNotIn(
+            'Fixture location flow',
+            {item['name'] for item in initial_list.get_json()},
+        )
         create_response = self.client.post('/api/locations', json=self._location_payload())
 
         self.assertEqual(create_response.status_code, 201)
         location_id = create_response.get_json()['id']
         try:
+            refreshed_after_create = self.client.get(
+                '/api/locations',
+                headers={'If-None-Match': initial_etag},
+            )
+            self.assertEqual(refreshed_after_create.status_code, 200)
+            self.assertNotEqual(refreshed_after_create.headers['ETag'], initial_etag)
+            self.assertIn(
+                'Fixture location flow',
+                {item['name'] for item in refreshed_after_create.get_json()},
+            )
+
             duplicate = self.client.post('/api/locations', json=self._location_payload())
             self.assertEqual(duplicate.status_code, 409)
             duplicate_payload = duplicate.get_json()
@@ -584,10 +607,14 @@ class PostgresIntegrationTests(unittest.TestCase):
             self.assertEqual(updated_data['notes'], 'Updated integration notes')
             self.assertEqual(updated_data['latitude'], '61.23456')
             self.assertEqual(updated_data['longitude'], '25.23456')
+            names_after_update = active_location_names()
+            self.assertNotIn('Fixture location flow', names_after_update)
+            self.assertIn('Fixture location flow updated', names_after_update)
 
             soft_delete = self.client.delete(f'/api/locations/{location_id}')
             self.assertEqual(soft_delete.status_code, 200)
             self.assertEqual(self.client.get(f'/api/locations/{location_id}').status_code, 404)
+            self.assertNotIn('Fixture location flow updated', active_location_names())
 
             trash_after_delete = self.client.get('/api/trash')
             self.assertEqual(trash_after_delete.status_code, 200)
@@ -597,6 +624,7 @@ class PostgresIntegrationTests(unittest.TestCase):
             restore = self.client.post(f'/api/locations/{location_id}/restore')
             self.assertEqual(restore.status_code, 200)
             self.assertEqual(self.client.get(f'/api/locations/{location_id}').status_code, 200)
+            self.assertIn('Fixture location flow updated', active_location_names())
         finally:
             self._hard_delete_location(location_id)
 

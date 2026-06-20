@@ -67,7 +67,10 @@ class TravelLocationOrderTests(unittest.TestCase):
             day_ids=[11, 12, 13],
         )
 
-        with patch.object(travels, 'get_db', return_value=db):
+        with (
+            patch.object(travels, 'get_db', return_value=db),
+            patch.object(travels, 'mark_db_write') as mark_db_write,
+        ):
             response = self.client.put(
                 '/api/travels/7/locations/order',
                 json={'visit_ids': [12, 11, 13]},
@@ -78,6 +81,7 @@ class TravelLocationOrderTests(unittest.TestCase):
         self.assertEqual(response.get_json()['arrival_date'], '2025-07-18')
         self.assertEqual(db.commits, 1)
         self.assertEqual(db.rollbacks, 0)
+        mark_db_write.assert_called_once_with()
         update_sql, update_params = db.statements[-1]
         self.assertIn('FROM unnest(%s::int[], %s::int[])', update_sql)
         self.assertEqual(update_params, ([12, 11, 13], [1, 2, 3], 7))
