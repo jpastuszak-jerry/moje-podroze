@@ -12,6 +12,20 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `ea5c8b8 Fix travel
+  map links with apostrophes`: poprawka przycisku `Trasa na mapie` dla
+  podrozy, ktorych nazwa albo nazwa miejsca zawiera apostrof, np. `Xi'an` w
+  `Cesarskich Chinach`. Zakodowany payload trasy byl wstawiany do inline
+  `onclick` bez escapowania dla kontekstu JavaScript, przez co przegladarka
+  widziala bledny handler. `travels.js` uzywa teraz `jsStringArg()`, a smoke JS
+  wykonuje klik dla takiej trasy i sprawdza pelny odkodowany payload.
+  `AGENTS.md` zapisuje tez domyslny pelny proces domkniecia zmian:
+  testy -> commit -> push -> CI/deploy -> smoke produkcji. Lokalnie przeszly
+  smoke JS, 74 testy (9 skipow) i `git diff --check`. GitHub Actions byly
+  zielone, produkcyjny `python tools/smoke_prod.py` przeszedl 12/12 OK,
+  `/healthz` potwierdzil build `ea5c8b8`, a wdrozony `travels.js` zawiera
+  poprawke. Browser dotarl do ekranu logowania bez sesji administratora, wiec
+  prywatny klik `Cesarskich Chin` pozostaje krotkim smoke recznym.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `6c9dad1 Harden cache
   and async view state`: pakiet stabilizacyjny po optymalizacji duzych widokow.
   Frontend wersjonuje cache, wiec odpowiedz rozpoczeta przed zapisem nie moze
