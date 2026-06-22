@@ -12,6 +12,21 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `9143483 Show missing
+  GPS stops on travel maps`: panel numerowanej mapy podrozy pokazuje teraz
+  konkretna, zwijana liste etapow pominietych z powodu braku GPS. Nazwa
+  miejsca otwiera jego profil, a `Uzupelnij GPS` otwiera edycje od razu na
+  wspolrzednych. Wejscie w profil daje przycisk `Trasa na mapie`; udany zapis
+  GPS automatycznie odswieza cache mapy i wraca do tej samej podrozy oraz
+  wybranego dnia. Anulowanie edycji z mapy sprzata kontekst powrotu.
+  Korzysc: brakujace markery sa teraz konkretna lista pracy, a nie tylko
+  anonimowy licznik, i mozna uzupelniac trase bez gubienia miejsca w aplikacji.
+  Lokalnie przeszly smoke JS, Ruff, 74 testy (9 skipow) i `git diff --check`.
+  GitHub Actions byly zielone, produkcyjny `python tools/smoke_prod.py`
+  przeszedl 12/12 OK, `/healthz` potwierdzil build `9143483`, a produkcyjne
+  JS/CSS potwierdzily liste brakow, szybka akcje GPS, zachowanie dnia i powrot
+  po zapisie. Browser pokazal ekran logowania bez bledow konsoli; prywatny
+  flow nadal wymaga krotkiego smoke po zalogowaniu.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `0e5aed9 Harden inline
   map handlers`: pakiet stabilizacyjny po poprawce apostrofow. Przycisk
   `Trasa na mapie` przekazuje przez HTML tylko ID podrozy, a aktualny obiekt
