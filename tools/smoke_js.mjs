@@ -1149,6 +1149,28 @@ assert.deepEqual(
   [102, 101],
   'travel map payload preserves the saved same-day stop order',
 );
+const apostropheTravelDetail = structuredClone(sampleTravelDetail);
+apostropheTravelDetail.name = 'Cesarskie Chiny';
+apostropheTravelDetail.locations[0].location_name = "Xi'an";
+const apostropheRouteHtml = context.renderTravelRouteSection(apostropheTravelDetail);
+const apostropheHandlerMatch = apostropheRouteHtml.match(/onclick="(showTravelRouteOnMap\([^"]+\))"/);
+assert.ok(apostropheHandlerMatch, 'travel route with an apostrophe keeps a clickable map action');
+const apostropheHandler = apostropheHandlerMatch[1]
+  .replaceAll('&quot;', '"')
+  .replaceAll('&#39;', "'")
+  .replaceAll('&lt;', '<')
+  .replaceAll('&gt;', '>')
+  .replaceAll('&amp;', '&');
+let capturedApostropheRoute = null;
+const originalShowTravelRouteOnMap = context.showTravelRouteOnMap;
+context.showTravelRouteOnMap = encodedRoute => { capturedApostropheRoute = encodedRoute; };
+vm.runInContext(apostropheHandler, context);
+context.showTravelRouteOnMap = originalShowTravelRouteOnMap;
+assert.equal(
+  JSON.parse(decodeURIComponent(capturedApostropheRoute)).stops[1].name,
+  "Xi'an",
+  'travel map action safely opens routes containing apostrophes',
+);
 const routeSectionStub = elementStub();
 context.document.getElementById = id => (id === 'section-locations' ? routeSectionStub : null);
 context.window._currentTravel = structuredClone(sampleTravelDetail);

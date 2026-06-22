@@ -185,7 +185,28 @@ Widok miejsca pokazuje bezposrednie wizyty i wizyty przez lokacje podrzedne (`ch
 
 ## Deployment
 
-Standardowy przeplyw po zmianach:
+Domyslny sposob domkniecia kazdej gotowej zmiany aplikacyjnej:
+
+1. Uruchom adekwatne testy lokalne i `git diff --check`.
+2. Jesli testy przechodza, zacommituj tylko pliki nalezace do biezacego zadania
+   i wypchnij commit na `main`.
+3. Poczekaj na GitHub Actions i automatyczny deploy Render; sprawdz, czy CI
+   zakonczylo sie sukcesem i czy `/healthz` pokazuje SHA nowego commita.
+4. Uruchom `python tools/smoke_prod.py`.
+5. Dla zmian UI wykonaj, o ile pozwala na to dostepna sesja, krotki smoke
+   zmienionego flow w przegladarce. Brak zalogowanej sesji lub niedostepnosc
+   Browsera trzeba jawnie zapisac jako ograniczenie, ale nie pomijac przez to
+   CI ani bezsekretowego smoke produkcji.
+6. Dopiero potem podaj odpowiedz koncowa z commitem, wynikiem CI/deployu i
+   konkretnymi krokami recznej kontroli dla uzytkownika.
+
+Nie zatrzymuj gotowej, przetestowanej zmiany jako lokalnej tylko po to, by
+czekac na osobna prosbe o commit lub push. Wyjatkiem jest wyrazne polecenie
+uzytkownika, zeby nie commitowac/nie wdrazac, albo realny bloker wymagajacy
+decyzji lub dodatkowych uprawnien. Nie dolaczaj do commita cudzych ani
+niezwiazanych lokalnych zmian.
+
+Polecenia standardowego przeplywu:
 
 ```powershell
 git add <files>
@@ -194,4 +215,4 @@ git push origin main
 ```
 
 Render automatycznie przebudowuje aplikacje z brancha `main`.
-Po kazdym commicie podawac uzytkownikowi konkretne kroki weryfikacji po deployu.
+Po kazdym deployu podawac uzytkownikowi konkretne kroki weryfikacji produkcji.

@@ -389,7 +389,7 @@ function renderTravelRouteSection(t) {
           aria-pressed="${isOrdering ? 'true' : 'false'}" onclick="toggleTravelRouteOrderMode(${t.id})">
           ${isOrdering ? '✓ Gotowe' : '↕ Kolejność'}
         </button>` : ''}
-        ${mapRoutePayload ? `<button class="section-action secondary" onclick="showTravelRouteOnMap('${escapeAttr(mapRoutePayload)}')">🗺 Trasa na mapie</button>` : ''}
+        ${mapRoutePayload ? `<button class="section-action secondary" onclick="showTravelRouteOnMap('${jsStringArg(mapRoutePayload)}')">🗺 Trasa na mapie</button>` : ''}
         <button class="section-action" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
       </div>
     </div>
