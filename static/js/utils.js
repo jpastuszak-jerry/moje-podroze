@@ -557,7 +557,7 @@ function locationFormHtml({ prefix, countries, locTypes, parentChangeHandler, in
     <input class="form-input" id="${prefix}-name" placeholder="np. Catania">
     <div class="form-row">
       <div><div class="form-label">Kraj *</div>
-        <select class="form-input" id="${prefix}-country" onchange="${parentChangeHandler}">
+        <select class="form-input" id="${prefix}-country" onchange="${escapeAttr(parentChangeHandler)}">
           ${renderSelectOptions(countries, '', { emptyOption: '– wybierz –', valueKey: 'id', labelKey: 'name' })}
         </select></div>
       <div><div class="form-label">Typ miejsca *</div>
@@ -573,12 +573,12 @@ function locationFormHtml({ prefix, countries, locTypes, parentChangeHandler, in
     <div class="form-inline-row">
       <input class="form-input" id="${prefix}-lat" placeholder="Szer. np. 37.50745">
       <input class="form-input" id="${prefix}-lng" placeholder="Dług. np. 15.08720">
-      <button class="form-icon-btn" id="${prefix}-geocode-btn" onclick="geocodeForLocModal('${prefix}')">🔍</button>
+      <button class="form-icon-btn" id="${prefix}-geocode-btn" onclick="geocodeForLocModal('${jsStringArg(prefix)}')">🔍</button>
     </div>
     <div class="form-results" id="${prefix}-geo-results"></div>
     ${includeNotes ? `<div class="form-label">Notatki (opcjonalnie)</div>
       <textarea class="form-input form-textarea" id="${prefix}-notes" placeholder="Dodatkowe informacje..."></textarea>` : ''}
-    <button class="form-primary-btn" id="${saveBtnId}" onclick="${saveBtnOnclick}">
+    <button class="form-primary-btn" id="${saveBtnId}" onclick="${escapeAttr(saveBtnOnclick)}">
       ${escapeHtml(saveBtnLabel)}
     </button>
   `;
@@ -650,7 +650,7 @@ function emptyState({ icon = '✨', title = 'Brak danych', message = '', ctaLabe
     <div class="empty-state-icon">${icon}</div>
     <div class="empty-state-title">${escapeHtml(title)}</div>
     ${message ? `<div class="empty-state-msg">${escapeHtml(message)}</div>` : ''}
-    ${ctaLabel ? `<button class="empty-state-cta" onclick="${ctaOnclick}">${escapeHtml(ctaLabel)}</button>` : ''}
+    ${ctaLabel ? `<button class="empty-state-cta" onclick="${escapeAttr(ctaOnclick)}">${escapeHtml(ctaLabel)}</button>` : ''}
   </div>`;
 }
 

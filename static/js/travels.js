@@ -356,8 +356,8 @@ function groupTravelLocations(locations) {
   return groups;
 }
 
-function travelMapRoutePayload(travel, locations) {
-  return encodeURIComponent(JSON.stringify({
+function buildTravelMapRoute(travel, locations) {
+  return {
     id: travel.id,
     name: travel.name || 'Podróż',
     start_date: travel.start_date || null,
@@ -368,13 +368,26 @@ function travelMapRoutePayload(travel, locations) {
       arrival_date: location.arrival_date || null,
       departure_date: location.departure_date || null,
     })).filter(stop => stop.location_id > 0),
-  }));
+  };
+}
+
+function openTravelRouteMap(travelId) {
+  const travel = window._currentTravel;
+  if (!travel || Number(travel.id) !== Number(travelId)) {
+    toast('Nie udało się otworzyć trasy na mapie', 'error');
+    return;
+  }
+  const route = buildTravelMapRoute(travel, sortedTravelLocations(travel.locations || []));
+  if (!route.stops.length) {
+    toast('Ta podróż nie ma miejsc do pokazania na mapie', 'error');
+    return;
+  }
+  showTravelRouteOnMap(route);
 }
 
 function renderTravelRouteSection(t) {
   const locations = sortedTravelLocations(t.locations || []);
   const ids = locations.map(l => parseInt(l.location_id, 10)).filter(Boolean);
-  const mapRoutePayload = ids.length ? travelMapRoutePayload(t, locations) : '';
   const groups = groupTravelLocations(locations);
   const canReorder = groups.some(group => group.items.length > 1);
   const isOrdering = canReorder && travelRouteOrderMode && travelRouteOrderTravelId === Number(t.id);
@@ -389,8 +402,8 @@ function renderTravelRouteSection(t) {
           aria-pressed="${isOrdering ? 'true' : 'false'}" onclick="toggleTravelRouteOrderMode(${t.id})">
           ${isOrdering ? '✓ Gotowe' : '↕ Kolejność'}
         </button>` : ''}
-        ${mapRoutePayload ? `<button class="section-action secondary" onclick="showTravelRouteOnMap('${jsStringArg(mapRoutePayload)}')">🗺 Trasa na mapie</button>` : ''}
-        <button class="section-action" onclick="openAddLocationToTravel(${t.id}, '${t.start_date}', '${t.end_date}')">＋ Dodaj</button>
+        ${ids.length ? `<button class="section-action secondary" onclick="openTravelRouteMap(${t.id})">🗺 Trasa na mapie</button>` : ''}
+        <button class="section-action" onclick="openAddLocationToTravel(${t.id}, '${jsStringArg(t.start_date)}', '${jsStringArg(t.end_date)}')">＋ Dodaj</button>
       </div>
     </div>
     <div class="travel-route-list" id="locations-list">

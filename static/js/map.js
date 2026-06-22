@@ -167,9 +167,12 @@ function showTravelOnMap(locationIds) {
   showTab('map');
 }
 
-function showTravelRouteOnMap(encodedRoute) {
+function showTravelRouteOnMap(route) {
   try {
-    pendingMapRoute = JSON.parse(decodeURIComponent(encodedRoute));
+    if (!route || typeof route !== 'object' || !Array.isArray(route.stops)) {
+      throw new TypeError('Invalid travel route');
+    }
+    pendingMapRoute = route;
     pendingMapLocationIds = null;
     showTab('map');
   } catch (err) {
@@ -307,7 +310,7 @@ function renderTravelRouteDayFilters(route, selectedDayKey) {
       const active = option.key === selectedDayKey;
       return `<button type="button" class="map-route-day${active ? ' active' : ''}"
         aria-pressed="${active ? 'true' : 'false'}"
-        onclick="filterTravelMapRouteDay('${escapeAttr(option.key)}')">
+        onclick="filterTravelMapRouteDay('${jsStringArg(option.key)}')">
         <strong>${escapeHtml(option.label)}</strong>
         ${option.key !== 'all' && option.dateLabel ? `<span>${escapeHtml(option.dateLabel)}</span>` : ''}
       </button>`;

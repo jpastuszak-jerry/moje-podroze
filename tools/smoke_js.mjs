@@ -120,12 +120,25 @@ function count(haystack, needle) {
   return (haystack.match(new RegExp(needle, 'g')) || []).length;
 }
 
+function decodeHtmlAttribute(value) {
+  return String(value || '')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&amp;', '&');
+}
+
 const appCssSource = fs.readFileSync(appCssPath, 'utf8');
 const utilsSource = fs.readFileSync(utilsPath, 'utf8');
 const locationsSource = fs.readFileSync(locationsPath, 'utf8');
 const mapSource = fs.readFileSync(mapPath, 'utf8');
 const travelsSource = fs.readFileSync(travelsPath, 'utf8');
 const wizardSource = fs.readFileSync(wizardPath, 'utf8');
+const inlineHandlerSource = fs.readdirSync(path.join(repoRoot, 'static', 'js'))
+  .filter(file => file.endsWith('.js'))
+  .map(file => fs.readFileSync(path.join(repoRoot, 'static', 'js', file), 'utf8'))
+  .join('\n');
 assert.match(appCssSource, /#view\.map-view-mode\s*\{\s*overflow:\s*hidden;/, 'mobile map view disables page scroll');
 assert.match(appCssSource, /\.map-screen-shell[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/, 'map screen uses a dedicated flex shell');
 assert.match(appCssSource, /\.app-menu\s*\{[\s\S]*position:\s*fixed[\s\S]*top:\s*calc\(env\(safe-area-inset-top/, 'mobile app menu respects the iPhone safe area');
@@ -149,6 +162,18 @@ assert.match(appCssSource, /nth-child\(n\+13\)[\s\S]*animation:\s*none/, 'large 
 assert.doesNotMatch(mapSource, /L\.polyline/, 'travel route does not imply real paths with straight lines');
 assert.match(mapSource, /function getMapLocationsData\(\)[\s\S]*mapLocationsLoaded[\s\S]*api\('\/api\/map-locations'\)/, 'map data is reused between map entries');
 assert.doesNotMatch(mapSource, /showToast\(/, 'map error paths use the existing toast helper');
+assert.doesNotMatch(
+  inlineHandlerSource,
+  /(?:onclick|onchange)[^\n]*'\$\{escapeAttr\(/,
+  'dynamic JavaScript string arguments never use HTML-only attribute escaping',
+);
+assert.doesNotMatch(
+  inlineHandlerSource,
+  /(?:onclick|onchange)[^\n]*'\$\{(?!jsStringArg\()/,
+  'every dynamic string interpolated into an inline handler uses JavaScript escaping',
+);
+assert.match(travelsSource, /onclick="openTravelRouteMap\(\$\{t\.id\}\)"/, 'travel map action passes only the travel id through HTML');
+assert.doesNotMatch(travelsSource, /travelMapRoutePayload|showTravelRouteOnMap\('\$\{/, 'travel route data is not serialized into inline handlers');
 assert.match(utilsSource, /function getAllLocations\([\s\S]*allLocationsCacheLoaded[\s\S]*api\('\/api\/locations'\)/, 'location data has an in-memory session cache');
 assert.match(utilsSource, /function refreshCurrentView\(\)\s*\{\s*invalidateFrontendDataCaches\(\)/, 'pull to refresh clears in-memory data caches');
 assert.match(utilsSource, /frontendDataCacheVersion \+= 1/, 'successful writes can invalidate in-flight frontend reads');
@@ -158,6 +183,10 @@ assert.match(locationsSource, /function compareLocName\(a, b\)\s*\{\s*return com
 assert.match(locationsSource, /\.sort\(compareLocationText\)/, 'location filter options use the shared text comparator');
 assert.match(locationsSource, /function compareLocationTodoText\(a, b\)\s*\{\s*return compareLocationText\(a, b\);\s*\}/, 'location worklist reuses the main text comparator');
 assert.match(locationsSource, /function filterLocPicker\(q\)[\s\S]*const query = String\(q \|\| ''\)\.trim\(\)\.toLowerCase\(\)/, 'location picker normalizes search text once');
+const trickyInlineValue = "Xi'an \"Old Town\"\\route\n<script>";
+const trickyInlineArg = context.jsStringArg(trickyInlineValue);
+vm.runInContext(`globalThis.__trickyInlineValue = '${decodeHtmlAttribute(trickyInlineArg)}'`, context);
+assert.equal(context.__trickyInlineValue, trickyInlineValue, 'JavaScript string arguments preserve quotes, slashes, newlines and markup safely');
 assert.match(locationsSource, /const search = String\(currentLocationSearch[\s\S]*toLocaleLowerCase\('pl'\)/, 'location search filters the cached list locally');
 assert.match(locationsSource, /function getLocationTodoData\(\)[\s\S]*locationTodoDataCache/, 'location worklist reuses its loaded payload');
 assert.match(locationsSource, /function renderLocationBatches\(list, batches\)[\s\S]*requestIdleCallback[\s\S]*setTimeout/, 'large location lists render in responsive batches');
@@ -727,12 +756,12 @@ let malformedRouteToast = null;
 context.toast = (message, type) => { malformedRouteToast = { message, type }; };
 const originalConsoleError = context.console.error;
 context.console.error = () => {};
-context.showTravelRouteOnMap('%E0%A4%A');
+context.showTravelRouteOnMap('not-a-route-object');
 context.console.error = originalConsoleError;
 assert.deepEqual(
   malformedRouteToast,
   { message: 'Nie udało się otworzyć trasy na mapie', type: 'error' },
-  'malformed route payload reports a user-facing error without throwing',
+  'malformed route state reports a user-facing error without throwing',
 );
 
 const tabMap = elementStub();
@@ -1133,43 +1162,41 @@ const routeHtml = context.renderTravelRouteSection(sampleTravelDetail);
 assert.match(routeHtml, /travel-route-day/, 'travel detail groups route by day');
 assert.match(routeHtml, /data-route-day="2025-05-08"/, 'travel route keeps date group keys');
 assert.match(routeHtml, /travel-route-note/, 'travel route renders visit notes in compact details');
-assert.match(routeHtml, /showTravelRouteOnMap/, 'travel detail opens the ordered route on the map');
+assert.match(routeHtml, /openTravelRouteMap\(7\)/, 'travel detail opens the current ordered route by travel id');
+assert.doesNotMatch(routeHtml, /showTravelRouteOnMap\(/, 'travel detail does not serialize route data into HTML');
 assert.match(routeHtml, /Trasa na mapie/, 'travel detail labels the enhanced map action');
 assert.match(routeHtml, /toggleTravelRouteOrderMode/, 'same-day route exposes the ordering mode');
 assert.match(routeHtml, /moveTravelLocation\(7, 12, 1\)/, 'first same-day stop can move later');
 assert.match(routeHtml, /moveTravelLocation\(7, 11, -1\)/, 'last same-day stop can move earlier');
 assert.doesNotMatch(routeHtml, /style="/, 'travel route rows avoid inline styles');
-const routePayload = JSON.parse(decodeURIComponent(context.travelMapRoutePayload(
+const routeState = context.buildTravelMapRoute(
   sampleTravelDetail,
   context.sortedTravelLocations(sampleTravelDetail.locations),
-)));
-assert.equal(routePayload.name, 'Workation test', 'travel map payload keeps the trip name');
+);
+assert.equal(routeState.name, 'Workation test', 'travel map state keeps the trip name');
 assert.deepEqual(
-  routePayload.stops.map(stop => stop.location_id),
+  JSON.parse(JSON.stringify(routeState.stops.map(stop => stop.location_id))),
   [102, 101],
-  'travel map payload preserves the saved same-day stop order',
+  'travel map state preserves the saved same-day stop order',
 );
 const apostropheTravelDetail = structuredClone(sampleTravelDetail);
 apostropheTravelDetail.name = 'Cesarskie Chiny';
 apostropheTravelDetail.locations[0].location_name = "Xi'an";
 const apostropheRouteHtml = context.renderTravelRouteSection(apostropheTravelDetail);
-const apostropheHandlerMatch = apostropheRouteHtml.match(/onclick="(showTravelRouteOnMap\([^"]+\))"/);
-assert.ok(apostropheHandlerMatch, 'travel route with an apostrophe keeps a clickable map action');
-const apostropheHandler = apostropheHandlerMatch[1]
-  .replaceAll('&quot;', '"')
-  .replaceAll('&#39;', "'")
-  .replaceAll('&lt;', '<')
-  .replaceAll('&gt;', '>')
-  .replaceAll('&amp;', '&');
+const apostropheHandlerMatch = apostropheRouteHtml.match(/onclick="(openTravelRouteMap\([^"]+\))"/);
+assert.ok(apostropheHandlerMatch, 'travel route with an apostrophe keeps an id-only map action');
+const apostropheHandler = decodeHtmlAttribute(apostropheHandlerMatch[1]);
+assert.equal(apostropheHandler, 'openTravelRouteMap(7)', 'travel map handler contains no trip or location text');
 let capturedApostropheRoute = null;
 const originalShowTravelRouteOnMap = context.showTravelRouteOnMap;
-context.showTravelRouteOnMap = encodedRoute => { capturedApostropheRoute = encodedRoute; };
+context.window._currentTravel = apostropheTravelDetail;
+context.showTravelRouteOnMap = route => { capturedApostropheRoute = route; };
 vm.runInContext(apostropheHandler, context);
 context.showTravelRouteOnMap = originalShowTravelRouteOnMap;
 assert.equal(
-  JSON.parse(decodeURIComponent(capturedApostropheRoute)).stops[1].name,
+  capturedApostropheRoute.stops[1].name,
   "Xi'an",
-  'travel map action safely opens routes containing apostrophes',
+  'id-only travel map action reads the complete route from current application state',
 );
 const routeSectionStub = elementStub();
 context.document.getElementById = id => (id === 'section-locations' ? routeSectionStub : null);
@@ -1190,7 +1217,7 @@ assert.deepEqual(
     context.sortedTravelLocations(context.window._currentTravel.locations).map(location => location.id),
   )),
   [11, 12],
-  'successful route reorder updates the in-memory trip used by the map payload',
+  'successful route reorder updates the in-memory trip used by the map state',
 );
 const detailHtml = context.renderTravelDetail(sampleTravelDetail);
 assert.match(detailHtml, /travel-hero-stats/, 'travel detail renders the compact hero metrics');
@@ -1297,7 +1324,7 @@ assert.deepEqual(
   'editing a route stop sends the new visit dates',
 );
 const editedTravelLocation = context.window._currentTravel.locations.find(location => location.id === 12);
-assert.equal(editedTravelLocation.arrival_date, '2025-05-09', 'edited stop updates the in-memory map payload date');
+assert.equal(editedTravelLocation.arrival_date, '2025-05-09', 'edited stop updates the in-memory map state date');
 assert.equal(editedTravelLocation.visit_order, 1, 'edited stop adopts the order returned by the backend');
 assert.match(
   editTravelLocationElements['section-locations'].outerHTML,
@@ -1323,7 +1350,7 @@ await new Promise(resolve => setTimeout(resolve, 260));
 assert.deepEqual(
   JSON.parse(JSON.stringify(context.window._currentTravel.locations.map(location => location.id))),
   [11],
-  'removing a route stop also removes it from the in-memory map payload',
+  'removing a route stop also removes it from the in-memory map state',
 );
 assert.doesNotMatch(
   removeTravelRouteSection.outerHTML,

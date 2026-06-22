@@ -385,7 +385,7 @@ function locationQuickActionsHtml(loc) {
     return '<div class="location-action-hint ok">Dane miejsca wyglądają kompletnie.</div>';
   }
   return `<div class="location-action-row">
-    ${actions.map(action => `<button type="button" class="location-quick-action" onclick="openEditLocationModal(${loc.id}, { focus: '${escapeAttr(action.focus)}' })">${escapeHtml(action.label)}</button>`).join('')}
+    ${actions.map(action => `<button type="button" class="location-quick-action" onclick="openEditLocationModal(${loc.id}, { focus: '${jsStringArg(action.focus)}' })">${escapeHtml(action.label)}</button>`).join('')}
     ${visitHint}
   </div>`;
 }
@@ -869,7 +869,7 @@ function locationTodoActionsHtml(item) {
     .filter(action => action.label);
   if (!actions.length) return '';
   return `<div class="worklist-card-actions">
-    ${actions.map(action => `<button type="button" class="worklist-action-btn" onclick="event.stopPropagation(); openLocationTodoAction(${item.id}, '${escapeAttr(action.key)}')">${escapeHtml(action.label)}</button>`).join('')}
+    ${actions.map(action => `<button type="button" class="worklist-action-btn" onclick="event.stopPropagation(); openLocationTodoAction(${item.id}, '${jsStringArg(action.key)}')">${escapeHtml(action.label)}</button>`).join('')}
   </div>`;
 }
 
@@ -1185,7 +1185,7 @@ async function geocodeForLocModal(prefix) {
     } else {
       btn.textContent = '🔍'; btn.style.background = ''; btn.disabled = false;
       resultsDiv.innerHTML = data.map(r => `
-        <div onclick="selectGeoResult('${prefix}',${parseFloat(r.lat).toFixed(5)},${parseFloat(r.lon).toFixed(5)})"
+        <div onclick="selectGeoResult('${jsStringArg(prefix)}',${parseFloat(r.lat).toFixed(5)},${parseFloat(r.lon).toFixed(5)})"
           class="form-result-item">
           ${escapeHtml(r.display_name)}
         </div>`).join('');
@@ -1468,7 +1468,7 @@ async function openAddLocationToTravel(travelId, travelStart, travelEnd) {
       <div id="loc-picker-list" class="modal-scroll-list">${buildLocPickerList(locs, travelId, travelStart, travelEnd)}</div>
     </div>
     <div class="form-section form-section-divider">
-      <button class="form-secondary-btn" onclick="openNewLocationModal(${travelId}, '${travelStart}', '${travelEnd}')">
+      <button class="form-secondary-btn" onclick="openNewLocationModal(${travelId}, '${jsStringArg(travelStart)}', '${jsStringArg(travelEnd)}')">
         ＋ Dodaj nowe miejsce do słownika
       </button>
     </div></div>`;
