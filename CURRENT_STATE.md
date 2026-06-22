@@ -12,6 +12,23 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `0e5aed9 Harden inline
+  map handlers`: pakiet stabilizacyjny po poprawce apostrofow. Przycisk
+  `Trasa na mapie` przekazuje przez HTML tylko ID podrozy, a aktualny obiekt
+  trasy jest budowany dopiero po kliknieciu z `window._currentTravel`.
+  Upraszcza to przeplyw, usuwa serializowany JSON z `onclick` i gwarantuje, ze
+  mapa bierze aktualna kolejnosc, daty oraz liste miejsc po edycji lub
+  usunieciu wpisu. Audyt wszystkich `static/js/*.js` ujednolicil dynamiczne
+  tekstowe argumenty handlerow na `jsStringArg()` oraz zabezpieczyl cale
+  atrybuty kodu przez `escapeAttr()`. Smoke JS ma straznik blokujacy powrot
+  surowej interpolacji albo HTML-owego escapowania w argumencie JavaScript i
+  sprawdza apostrofy, cudzyslowy, backslash, nowa linie i markup. Lokalnie
+  przeszly smoke JS, Ruff, 74 testy (9 skipow) i `git diff --check`. GitHub
+  Actions byly zielone, produkcyjny `python tools/smoke_prod.py` przeszedl
+  12/12 OK, `/healthz` potwierdzil build `0e5aed9`, a pobrane produkcyjne
+  `travels.js`/`map.js` potwierdzily handler tylko z ID i obiektowy stan
+  trasy. Browser pokazal ekran logowania bez bledow konsoli, ale bez sesji
+  administratora nie mozna bylo kliknac prywatnych `Cesarskich Chin`.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `ea5c8b8 Fix travel
   map links with apostrophes`: poprawka przycisku `Trasa na mapie` dla
   podrozy, ktorych nazwa albo nazwa miejsca zawiera apostrof, np. `Xi'an` w
