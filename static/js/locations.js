@@ -1030,6 +1030,7 @@ async function renderLocationTodo(params = {}) {
 }
 
 async function openLocation(id, options = {}) {
+  if (!options.fromRouter && currentTab !== 'map') clearTravelMapReturnContext();
   if (!options.fromRouter && canUseHashRouter()) {
     navigateTo('locationDetail', { id });
     return;
@@ -1052,9 +1053,12 @@ async function openLocation(id, options = {}) {
   const directVisits = Array.isArray(loc.visits) ? loc.visits : [];
   const childVisits = Array.isArray(loc.child_visits) ? loc.child_visits : [];
   const historyVisits = locationHistoryVisits(directVisits, childVisits);
+  const backButton = hasTravelMapReturnContext()
+    ? '<button class="back-btn" onclick="returnToTravelMap()">‹ Trasa na mapie</button>'
+    : '<button class="back-btn" onclick="showTab(\'locations\')">‹ Miejsca</button>';
   view.innerHTML = `
     <div class="detail-header">
-      <button class="back-btn" onclick="showTab('locations')">‹ Miejsca</button>
+      ${backButton}
       <div class="detail-title">${escapeHtml(loc.name)}</div>
       <div class="detail-sub">${escapeHtml(loc.location_type)} · ${escapeHtml(loc.country_name)}</div>
     </div>
@@ -1103,6 +1107,13 @@ function focusEditLocationField(focus) {
   }, 40);
 }
 
+function closeEditLocationModal() {
+  const overlay = document.getElementById('edit-loc-overlay');
+  const discardMapReturn = Boolean(overlay?._returnToTravelMap && currentTab === 'map');
+  closeModal(overlay);
+  if (discardMapReturn) discardTravelMapReturnContext();
+}
+
 async function openEditLocationModal(id, options = {}) {
   if (!beginOverlayOpen('edit-loc-overlay')) return;
   try {
@@ -1115,7 +1126,7 @@ async function openEditLocationModal(id, options = {}) {
   const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'edit-loc-overlay';
   overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Edytuj miejsce</span>
-      <button class="modal-save" onclick="closeModal(document.getElementById('edit-loc-overlay'))">Anuluj</button></div>
+      <button class="modal-save" onclick="closeEditLocationModal()">Anuluj</button></div>
     <div class="form-section">
       <div class="form-label">Nazwa miejsca *</div>
       <input class="form-input" id="el-name" value="${escapeAttr(loc.name || '')}">
@@ -1150,9 +1161,11 @@ async function openEditLocationModal(id, options = {}) {
     </div></div>`;
   overlay._allLocs = allLocs.filter(l => l.id !== id);
   overlay._currentParentId = loc.parent_location_id || null;
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
+  overlay._returnToTravelMap = options.returnToTravelMap === true
+    || (options.returnToTravelMap !== false && hasTravelMapReturnContext());
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeEditLocationModal(); });
   document.body.appendChild(overlay);
-  attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  attachDragToDismiss(overlay, '.modal', closeEditLocationModal);
   document.getElementById('el-notes').value = loc.notes || '';
   updateParentLocListFor('edit-loc-overlay', 'el');
   focusEditLocationField(options.focus);
@@ -1229,6 +1242,8 @@ async function saveEditLocation(id) {
   const btn = document.getElementById('el-save-btn');
   if (btn?.disabled) return;
   const origLabel = btn?.textContent;
+  const overlay = document.getElementById('edit-loc-overlay');
+  const returnToMap = Boolean(overlay?._returnToTravelMap);
   try {
     const name = document.getElementById('el-name').value.trim();
     const countryId = document.getElementById('el-country').value;
@@ -1248,9 +1263,10 @@ async function saveEditLocation(id) {
       address: address || null, notes: notes || null, latitude: latVal, longitude: lngVal
     });
     if (res.error) { toastApiError(res, 'Nie udało się zapisać miejsca'); return; }
-    closeModal(document.getElementById('edit-loc-overlay'));
+    closeModal(overlay);
     toast('Zapisano', 'success');
-    openLocation(id);
+    if (returnToMap) returnToTravelMap();
+    else openLocation(id);
   } catch(err) {
     toast('Nieoczekiwany błąd: ' + err.message, 'error');
   } finally {

@@ -157,6 +157,8 @@ assert.match(appCssSource, /\.popup-description-text[\s\S]*-webkit-line-clamp:\s
 assert.match(appCssSource, /\.travel-route-map-pin[\s\S]*background:\s*#2563eb/, 'travel route markers use numbered blue pins');
 assert.match(appCssSource, /\.map-route-banner-top[\s\S]*justify-content:\s*space-between/, 'travel routes expose a compact map banner');
 assert.match(appCssSource, /\.map-route-days[\s\S]*overflow-x:\s*auto/, 'travel route day filters scroll horizontally on narrow screens');
+assert.match(appCssSource, /\.map-route-missing-list[\s\S]*max-height:[\s\S]*overflow-y:\s*auto/, 'missing GPS route stops stay in a compact scrollable list');
+assert.match(appCssSource, /\.map-route-missing-row[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/, 'missing GPS route stops keep actions beside flexible names');
 assert.match(appCssSource, /\.card-list > \.card[\s\S]*content-visibility:\s*auto/, 'large card lists skip offscreen layout work');
 assert.match(appCssSource, /nth-child\(n\+13\)[\s\S]*animation:\s*none/, 'large card lists stop animating offscreen cards');
 assert.doesNotMatch(mapSource, /L\.polyline/, 'travel route does not imply real paths with straight lines');
@@ -719,7 +721,7 @@ context.__mapRoute = {
   stops: [
     { location_id: 1, arrival_date: '2025-07-18', departure_date: '2025-07-19' },
     { location_id: 2, arrival_date: '2025-07-20', departure_date: '2025-07-21' },
-    { location_id: 999, arrival_date: '2025-07-21', departure_date: '2025-07-21' },
+    { location_id: 999, name: "Xi'an bez GPS", arrival_date: '2025-07-21', departure_date: '2025-07-21' },
   ],
 };
 vm.runInContext(`
@@ -733,6 +735,10 @@ assert.equal(routeMarkerAdds, 2, 'travel route renders one numbered marker per p
 assert.equal(routeFitBounds.coordinates.length, 2, 'travel route fits the map to its coordinates');
 assert.match(mapRouteBanner.innerHTML, /Finlandia/, 'travel route banner shows the trip name');
 assert.match(mapRouteBanner.innerHTML, /1 bez GPS/, 'travel route banner reports missing coordinates');
+assert.match(mapRouteBanner.innerHTML, /Pominięte miejsca bez GPS/, 'travel route banner explains why route stops are missing');
+assert.match(mapRouteBanner.innerHTML, /Xi'an bez GPS/, 'travel route banner names the location missing coordinates');
+assert.match(mapRouteBanner.innerHTML, /openTravelRouteLocationDetails\(999\)/, 'missing GPS place opens its details');
+assert.match(mapRouteBanner.innerHTML, /editTravelRouteLocationGps\(999\)/, 'missing GPS place exposes a focused edit action');
 assert.match(mapRouteBanner.innerHTML, /map-route-days/, 'multi-day travel route exposes day filters');
 assert.match(mapRouteBanner.innerHTML, /Dzień 1/, 'travel route day filters use inclusive trip day numbers');
 assert.match(mapRouteBanner.innerHTML, /Dzień 3/, 'travel route day filters preserve gaps between visited days');
@@ -752,6 +758,32 @@ context.filterTravelMapRouteDay('all');
 assert.equal(routeMarkerAdds, 5, 'all-days filter restores every mapped route stop');
 assert.equal(mapCounter.textContent, '2/3 etapy', 'all-days filter restores the full route counter');
 assert.match(mapPopupHtml, /Szczegóły/, 'map popup keeps the full location detail action');
+context.filterTravelMapRouteDay('2025-07-21');
+assert.equal(mapCounter.textContent, 'brak GPS', 'a day containing only missing GPS stops explains the empty map');
+assert.match(mapRouteBanner.innerHTML, /Xi'an bez GPS/, 'day filter keeps its missing GPS worklist');
+let routeLocationOpened = null;
+context.openLocation = id => { routeLocationOpened = id; };
+context.openTravelRouteLocationDetails(999);
+assert.equal(routeLocationOpened, 999, 'missing GPS place action opens the selected location');
+assert.equal(context.hasTravelMapReturnContext(), true, 'opening a missing place remembers the travel map context');
+let routeTabShown = null;
+const originalRouteShowTab = context.showTab;
+context.showTab = tab => { routeTabShown = tab; };
+context.returnToTravelMap();
+context.showTab = originalRouteShowTab;
+assert.equal(routeTabShown, 'map', 'location return action navigates back to the map');
+assert.equal(vm.runInContext('pendingMapRouteDay', context), '2025-07-21', 'map return preserves the selected travel day');
+let routeGpsEdit = null;
+context.openEditLocationModal = (id, options) => { routeGpsEdit = { id, options }; };
+context.editTravelRouteLocationGps(999);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(routeGpsEdit)),
+  { id: 999, options: { focus: 'gps', returnToTravelMap: true } },
+  'missing GPS quick action opens the location editor focused on coordinates',
+);
+context.discardTravelMapReturnContext();
+assert.equal(vm.runInContext('pendingMapRoute', context), null, 'cancelling travel-map work can discard the queued route return');
+vm.runInContext('activeTravelMapDay = "all"', context);
 let malformedRouteToast = null;
 context.toast = (message, type) => { malformedRouteToast = { message, type }; };
 const originalConsoleError = context.console.error;
@@ -816,6 +848,9 @@ assert.match(personsListHtml, /modal-row-button neutral/, 'persons modal keeps e
 assert.match(personsListHtml, /person-row-info/, 'persons modal uses shared picker row content');
 
 vm.runInContext(fs.readFileSync(locationsPath, 'utf8'), context, { filename: locationsPath });
+assert.match(locationsSource, /overlay\._returnToTravelMap[\s\S]*hasTravelMapReturnContext\(\)/, 'location editor remembers when it was opened from a travel map');
+assert.match(locationsSource, /if \(returnToMap\) returnToTravelMap\(\)/, 'successful location edits return to the remembered travel map');
+assert.match(locationsSource, /function closeEditLocationModal\(\)[\s\S]*discardTravelMapReturnContext\(\)/, 'cancelling a GPS edit directly on the map discards stale return state');
 let locationToolsOverlay = null;
 const previousAppendChild = context.document.body.appendChild;
 context.document.body.appendChild = el => { locationToolsOverlay = el; };
@@ -841,6 +876,83 @@ assert.equal(context.worklistCountLabel(1), 'pozycja', 'worklist count label han
 assert.equal(context.worklistCountLabel(3), 'pozycje', 'worklist count label handles plural rows');
 assert.equal(context.polishPlural(12, 'wizyta', 'wizyty', 'wizyt'), 'wizyt', 'polishPlural handles teen endings');
 assert.equal(context.polishPlural(22, 'wizyta', 'wizyty', 'wizyt'), 'wizyty', 'polishPlural handles later few endings');
+const gpsEditElements = {
+  'el-save-btn': elementStub(),
+  'edit-loc-overlay': elementStub(),
+  'el-name': { value: 'Xi’an bez GPS' },
+  'el-country': { value: '1' },
+  'el-type': { value: '2' },
+  'el-parent': { value: '' },
+  'el-address': { value: 'Stare miasto' },
+  'el-notes': { value: 'Etap trasy' },
+  'el-lat': { value: '34.34157' },
+  'el-lng': { value: '108.93977' },
+};
+gpsEditElements['edit-loc-overlay']._returnToTravelMap = true;
+context.document.getElementById = id => gpsEditElements[id] || null;
+const originalBodyContains = context.document.body.contains;
+context.document.body.contains = () => false;
+const gpsEditCalls = [];
+const originalGpsApiPut = context.apiPut;
+context.apiPut = async (path, body) => {
+  gpsEditCalls.push({ path, body });
+  return { ok: true };
+};
+context.closeModal = () => {};
+context.toast = () => {};
+let returnedToTravelMap = 0;
+let openedSavedLocation = 0;
+const originalReturnToTravelMap = context.returnToTravelMap;
+const originalOpenSavedLocation = context.openLocation;
+context.returnToTravelMap = () => { returnedToTravelMap += 1; };
+context.openLocation = () => { openedSavedLocation += 1; };
+await context.saveEditLocation(999);
+context.returnToTravelMap = originalReturnToTravelMap;
+context.openLocation = originalOpenSavedLocation;
+context.apiPut = originalGpsApiPut;
+context.document.body.contains = originalBodyContains;
+assert.deepEqual(
+  JSON.parse(JSON.stringify(gpsEditCalls)),
+  [{
+    path: '/api/locations/999',
+    body: {
+      name: 'Xi’an bez GPS',
+      country_id: 1,
+      location_type_id: 2,
+      parent_location_id: null,
+      address: 'Stare miasto',
+      notes: 'Etap trasy',
+      latitude: 34.34157,
+      longitude: 108.93977,
+    },
+  }],
+  'GPS quick edit saves coordinates through the normal location endpoint',
+);
+assert.equal(returnedToTravelMap, 1, 'successful GPS quick edit returns to the travel map');
+assert.equal(openedSavedLocation, 0, 'travel-map GPS edit does not divert to the location detail after saving');
+
+const routeLocationView = elementStub();
+context.document.getElementById = id => (id === 'view' ? routeLocationView : null);
+const originalRouteLocationApi = context.api;
+context.api = async path => {
+  assert.equal(path, '/api/locations/999', 'travel-map location detail fetches the selected missing place');
+  return {
+    id: 999,
+    name: 'Xi’an bez GPS',
+    location_type: 'miasto',
+    country_name: 'Chiny',
+    visits: [],
+    child_visits: [],
+    children: [],
+    quality: { complete: false, score: 60, missing_count: 1, missing_keys: ['missing_gps'], missing: ['Bez GPS'] },
+  };
+};
+vm.runInContext('travelMapReturnContext = { route: { id: 7, name: "Cesarskie Chiny", stops: [] }, day: "all" }; currentTab = "locationDetail"', context);
+await context.openLocation(999, { fromRouter: true });
+assert.match(routeLocationView.innerHTML, /returnToTravelMap\(\)/, 'location detail entered from a route offers a direct return to that route');
+assert.match(routeLocationView.innerHTML, /Trasa na mapie/, 'location detail labels the route-aware back action clearly');
+context.api = originalRouteLocationApi;
+context.clearTravelMapReturnContext();
 const progressiveLocationList = elementStub();
 let progressiveLocationAppends = 0;
 progressiveLocationList.insertAdjacentHTML = (_position, html) => {

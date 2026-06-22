@@ -956,6 +956,45 @@ body.auth-page {
   border-color: #2563eb; background: #2563eb; color: #fff;
 }
 .map-route-day.active span { color: #dbeafe; }
+.map-route-missing {
+  margin-top: 8px; border-top: 1px solid rgba(147, 197, 253, 0.75);
+}
+.map-route-missing summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding-top: 7px; color: #92400e; cursor: pointer; list-style: none;
+  font-size: 11px; font-weight: 800;
+}
+.map-route-missing summary::-webkit-details-marker { display: none; }
+.map-route-missing summary strong {
+  min-width: 22px; padding: 2px 7px; border-radius: 999px;
+  background: #fef3c7; color: #92400e; text-align: center;
+}
+.map-route-missing-list {
+  max-height: 142px; overflow-y: auto;
+  margin-top: 6px; padding-right: 2px;
+  overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+.map-route-missing-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: 8px; padding: 5px 0;
+  border-top: 1px solid rgba(191, 219, 254, 0.65);
+}
+.map-route-missing-place {
+  min-width: 0; padding: 0; border: 0; background: transparent;
+  color: #1e3a8a; text-align: left; font: inherit; cursor: pointer;
+}
+.map-route-missing-place span {
+  display: block; color: #6b7fa3; font-size: 9px; font-weight: 700;
+}
+.map-route-missing-place strong {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px;
+}
+.map-route-missing-action {
+  min-height: 28px; padding: 5px 9px; border: 1px solid #f59e0b;
+  border-radius: 14px; background: #fffbeb; color: #92400e;
+  font: inherit; font-size: 10px; font-weight: 800; cursor: pointer;
+}
 @media (max-width: 600px) {
   #map-toolbar { flex-direction: column; align-items: flex-start; }
   .map-toolbar-right {
@@ -968,6 +1007,7 @@ body.auth-page {
   .map-route-banner-top { align-items: flex-start; }
   .map-route-banner-main div > span { white-space: normal; }
   .map-route-close { padding-left: 8px; padding-right: 8px; }
+  .map-route-missing-list { max-height: 116px; }
 }
 
 /* ── REDESIGN ─────────────────────────────────────────────── */

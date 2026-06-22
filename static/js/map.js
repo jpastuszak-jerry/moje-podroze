@@ -10,6 +10,8 @@ let pendingMapRoute = null;
 let mapRouteLayer = null;
 let activeTravelMapRoute = null;
 let activeTravelMapDay = 'all';
+let pendingMapRouteDay = 'all';
+let travelMapReturnContext = null;
 
 const MAP_COLLATOR = typeof Intl !== 'undefined' && Intl.Collator
   ? new Intl.Collator('pl', { sensitivity: 'base' })
@@ -137,8 +139,11 @@ async function loadMapLocations(loadGeneration = mapLoadGeneration) {
     }
     if (pendingMapRoute) {
       const route = pendingMapRoute;
+      const routeDay = pendingMapRouteDay || 'all';
       pendingMapRoute = null;
-      renderTravelMapRoute(route);
+      pendingMapRouteDay = 'all';
+      travelMapReturnContext = null;
+      renderTravelMapRoute(route, routeDay);
     } else if (pendingMapLocationIds) {
       const ids = pendingMapLocationIds;
       pendingMapLocationIds = null;
@@ -167,12 +172,13 @@ function showTravelOnMap(locationIds) {
   showTab('map');
 }
 
-function showTravelRouteOnMap(route) {
+function showTravelRouteOnMap(route, selectedDayKey = 'all') {
   try {
     if (!route || typeof route !== 'object' || !Array.isArray(route.stops)) {
       throw new TypeError('Invalid travel route');
     }
     pendingMapRoute = route;
+    pendingMapRouteDay = selectedDayKey || 'all';
     pendingMapLocationIds = null;
     showTab('map');
   } catch (err) {
@@ -318,6 +324,73 @@ function renderTravelRouteDayFilters(route, selectedDayKey) {
   </div>`;
 }
 
+function rememberTravelMapReturnContext() {
+  if (!activeTravelMapRoute) return false;
+  travelMapReturnContext = {
+    route: activeTravelMapRoute,
+    day: activeTravelMapDay || 'all',
+  };
+  pendingMapRoute = travelMapReturnContext.route;
+  pendingMapRouteDay = travelMapReturnContext.day;
+  return true;
+}
+
+function hasTravelMapReturnContext() {
+  return Boolean(travelMapReturnContext?.route);
+}
+
+function clearTravelMapReturnContext() {
+  travelMapReturnContext = null;
+}
+
+function discardTravelMapReturnContext() {
+  travelMapReturnContext = null;
+  pendingMapRoute = null;
+  pendingMapRouteDay = 'all';
+}
+
+function returnToTravelMap() {
+  if (!travelMapReturnContext?.route) {
+    showTab('map');
+    return;
+  }
+  pendingMapRoute = travelMapReturnContext.route;
+  pendingMapRouteDay = travelMapReturnContext.day || 'all';
+  travelMapReturnContext = null;
+  showTab('map');
+}
+
+function openTravelRouteLocationDetails(locationId) {
+  rememberTravelMapReturnContext();
+  openLocation(locationId);
+}
+
+function editTravelRouteLocationGps(locationId) {
+  if (!rememberTravelMapReturnContext()) return;
+  openEditLocationModal(locationId, { focus: 'gps', returnToTravelMap: true });
+}
+
+function renderTravelRouteMissingGps(missingStops) {
+  if (!missingStops.length) return '';
+  return `<details class="map-route-missing" open>
+    <summary>
+      <span>⚠️ Pominięte miejsca bez GPS</span>
+      <strong>${missingStops.length}</strong>
+    </summary>
+    <div class="map-route-missing-list">
+      ${missingStops.map(stop => `<div class="map-route-missing-row">
+        <button type="button" class="map-route-missing-place" onclick="openTravelRouteLocationDetails(${stop.location_id})">
+          <span>Etap ${stop.order}</span>
+          <strong>${escapeHtml(stop.name || `Miejsce ${stop.location_id}`)}</strong>
+        </button>
+        <button type="button" class="map-route-missing-action" onclick="editTravelRouteLocationGps(${stop.location_id})">
+          Uzupełnij GPS
+        </button>
+      </div>`).join('')}
+    </div>
+  </details>`;
+}
+
 function travelRouteDateLabel(route) {
   if (!route?.start_date) return '';
   if (route.end_date && route.end_date !== route.start_date) {
@@ -341,6 +414,7 @@ function renderTravelMapRoute(route, selectedDayKey = 'all') {
     ? orderedStops
     : orderedStops.filter(stop => travelRouteDayKey(stop) === selectedDayKey);
   const stops = selectedStops.filter(stop => stop.location);
+  const missingStops = selectedStops.filter(stop => !stop.location);
   const coordinates = stops.map(stop => [
     Number(stop.location.latitude),
     Number(stop.location.longitude),
@@ -384,7 +458,8 @@ function renderTravelMapRoute(route, selectedDayKey = 'all') {
       </div>
       <button type="button" class="map-route-close" onclick="showAllMapLocations()">Wszystkie miejsca</button>
     </div>
-    ${renderTravelRouteDayFilters(route, selectedDayKey)}`;
+    ${renderTravelRouteDayFilters(route, selectedDayKey)}
+    ${renderTravelRouteMissingGps(missingStops)}`;
   }
   document.getElementById('map-counter').textContent =
     `${stops.length}/${totalStops} ${polishPlural(totalStops, 'etap', 'etapy', 'etapów')}`;
@@ -408,6 +483,8 @@ function filterTravelMapRouteDay(dayKey) {
 function showAllMapLocations() {
   activeTravelMapRoute = null;
   activeTravelMapDay = 'all';
+  pendingMapRouteDay = 'all';
+  clearTravelMapReturnContext();
   clearTravelMapRoute();
   renderCachedMapMarkers(allMapMarkers);
   if (allMapLocations.length > 0) fitMapToMarkers();
