@@ -12,6 +12,22 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `0ef5f87 Add location
+  inspirations`: dodano pierwszy przyrost `Inspiracji` dla miejsc. Backend ma
+  wersjonowana migracje `location_inspirations`, `location_collections` i
+  `location_collection_items`, walidacje Pydantic, API listy marzen oraz
+  kolekcji, a backup JSON obejmuje nowe tabele. Frontend ma trase
+  `#/locations/wishlist`, wejscie `Miejsca -> Narzedzia -> Inspiracje`, widok
+  listy marzen z filtrami statusu/sortowania, szybka zmiana statusu,
+  dodawanie nowego lub istniejacego miejsca do marzen oraz panel kolekcji z
+  przypinaniem miejsc. Lokalnie przeszly: kompilacja Pythona, Ruff,
+  `python -m unittest discover -s tests` (76 testow, 10 skipow),
+  `git diff --check` i `tools/smoke_js.mjs` przez Node REPL MCP. Zwykly
+  `node` nadal nie jest dostepny w PATH. GitHub Actions byly zielone, produkcja
+  `/healthz` potwierdzila build `0ef5f87`, `python tools/smoke_prod.py`
+  przeszedl 12/12 OK, a pobrany produkcyjny `locations.js` zawieral nowe API
+  i wejscie `Inspiracje`. Browser control nie byl wystawiony w tej sesji, wiec
+  prywatny flow wymaga recznego smoke po zalogowaniu.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `9143483 Show missing
   GPS stops on travel maps`: panel numerowanej mapy podrozy pokazuje teraz
   konkretna, zwijana liste etapow pominietych z powodu braku GPS. Nazwa
@@ -522,32 +538,36 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Recznie sprawdzic na produkcji dluzsza podroz w `Trasa na mapie`: przewijanie
+1. Recznie sprawdzic na produkcji `Miejsca -> Narzedzia -> Inspiracje` po
+   zalogowaniu: dodanie nowego miejsca do listy marzen, przypiecie istniejacego
+   miejsca, zmiana statusu, utworzenie kolekcji, dodanie miejsca do kolekcji i
+   otwarcie profilu miejsca z karty inspiracji.
+2. Recznie sprawdzic na produkcji dluzsza podroz w `Trasa na mapie`: przewijanie
    filtrow dni na telefonie, wybranie kilku dni z rzedu, zachowanie globalnych
    numerow etapow i powrot przez `Wszystkie`.
-2. Recznie porownac na produkcji pierwsze i kolejne wejscie w `Miejsca`,
+3. Recznie porownac na produkcji pierwsze i kolejne wejscie w `Miejsca`,
    `Miejsca do uzupelnienia` i `Mape`; kolejne optymalizacje robic tylko,
    jesli po pakietach `d771c2a` i `6c9dad1` nadal widac konkretne opoznienie.
-3. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
+4. Jakosc danych miejsc: kontynuowac konkretne `address`/`notes` malymi
    partiami i recznie przejrzec 142 pozostale miejsca bez GPS z raportu
    `db_geocode_remaining_20260603_135807.csv`.
-4. Prawdziwe browser E2E po naprawie Node/Playwright:
+5. Prawdziwe browser E2E po naprawie Node/Playwright:
    login, interakcje na liscie podrozy, undo po miekkim usunieciu, odtwarzanie
    scrolla, pull-to-refresh, szczegoly podrozy, Statystyki, Rocznik, Mapa.
-5. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
+6. Male domkniecie Rocznika 2.0 po obejrzeniu produkcji: ewentualny tryb
    wydruku/eksportu jednego roku albo deep link do konkretnego roku, jesli widok
    ma stac sie "pamiatkowy", a nie tylko analityczny.
-6. Role admin/viewer i cache po rolach, jesli aplikacja ma byc pokazywana
+7. Role admin/viewer i cache po rolach, jesli aplikacja ma byc pokazywana
    komus poza adminem.
-7. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
+8. Dalsze male domkniecie profilu miejsca: po recznym obejrzeniu produkcji
    dopracowac teksty/spacing albo dodac drobne deep linki z miejsc podrzednych,
    jesli bedzie to faktycznie przydatne w pracy.
-8. Mala analityka kosztow: miesiace/lata z najwyzszymi kosztami albo wybrana
+9. Mala analityka kosztow: miesiace/lata z najwyzszymi kosztami albo wybrana
    waluta bazowa, jesli kosztowy obraz podrozy ma byc wazniejszy.
-9. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
+10. Rozszerzyc realny PostgreSQL fixture o kolejne rzadziej uzywane flow, np.
    slowniki, osoby albo przypadki FK typu hard delete miejsca uzywanego w
    `travel_locations`, gdy kolejne prace dotkna tych endpointow.
-10. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
+11. Alternatywnie: wrocic do importow Revolut/opisow, jesli uzytkownik chce
    domknac lokalne pliki importowe.
 
 ## Important Product Decisions
