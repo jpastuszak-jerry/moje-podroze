@@ -141,6 +141,46 @@ class LocationUpdate(LocationBase):
     pass
 
 
+class LocationInspirationInput(BaseModel):
+    status: Literal['want', 'planning', 'paused'] = 'want'
+    priority: int = Field(default=2, ge=1, le=3)
+    season: Optional[str] = None
+    notes: Optional[str] = None
+
+    @field_validator('season', 'notes', mode='before')
+    @classmethod
+    def _strip_or_none(cls, v):
+        return _blank_to_none(v)
+
+
+class LocationCollectionInput(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def _name_required(cls, v):
+        s = (str(v).strip() if v is not None else '')
+        if not s:
+            raise ValueError('Podaj nazwe kolekcji')
+        return s
+
+    @field_validator('description', mode='before')
+    @classmethod
+    def _strip_or_none(cls, v):
+        return _blank_to_none(v)
+
+
+class LocationCollectionItemInput(BaseModel):
+    location_id: int
+    note: Optional[str] = None
+
+    @field_validator('note', mode='before')
+    @classmethod
+    def _strip_or_none(cls, v):
+        return _blank_to_none(v)
+
+
 class _TravelLocationFields(BaseModel):
     arrival_date: Optional[date] = None
     departure_date: Optional[date] = None

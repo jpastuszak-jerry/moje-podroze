@@ -551,7 +551,17 @@ function askVisitDateRangeAction({ travelStart, travelEnd } = {}) {
 }
 
 /* ── Location form (shared between locations.js + wizard.js) ─ */
-function locationFormHtml({ prefix, countries, locTypes, parentChangeHandler, includeNotes = true, saveBtnId, saveBtnOnclick, saveBtnLabel }) {
+function locationFormHtml({
+  prefix,
+  countries,
+  locTypes,
+  parentChangeHandler,
+  includeNotes = true,
+  extraFieldsHtml = '',
+  saveBtnId,
+  saveBtnOnclick,
+  saveBtnLabel,
+}) {
   return `
     <div class="form-label">Nazwa miejsca *</div>
     <input class="form-input" id="${prefix}-name" placeholder="np. Catania">
@@ -578,6 +588,7 @@ function locationFormHtml({ prefix, countries, locTypes, parentChangeHandler, in
     <div class="form-results" id="${prefix}-geo-results"></div>
     ${includeNotes ? `<div class="form-label">Notatki (opcjonalnie)</div>
       <textarea class="form-input form-textarea" id="${prefix}-notes" placeholder="Dodatkowe informacje..."></textarea>` : ''}
+    ${extraFieldsHtml || ''}
     <button class="form-primary-btn" id="${saveBtnId}" onclick="${escapeAttr(saveBtnOnclick)}">
       ${escapeHtml(saveBtnLabel)}
     </button>
@@ -844,6 +855,9 @@ function routeFromHash(hash) {
   if (parts[0] === 'locations' && parts[1] === 'todo') {
     return { name: 'locationTodo', params: query };
   }
+  if (parts[0] === 'locations' && (parts[1] === 'wishlist' || parts[1] === 'inspirations')) {
+    return { name: 'locationWishlist', params: query };
+  }
   if (parts[0] === 'locations' && parts[1] && /^\d+$/.test(parts[1])) {
     return { name: 'locationDetail', params: { id: parseInt(parts[1], 10) } };
   }
@@ -866,6 +880,13 @@ function routePath(name, params = {}) {
   if ((name === 'location' || name === 'locationDetail') && id) return `/locations/${id}`;
   if (name === 'todo') return '/stats/todo';
   if (name === 'locationTodo') return '/locations/todo';
+  if (name === 'locationWishlist') {
+    const query = [];
+    if (params.tab && params.tab !== 'wishlist') query.push(`tab=${encodeURIComponent(params.tab)}`);
+    if (params.status && params.status !== 'all') query.push(`status=${encodeURIComponent(params.status)}`);
+    if (params.sort && params.sort !== 'priority') query.push(`sort=${encodeURIComponent(params.sort)}`);
+    return '/locations/wishlist' + (query.length ? '?' + query.join('&') : '');
+  }
   if (name === 'stats') {
     const query = [];
     if (params.section && params.section !== 'overview') {
@@ -881,7 +902,7 @@ function routePath(name, params = {}) {
 
 function primaryTabForRoute(name) {
   if (name === 'travelDetail') return 'travels';
-  if (name === 'locationDetail' || name === 'locationTodo') return 'locations';
+  if (name === 'locationDetail' || name === 'locationTodo' || name === 'locationWishlist') return 'locations';
   if (name === 'todo') return 'stats';
   if (MAIN_ROUTES.includes(name)) return name;
   return 'travels';
@@ -1012,6 +1033,7 @@ function renderTab(tab, params = {}) {
   else if (tab === 'stats') pending = renderStats(params);
   else if (tab === 'todo') pending = renderTodo();
   else if (tab === 'locationTodo') pending = renderLocationTodo(params);
+  else if (tab === 'locationWishlist') pending = renderLocationInspirations(params);
   if (view) {
     resetViewScroll(view);
     view.classList.remove('view-fade');

@@ -156,6 +156,10 @@ class AuthGateKeyFlowSmokeTests(unittest.TestCase):
             ('delete', '/api/travels/7', None),
             ('get', '/api/locations', None),
             ('post', '/api/locations', {}),
+            ('get', '/api/location-inspirations', None),
+            ('post', '/api/location-inspirations/10', {}),
+            ('get', '/api/location-collections', None),
+            ('post', '/api/location-collections', {}),
             ('get', '/api/map-locations', None),
             ('get', '/api/stats', None),
             ('get', '/api/stats/overview', None),
@@ -402,6 +406,144 @@ class KeyFlowSmokeTests(unittest.TestCase):
         self.assertIn('UPDATE locations SET deleted_at = NULL', executed_sql)
         self.assertIn('DELETE FROM travel_locations', executed_sql)
         self.assertIn('DELETE FROM travel_participants', executed_sql)
+
+    def test_admin_can_manage_location_inspirations_and_collections(self):
+        executed = []
+
+        def fake_inspiration_query(sql, params=(), one=False):
+            normalized = _normalize_sql(sql)
+            if one and 'SELECT id FROM locations WHERE id=%s AND deleted_at IS NULL' in normalized:
+                return {'id': params[0]} if params in ((10,),) else None
+            if one and 'SELECT id FROM location_collections WHERE id=%s' in normalized:
+                return {'id': params[0]} if params in ((22,),) else None
+            if one and 'FROM location_collections WHERE id=%s' in normalized:
+                return {
+                    'id': 22,
+                    'name': 'Wyspy',
+                    'description': 'Miejsca nad woda',
+                    'created_at': datetime(2025, 1, 1, 12, 0),
+                    'updated_at': datetime(2025, 1, 1, 12, 0),
+                }
+            if not one and 'FROM location_inspirations li' in normalized:
+                return [{
+                    'location_id': 10,
+                    'status': 'want',
+                    'priority': 1,
+                    'season': 'wiosna',
+                    'inspiration_notes': 'Zobaczyc port',
+                    'created_at': datetime(2025, 1, 1, 12, 0),
+                    'updated_at': datetime(2025, 1, 2, 12, 0),
+                    'id': 10,
+                    'name': 'Helsinki',
+                    'country_name': 'Finlandia',
+                    'location_type': 'miasto',
+                    'address': 'Market Square',
+                    'location_notes': 'Stolica Finlandii',
+                    'latitude': 60.17,
+                    'longitude': 24.94,
+                    'parent_location_id': None,
+                    'parent_name': None,
+                    'visit_count': 0,
+                    'collection_count': 1,
+                    'collection_names': 'Wyspy',
+                }]
+            if not one and 'FROM location_collections lc' in normalized:
+                return [{
+                    'id': 22,
+                    'name': 'Wyspy',
+                    'description': 'Miejsca nad woda',
+                    'created_at': datetime(2025, 1, 1, 12, 0),
+                    'updated_at': datetime(2025, 1, 1, 12, 0),
+                    'item_count': 1,
+                    'visited_count': 0,
+                    'inspiration_count': 1,
+                }]
+            if not one and 'FROM location_collection_items lci' in normalized:
+                return [{
+                    'location_id': 10,
+                    'note': None,
+                    'sort_order': 1,
+                    'id': 10,
+                    'name': 'Helsinki',
+                    'country_name': 'Finlandia',
+                    'location_type': 'miasto',
+                    'address': 'Market Square',
+                    'latitude': 60.17,
+                    'longitude': 24.94,
+                    'parent_location_id': None,
+                    'parent_name': None,
+                    'visit_count': 0,
+                    'inspiration_status': 'want',
+                    'inspiration_priority': 1,
+                }]
+            raise AssertionError(f'Unexpected inspiration query: {normalized}')
+
+        def fake_inspiration_execute(sql, params=()):
+            normalized = _normalize_sql(sql)
+            executed.append(('execute', normalized, params))
+            if normalized.startswith('INSERT INTO location_inspirations '):
+                return params[0]
+            if normalized.startswith('INSERT INTO location_collections '):
+                return 22
+            if normalized.startswith('INSERT INTO location_collection_items '):
+                return params[1]
+            raise AssertionError(f'Unexpected inspiration execute: {normalized}')
+
+        def fake_inspiration_rowcount(sql, params=()):
+            normalized = _normalize_sql(sql)
+            executed.append(('rowcount', normalized, params))
+            if normalized.startswith('DELETE FROM location_inspirations'):
+                return 1
+            if normalized.startswith('DELETE FROM location_collection_items'):
+                return 1
+            if normalized.startswith('DELETE FROM location_collections'):
+                return 1
+            raise AssertionError(f'Unexpected inspiration rowcount: {normalized}')
+
+        with (
+            patch.object(locations, 'query', side_effect=fake_inspiration_query),
+            patch.object(locations, 'execute', side_effect=fake_inspiration_execute),
+            patch.object(locations, 'execute_rowcount', side_effect=fake_inspiration_rowcount),
+        ):
+            upsert = self.client.post('/api/location-inspirations/10', json={
+                'status': 'want',
+                'priority': 1,
+                'season': 'wiosna',
+                'notes': 'Zobaczyc port',
+            })
+            inspirations = self.client.get('/api/location-inspirations')
+            collection = self.client.post('/api/location-collections', json={
+                'name': 'Wyspy',
+                'description': 'Miejsca nad woda',
+            })
+            collections = self.client.get('/api/location-collections')
+            detail = self.client.get('/api/location-collections/22')
+            add_item = self.client.post('/api/location-collections/22/locations', json={'location_id': 10})
+            remove_item = self.client.delete('/api/location-collections/22/locations/10')
+            delete_collection = self.client.delete('/api/location-collections/22')
+            delete_inspiration = self.client.delete('/api/location-inspirations/10')
+
+        self.assertEqual(upsert.status_code, 200)
+        self.assertEqual(upsert.get_json(), {'ok': True, 'location_id': 10})
+        self.assertEqual(inspirations.status_code, 200)
+        self.assertEqual(inspirations.get_json()['items'][0]['name'], 'Helsinki')
+        self.assertEqual(inspirations.get_json()['counts']['want'], 1)
+        self.assertEqual(collection.status_code, 201)
+        self.assertEqual(collection.get_json(), {'id': 22, 'name': 'Wyspy'})
+        self.assertEqual(collections.status_code, 200)
+        self.assertEqual(collections.get_json()['collections'][0]['item_count'], 1)
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.get_json()['items'][0]['name'], 'Helsinki')
+        self.assertEqual(add_item.status_code, 201)
+        self.assertEqual(remove_item.status_code, 200)
+        self.assertEqual(delete_collection.status_code, 200)
+        self.assertEqual(delete_inspiration.status_code, 200)
+
+        executed_sql = '\n'.join(sql for _, sql, _ in executed)
+        self.assertIn('INSERT INTO location_inspirations', executed_sql)
+        self.assertIn('INSERT INTO location_collections', executed_sql)
+        self.assertIn('INSERT INTO location_collection_items', executed_sql)
+        self.assertIn('DELETE FROM location_inspirations', executed_sql)
 
 
 if __name__ == '__main__':

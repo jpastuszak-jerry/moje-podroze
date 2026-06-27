@@ -276,6 +276,32 @@ body.auth-page {
 .worklist-card-title { flex: 1; min-width: 0; }
 .worklist-icon { background: var(--blue-light); color: var(--blue); }
 .worklist-icon.warn { background: var(--orange-light); color: var(--orange); }
+.inspiration-icon { background: var(--purple-light); color: var(--purple); }
+.collection-icon { background: var(--green-light); color: var(--green); font-weight: 850; }
+.inspiration-note {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.inspiration-actions { margin-top: 0; }
+.inspiration-mini-hero { margin-top: 8px; }
+.collection-description {
+  margin-bottom: 12px;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.collection-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.danger-text { color: var(--red); }
 .loc-quality-bar { padding: 8px 0 0; }
 .action-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .action-button {

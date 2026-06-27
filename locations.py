@@ -15,7 +15,13 @@ from core import (
     query,
     validation_error_response,
 )
-from schemas import LocationCreate, LocationUpdate
+from schemas import (
+    LocationCollectionInput,
+    LocationCollectionItemInput,
+    LocationCreate,
+    LocationInspirationInput,
+    LocationUpdate,
+)
 
 
 bp = Blueprint('locations', __name__)
@@ -138,6 +144,25 @@ def _location_quality(loc):
     }
 
 
+INSPIRATION_STATUS_LABELS = {
+    'want': 'Chce odwiedzic',
+    'planning': 'W planie',
+    'paused': 'Odlozone',
+}
+
+INSPIRATION_PRIORITY_LABELS = {
+    1: 'Wysoki',
+    2: 'Sredni',
+    3: 'Niski',
+}
+
+
+def _stringify_fields(row, fields):
+    for field in fields:
+        if row.get(field):
+            row[field] = str(row[field])
+
+
 @bp.route('/api/locations')
 def get_locations():
     q = request.args.get('q', '').strip()
@@ -237,6 +262,305 @@ def _build_locations_todo_payload():
         'labels': {key: label for key, label, _ in checks},
         'needs_attention': needs_attention,
     }
+
+
+@bp.route('/api/location-inspirations')
+def get_location_inspirations():
+    return etag_json(_cached_location_payload(
+        'location_inspirations',
+        _build_location_inspirations_payload,
+    ))
+
+
+def _build_location_inspirations_payload():
+    rows = [dict(r) for r in query(LOCATION_VISIT_COUNT_CTE + """,
+        location_collection_names AS (
+            SELECT lci.location_id,
+                   COUNT(*) AS collection_count,
+                   STRING_AGG(lc.name, ', ' ORDER BY lc.name) AS collection_names
+            FROM location_collection_items lci
+            JOIN location_collections lc ON lc.id = lci.collection_id
+            GROUP BY lci.location_id
+        )
+        SELECT li.location_id,
+               li.status,
+               li.priority,
+               li.season,
+               li.notes AS inspiration_notes,
+               li.created_at,
+               li.updated_at,
+               l.id,
+               l.name,
+               c.name AS country_name,
+               lt.name AS location_type,
+               l.address,
+               l.notes AS location_notes,
+               l.latitude,
+               l.longitude,
+               l.parent_location_id,
+               pl.name AS parent_name,
+               COALESCE(vc.visit_count, 0) AS visit_count,
+               COALESCE(lcn.collection_count, 0) AS collection_count,
+               lcn.collection_names
+        FROM location_inspirations li
+        JOIN locations l ON l.id = li.location_id
+        JOIN countries c ON c.id = l.country_id
+        JOIN location_types lt ON lt.id = l.location_type_id
+        LEFT JOIN locations pl ON pl.id = l.parent_location_id
+        LEFT JOIN location_visit_counts vc ON vc.location_id = l.id
+        LEFT JOIN location_collection_names lcn ON lcn.location_id = l.id
+        WHERE l.deleted_at IS NULL
+        ORDER BY
+            CASE li.status
+                WHEN 'planning' THEN 1
+                WHEN 'want' THEN 2
+                ELSE 3
+            END,
+            li.priority,
+            c.name,
+            l.name
+    """)]
+
+    counts = {key: 0 for key in INSPIRATION_STATUS_LABELS}
+    for row in rows:
+        row['priority'] = int(row.get('priority') or 2)
+        row['visit_count'] = int(row.get('visit_count') or 0)
+        row['collection_count'] = int(row.get('collection_count') or 0)
+        _stringify_fields(row, ('created_at', 'updated_at'))
+        if row.get('status') in counts:
+            counts[row['status']] += 1
+
+    return {
+        'items': rows,
+        'counts': counts,
+        'labels': INSPIRATION_STATUS_LABELS,
+        'priority_labels': {str(key): value for key, value in INSPIRATION_PRIORITY_LABELS.items()},
+    }
+
+
+@bp.route('/api/location-inspirations/<int:lid>', methods=['POST', 'PUT'])
+def upsert_location_inspiration(lid):
+    try:
+        payload = LocationInspirationInput.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
+
+    existing = query(
+        "SELECT id FROM locations WHERE id=%s AND deleted_at IS NULL",
+        (lid,),
+        one=True,
+    )
+    if not existing:
+        return jsonify({'error': 'Not found'}), 404
+
+    try:
+        execute("""
+            INSERT INTO location_inspirations
+                (location_id, status, priority, season, notes, updated_at)
+            VALUES (%s, %s, %s, %s, %s, NOW())
+            ON CONFLICT (location_id) DO UPDATE SET
+                status = EXCLUDED.status,
+                priority = EXCLUDED.priority,
+                season = EXCLUDED.season,
+                notes = EXCLUDED.notes,
+                updated_at = NOW()
+            RETURNING location_id
+        """, (
+            lid,
+            payload.status,
+            payload.priority,
+            payload.season,
+            payload.notes,
+        ))
+        return jsonify({'ok': True, 'location_id': lid})
+    except Exception as e:
+        return db_error_response(e)
+
+
+@bp.route('/api/location-inspirations/<int:lid>', methods=['DELETE'])
+def delete_location_inspiration(lid):
+    rowcount = execute_rowcount(
+        "DELETE FROM location_inspirations WHERE location_id=%s",
+        (lid,),
+    )
+    if rowcount == 0:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify({'ok': True})
+
+
+@bp.route('/api/location-collections')
+def get_location_collections():
+    return etag_json(_cached_location_payload(
+        'location_collections',
+        _build_location_collections_payload,
+    ))
+
+
+def _build_location_collections_payload():
+    rows = [dict(r) for r in query(LOCATION_VISIT_COUNT_CTE + """,
+        collection_stats AS (
+            SELECT lci.collection_id,
+                   COUNT(*) AS item_count,
+                   COUNT(*) FILTER (WHERE COALESCE(vc.visit_count, 0) > 0) AS visited_count,
+                   COUNT(*) FILTER (WHERE li.location_id IS NOT NULL) AS inspiration_count
+            FROM location_collection_items lci
+            JOIN locations l ON l.id = lci.location_id AND l.deleted_at IS NULL
+            LEFT JOIN location_visit_counts vc ON vc.location_id = l.id
+            LEFT JOIN location_inspirations li ON li.location_id = l.id
+            GROUP BY lci.collection_id
+        )
+        SELECT lc.id,
+               lc.name,
+               lc.description,
+               lc.created_at,
+               lc.updated_at,
+               COALESCE(cs.item_count, 0) AS item_count,
+               COALESCE(cs.visited_count, 0) AS visited_count,
+               COALESCE(cs.inspiration_count, 0) AS inspiration_count
+        FROM location_collections lc
+        LEFT JOIN collection_stats cs ON cs.collection_id = lc.id
+        ORDER BY lc.name
+    """)]
+    for row in rows:
+        for key in ('item_count', 'visited_count', 'inspiration_count'):
+            row[key] = int(row.get(key) or 0)
+        _stringify_fields(row, ('created_at', 'updated_at'))
+    return {'collections': rows}
+
+
+@bp.route('/api/location-collections', methods=['POST'])
+def create_location_collection():
+    try:
+        payload = LocationCollectionInput.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
+    try:
+        new_id = execute("""
+            INSERT INTO location_collections (name, description, updated_at)
+            VALUES (%s, %s, NOW())
+            RETURNING id
+        """, (payload.name, payload.description))
+        return jsonify({'id': new_id, 'name': payload.name}), 201
+    except Exception as e:
+        return db_error_response(e)
+
+
+@bp.route('/api/location-collections/<int:cid>', methods=['PUT'])
+def update_location_collection(cid):
+    try:
+        payload = LocationCollectionInput.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
+    try:
+        rowcount = execute_rowcount("""
+            UPDATE location_collections
+            SET name=%s, description=%s, updated_at=NOW()
+            WHERE id=%s
+        """, (payload.name, payload.description, cid))
+        if rowcount == 0:
+            return jsonify({'error': 'Not found'}), 404
+        return jsonify({'ok': True})
+    except Exception as e:
+        return db_error_response(e)
+
+
+@bp.route('/api/location-collections/<int:cid>', methods=['DELETE'])
+def delete_location_collection(cid):
+    rowcount = execute_rowcount("DELETE FROM location_collections WHERE id=%s", (cid,))
+    if rowcount == 0:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify({'ok': True})
+
+
+@bp.route('/api/location-collections/<int:cid>')
+def get_location_collection(cid):
+    collection = query("""
+        SELECT id, name, description, created_at, updated_at
+        FROM location_collections
+        WHERE id=%s
+    """, (cid,), one=True)
+    if not collection:
+        return jsonify({'error': 'Not found'}), 404
+
+    payload = dict(collection)
+    _stringify_fields(payload, ('created_at', 'updated_at'))
+    items = [dict(r) for r in query(LOCATION_VISIT_COUNT_CTE + """
+        SELECT lci.location_id,
+               lci.note,
+               lci.sort_order,
+               l.id,
+               l.name,
+               c.name AS country_name,
+               lt.name AS location_type,
+               l.address,
+               l.latitude,
+               l.longitude,
+               l.parent_location_id,
+               pl.name AS parent_name,
+               COALESCE(vc.visit_count, 0) AS visit_count,
+               li.status AS inspiration_status,
+               li.priority AS inspiration_priority
+        FROM location_collection_items lci
+        JOIN locations l ON l.id = lci.location_id
+        JOIN countries c ON c.id = l.country_id
+        JOIN location_types lt ON lt.id = l.location_type_id
+        LEFT JOIN locations pl ON pl.id = l.parent_location_id
+        LEFT JOIN location_visit_counts vc ON vc.location_id = l.id
+        LEFT JOIN location_inspirations li ON li.location_id = l.id
+        WHERE lci.collection_id = %s AND l.deleted_at IS NULL
+        ORDER BY lci.sort_order, c.name, l.name
+    """, (cid,))]
+    for item in items:
+        item['visit_count'] = int(item.get('visit_count') or 0)
+        if item.get('inspiration_priority') is not None:
+            item['inspiration_priority'] = int(item['inspiration_priority'])
+    payload['items'] = items
+    return etag_json(payload)
+
+
+@bp.route('/api/location-collections/<int:cid>/locations', methods=['POST'])
+def add_location_to_collection(cid):
+    try:
+        payload = LocationCollectionItemInput.model_validate(request.json or {})
+    except ValidationError as e:
+        return validation_error_response(e)
+
+    collection = query("SELECT id FROM location_collections WHERE id=%s", (cid,), one=True)
+    if not collection:
+        return jsonify({'error': 'Not found'}), 404
+    location = query(
+        "SELECT id FROM locations WHERE id=%s AND deleted_at IS NULL",
+        (payload.location_id,),
+        one=True,
+    )
+    if not location:
+        return jsonify({'error': 'Not found'}), 404
+
+    try:
+        execute("""
+            INSERT INTO location_collection_items
+                (collection_id, location_id, note, sort_order)
+            SELECT %s, %s, %s, COALESCE(MAX(sort_order), 0) + 1
+            FROM location_collection_items
+            WHERE collection_id=%s
+            ON CONFLICT (collection_id, location_id) DO UPDATE SET
+                note = EXCLUDED.note
+            RETURNING location_id
+        """, (cid, payload.location_id, payload.note, cid))
+        return jsonify({'ok': True, 'location_id': payload.location_id}), 201
+    except Exception as e:
+        return db_error_response(e)
+
+
+@bp.route('/api/location-collections/<int:cid>/locations/<int:lid>', methods=['DELETE'])
+def remove_location_from_collection(cid, lid):
+    rowcount = execute_rowcount("""
+        DELETE FROM location_collection_items
+        WHERE collection_id=%s AND location_id=%s
+    """, (cid, lid))
+    if rowcount == 0:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify({'ok': True})
 
 
 @bp.route('/api/locations/<int:lid>')

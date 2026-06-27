@@ -543,6 +543,16 @@ assert.equal(
   '/stats?section=yearbook&year=2024',
   'router builds shareable stats paths',
 );
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.routeFromHash('#/locations/wishlist?tab=collections&status=want'))),
+  { name: 'locationWishlist', params: { tab: 'collections', status: 'want' } },
+  'router parses the location inspirations route',
+);
+assert.equal(
+  context.routePath('locationWishlist', { tab: 'collections', status: 'planning', sort: 'name_asc' }),
+  '/locations/wishlist?tab=collections&status=planning&sort=name_asc',
+  'router builds shareable location inspiration paths',
+);
 
 const originalWindowLocation = context.window.location;
 const originalWindowHistory = context.window.history;
@@ -574,6 +584,7 @@ context.renderLocations = () => { context.__routerRendered = 'locations'; };
 context.renderMap = () => { context.__routerRendered = 'map'; };
 context.renderTodo = () => { context.__routerRendered = 'todo'; };
 context.renderLocationTodo = () => { context.__routerRendered = 'locationTodo'; };
+context.renderLocationInspirations = () => { context.__routerRendered = 'locationWishlist'; };
 context.openTravel = (id, options) => { context.__routerDetail = { type: 'travel', id, options }; };
 context.openLocation = (id, options) => { context.__routerDetail = { type: 'location', id, options }; };
 context.startRouter();
@@ -858,6 +869,7 @@ context.document.getElementById = id => (id === 'location-tools-overlay' ? null 
 context.openLocationToolsModal();
 context.document.body.appendChild = previousAppendChild;
 assert.match(locationToolsOverlay.innerHTML, /Narzędzia miejsc/, 'locations view exposes admin actions via tools modal');
+assert.match(locationToolsOverlay.innerHTML, /Inspiracje/, 'locations tools expose wishlist and collections');
 assert.match(locationToolsOverlay.innerHTML, /Backup JSON/, 'tools modal keeps backup available');
 assert.match(locationToolsOverlay.innerHTML, /Kosz/, 'tools modal keeps trash available');
 assert.equal(
@@ -1187,6 +1199,90 @@ vm.runInContext(
 await context.renderLocationTodo({ group: 'missing' });
 assert.match(locationTodoView.innerHTML, /worklist-group-title">Bez GPS/, 'location todo can group by missing type');
 assert.equal(locationTodoApiCalls, 1, 'location todo controls reuse the loaded worklist');
+
+const inspirationView = elementStub();
+context.document.getElementById = id => (id === 'view' ? inspirationView : null);
+const inspirationApiCalls = [];
+context.api = async path => {
+  inspirationApiCalls.push(path);
+  if (path === '/api/location-inspirations') {
+    return {
+      labels: { want: 'Chce odwiedzic', planning: 'W planie', paused: 'Odlozone' },
+      priority_labels: { 1: 'Wysoki', 2: 'Sredni', 3: 'Niski' },
+      counts: { want: 1, planning: 1, paused: 0 },
+      items: [{
+        id: 10,
+        location_id: 10,
+        name: 'Helsinki',
+        country_name: 'Finlandia',
+        location_type: 'miasto',
+        parent_name: 'Uusimaa',
+        status: 'planning',
+        priority: 1,
+        season: 'wiosna',
+        inspiration_notes: 'Port, sauna i spokojny spacer.',
+        collection_count: 1,
+        collection_names: 'Wyspy',
+        visit_count: 0,
+        latitude: null,
+        longitude: null,
+        updated_at: '2025-01-02T12:00:00',
+      }, {
+        id: 11,
+        location_id: 11,
+        name: 'Porto',
+        country_name: 'Portugalia',
+        location_type: 'miasto',
+        status: 'want',
+        priority: 2,
+        season: null,
+        inspiration_notes: '',
+        collection_count: 0,
+        visit_count: 1,
+        latitude: 41.15,
+        longitude: -8.61,
+        updated_at: '2025-01-01T12:00:00',
+      }],
+    };
+  }
+  if (path === '/api/location-collections') {
+    return {
+      collections: [{
+        id: 22,
+        name: 'Wyspy',
+        description: 'Miejsca na wodzie i przy wodzie.',
+        item_count: 1,
+        visited_count: 0,
+        inspiration_count: 1,
+      }],
+    };
+  }
+  throw new Error(`Unexpected inspiration API path: ${path}`);
+};
+vm.runInContext(`
+  currentTab = "locationWishlist";
+  currentLocationInspirationTab = "wishlist";
+  currentLocationInspirationStatus = "all";
+  currentLocationInspirationSort = "priority";
+  locationInspirationDataCache = null;
+  locationCollectionsDataCache = null;
+`, context);
+await context.renderLocationInspirations({ status: 'planning' });
+assert.match(inspirationView.innerHTML, /Inspiracje/, 'inspiration screen renders its title');
+assert.match(inspirationView.innerHTML, /location-inspiration-status-select/, 'inspiration screen has a status filter');
+assert.match(inspirationView.innerHTML, /Helsinki/, 'inspiration screen renders filtered wishlist cards');
+assert.doesNotMatch(inspirationView.innerHTML, /Porto/, 'inspiration status filter limits visible cards');
+assert.match(inspirationView.innerHTML, /updateLocationInspiration\(10, 'want'\)/, 'inspiration cards expose quick status actions');
+assert.match(inspirationView.innerHTML, /openEditLocationInspirationModal\(10\)/, 'inspiration cards expose metadata editing');
+assert.match(inspirationView.innerHTML, /openAddInspirationToCollectionModal\(10\)/, 'inspiration cards can add places to collections');
+await context.renderLocationInspirations({ tab: 'collections' });
+assert.match(inspirationView.innerHTML, /collection-card/, 'collections tab renders collection cards');
+assert.match(inspirationView.innerHTML, /openLocationCollectionModal\(22\)/, 'collection cards open collection details');
+assert.deepEqual(
+  inspirationApiCalls,
+  ['/api/location-inspirations', '/api/location-collections'],
+  'inspiration tabs reuse loaded API payloads',
+);
 
 const trashBody = elementStub();
 context.document.getElementById = id => (id === 'trash-body' ? trashBody : null);

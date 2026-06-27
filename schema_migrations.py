@@ -243,6 +243,55 @@ def _add_travel_location_order(cur):
     """)
 
 
+def _add_location_inspirations(cur):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS location_inspirations (
+            location_id INTEGER PRIMARY KEY REFERENCES locations(id) ON DELETE CASCADE,
+            status TEXT NOT NULL DEFAULT 'want',
+            priority INTEGER NOT NULL DEFAULT 2,
+            season TEXT,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT chk_location_inspirations_status
+                CHECK (status IN ('want', 'planning', 'paused')),
+            CONSTRAINT chk_location_inspirations_priority
+                CHECK (priority BETWEEN 1 AND 3)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS location_collections (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
+    cur.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_location_collections_name_lower
+        ON location_collections (LOWER(name))
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS location_collection_items (
+            collection_id INTEGER NOT NULL REFERENCES location_collections(id) ON DELETE CASCADE,
+            location_id INTEGER NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+            note TEXT,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (collection_id, location_id)
+        )
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_location_inspirations_status_priority
+        ON location_inspirations (status, priority)
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_location_collection_items_location_id
+        ON location_collection_items (location_id)
+    """)
+
+
 SCHEMA_MIGRATIONS = (
     ('20260528_001_soft_delete_coordinates', 'Add soft delete and coordinates', _add_soft_delete_and_coordinates),
     ('20260528_002_rating_numeric', 'Convert rating to NUMERIC(2,1)', _migrate_rating_numeric),
@@ -250,6 +299,7 @@ SCHEMA_MIGRATIONS = (
     ('20260528_004_indexes', 'Ensure FK and active-record indexes', _ensure_indexes),
     ('20260528_005_domain_constraints', 'Ensure domain CHECK constraints', _ensure_constraints),
     ('20260618_006_travel_location_order', 'Add manual order for travel locations', _add_travel_location_order),
+    ('20260627_007_location_inspirations', 'Add location inspirations and collections', _add_location_inspirations),
 )
 
 

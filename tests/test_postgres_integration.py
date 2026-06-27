@@ -71,6 +71,44 @@ def _create_tables(conn):
         )
         """,
         """
+        CREATE TABLE location_inspirations (
+            location_id INTEGER PRIMARY KEY REFERENCES locations(id) ON DELETE CASCADE,
+            status TEXT NOT NULL DEFAULT 'want',
+            priority INTEGER NOT NULL DEFAULT 2,
+            season TEXT,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT chk_location_inspirations_status
+                CHECK (status IN ('want', 'planning', 'paused')),
+            CONSTRAINT chk_location_inspirations_priority
+                CHECK (priority BETWEEN 1 AND 3)
+        )
+        """,
+        """
+        CREATE TABLE location_collections (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE UNIQUE INDEX idx_location_collections_name_lower
+        ON location_collections (LOWER(name))
+        """,
+        """
+        CREATE TABLE location_collection_items (
+            collection_id INTEGER NOT NULL REFERENCES location_collections(id) ON DELETE CASCADE,
+            location_id INTEGER NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+            note TEXT,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (collection_id, location_id)
+        )
+        """,
+        """
         CREATE TABLE travels (
             id SERIAL PRIMARY KEY,
             name TEXT,
@@ -186,6 +224,7 @@ def _seed_fixture(conn):
             'relation_types',
             'persons',
             'locations',
+            'location_collections',
             'travels',
             'travel_locations',
         )
@@ -629,6 +668,54 @@ class PostgresIntegrationTests(unittest.TestCase):
             self._hard_delete_location(location_id)
 
         self.assertEqual(self.client.get(f'/api/locations/{location_id}').status_code, 404)
+
+    def test_location_inspiration_and_collection_round_trip(self):
+        inspiration = self.client.post('/api/location-inspirations/3', json={
+            'status': 'planning',
+            'priority': 1,
+            'season': 'wiosna',
+            'notes': 'Sprawdzic nowe miejsca w okolicy starego miasta',
+        })
+        self.assertEqual(inspiration.status_code, 200)
+
+        collection = self.client.post('/api/location-collections', json={
+            'name': 'Fixture city ideas',
+            'description': 'Testowa kolekcja inspiracji',
+        })
+        self.assertEqual(collection.status_code, 201)
+        collection_id = collection.get_json()['id']
+
+        try:
+            add_item = self.client.post(
+                f'/api/location-collections/{collection_id}/locations',
+                json={'location_id': 3, 'note': 'Na kolejny city break'},
+            )
+            self.assertEqual(add_item.status_code, 201)
+
+            inspirations = self.client.get('/api/location-inspirations')
+            self.assertEqual(inspirations.status_code, 200)
+            inspiration_items = {item['name']: item for item in inspirations.get_json()['items']}
+            self.assertEqual(inspiration_items['Tallinn']['status'], 'planning')
+            self.assertEqual(inspiration_items['Tallinn']['priority'], 1)
+            self.assertEqual(inspiration_items['Tallinn']['collection_names'], 'Fixture city ideas')
+
+            collections = self.client.get('/api/location-collections')
+            self.assertEqual(collections.status_code, 200)
+            collection_rows = {
+                item['name']: item for item in collections.get_json()['collections']
+            }
+            self.assertEqual(collection_rows['Fixture city ideas']['item_count'], 1)
+            self.assertEqual(collection_rows['Fixture city ideas']['inspiration_count'], 1)
+
+            detail = self.client.get(f'/api/location-collections/{collection_id}')
+            self.assertEqual(detail.status_code, 200)
+            detail_payload = detail.get_json()
+            self.assertEqual(detail_payload['name'], 'Fixture city ideas')
+            self.assertEqual(detail_payload['items'][0]['name'], 'Tallinn')
+            self.assertEqual(detail_payload['items'][0]['note'], 'Na kolejny city break')
+        finally:
+            self.client.delete(f'/api/location-collections/{collection_id}')
+            self.client.delete('/api/location-inspirations/3')
 
     def test_dictionary_person_and_location_foreign_keys_are_protected(self):
         country_id = None
