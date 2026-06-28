@@ -12,6 +12,19 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `af45d1f Show
+  inspirations on location detail`: profil miejsca pokazuje teraz stan
+  `Inspiracji`, kolekcje przypiete do miejsca oraz szybkie akcje dodania do
+  listy marzen, zmiany statusu, edycji metadanych i dodania do kolekcji.
+  Backendowy detal `/api/locations/<id>` zwraca `inspiration` i `collections`,
+  wiec profil czyta stan z jednego kontraktu zamiast zgadywac po cache'u listy.
+  Lokalnie przeszly: kompilacja Pythona, Ruff, `python -m unittest discover -s
+  tests` (76 testow, 10 skipow), `git diff --check` i `tools/smoke_js.mjs`
+  przez Node REPL MCP. Zwykly `node` nadal nie jest w PATH. GitHub Actions byly
+  zielone, produkcja `/healthz` potwierdzila build `af45d1f`, `python
+  tools/smoke_prod.py` przeszedl 12/12 OK, a pobrane produkcyjne `locations.js`
+  i `app.css` zawieraly nowy panel profilu. Browser control nie byl wystawiony
+  przez `tool_search`, wiec prywatny flow wymaga recznego smoke po zalogowaniu.
 - Ostatnio domkniete i wypchniete na GitHub w commicie `0ef5f87 Add location
   inspirations`: dodano pierwszy przyrost `Inspiracji` dla miejsc. Backend ma
   wersjonowana migracje `location_inspirations`, `location_collections` i
@@ -538,10 +551,10 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
 
 ## Best Next Topics
 
-1. Recznie sprawdzic na produkcji `Miejsca -> Narzedzia -> Inspiracje` po
-   zalogowaniu: dodanie nowego miejsca do listy marzen, przypiecie istniejacego
-   miejsca, zmiana statusu, utworzenie kolekcji, dodanie miejsca do kolekcji i
-   otwarcie profilu miejsca z karty inspiracji.
+1. Recznie sprawdzic na produkcji po zalogowaniu nowe spiecie `Inspiracji` z
+   profilem miejsca: miejsce spoza listy marzen dodac do inspiracji, zmienic
+   status, edytowac metadane, dodac do kolekcji, otworzyc kolekcje z chipa oraz
+   potwierdzic, ze karta inspiracji nadal otwiera profil miejsca.
 2. Recznie sprawdzic na produkcji dluzsza podroz w `Trasa na mapie`: przewijanie
    filtrow dni na telefonie, wybranie kilku dni z rzedu, zachowanie globalnych
    numerow etapow i powrot przez `Wszystkie`.
