@@ -395,6 +395,95 @@ function locationQuickActionsHtml(loc) {
   </div>`;
 }
 
+function locationDetailInspirationItem(loc) {
+  const inspiration = loc?.inspiration || null;
+  if (!inspiration) return null;
+  const collections = Array.isArray(loc.collections) ? loc.collections : [];
+  return {
+    ...loc,
+    ...inspiration,
+    id: loc.id,
+    location_id: loc.id,
+    inspiration_notes: inspiration.notes || '',
+    collection_count: collections.length,
+    collection_names: collections.map(collection => collection.name).filter(Boolean).join(', '),
+  };
+}
+
+function getLocationInspirationItem(locationId) {
+  const cached = (locationInspirationDataCache?.items || [])
+    .find(entry => Number(entry.id) === Number(locationId));
+  if (cached) return cached;
+  const current = window._currentLocationDetail;
+  if (Number(current?.id) === Number(locationId)) {
+    return locationDetailInspirationItem(current);
+  }
+  return null;
+}
+
+function refreshLocationInspirationSurface(locationId) {
+  if (
+    currentTab === 'locationDetail'
+    && Number(window._currentLocationDetail?.id) === Number(locationId)
+  ) {
+    openLocation(locationId, { fromRouter: true });
+    return;
+  }
+  if (currentTab === 'locationWishlist') renderLocationInspirations();
+}
+
+function renderLocationInspirationPanel(loc) {
+  const item = locationDetailInspirationItem(loc);
+  const collections = Array.isArray(loc.collections) ? loc.collections : [];
+  const collectionChips = collections.length
+    ? `<div class="location-inspiration-chips">
+        ${collections.map(collection => `<button type="button" class="location-inspiration-chip" onclick="openLocationCollectionModal(${collection.id})">${escapeHtml(collection.name || 'Kolekcja')}</button>`).join('')}
+      </div>`
+    : '<div class="location-inspiration-empty">Brak kolekcji przy tym miejscu.</div>';
+  const collectionAction = `<button type="button" class="location-quick-action" onclick="openAddInspirationToCollectionModal(${loc.id})">Dodaj do kolekcji</button>`;
+
+  if (!item) {
+    return `<div class="location-inspiration-panel empty">
+      <div class="location-inspiration-main">
+        <div class="location-passport-label">Inspiracje</div>
+        <div class="location-inspiration-title">Nie ma go jeszcze na liscie marzen</div>
+        <div class="location-inspiration-sub">Dodaj miejsce jako pomysl na przyszla podroz albo przypnij je do kolekcji.</div>
+        ${collectionChips}
+      </div>
+      <div class="location-inspiration-actions">
+        <button type="button" class="location-quick-action" onclick="addExistingLocationInspiration(${loc.id})">Dodaj do inspiracji</button>
+        ${collectionAction}
+      </div>
+    </div>`;
+  }
+
+  const statusButtons = [
+    ['planning', 'W planie'],
+    ['want', 'Chce odwiedzic'],
+    ['paused', 'Odloz'],
+  ].filter(([status]) => status !== item.status);
+  const summary = [
+    locationInspirationStatusLabel(item.status),
+    `priorytet ${locationInspirationPriorityLabel(item.priority)}`,
+    item.season || '',
+  ].filter(Boolean).join(' · ');
+
+  return `<div class="location-inspiration-panel">
+    <div class="location-inspiration-main">
+      <div class="location-passport-label">Inspiracje</div>
+      <div class="location-inspiration-title">${escapeHtml(summary)}</div>
+      ${item.inspiration_notes ? `<div class="location-inspiration-note-detail">${escapeHtml(item.inspiration_notes)}</div>` : ''}
+      ${collectionChips}
+    </div>
+    <div class="location-inspiration-actions">
+      ${statusButtons.map(([status, label]) => `<button type="button" class="location-quick-action" onclick="updateLocationInspiration(${loc.id}, '${jsStringArg(status)}')">${escapeHtml(label)}</button>`).join('')}
+      <button type="button" class="location-quick-action" onclick="openEditLocationInspirationModal(${loc.id})">Edytuj</button>
+      ${collectionAction}
+      <button type="button" class="location-quick-action danger-text" onclick="removeLocationInspiration(${loc.id})">Usun</button>
+    </div>
+  </div>`;
+}
+
 function renderLocationChildren(loc) {
   const children = Array.isArray(loc.children) ? loc.children : [];
   if (!children.length) return '';
@@ -443,6 +532,7 @@ function renderLocationDetailProfile(loc, directVisits, childVisits) {
   const directCount = Number(loc.direct_visit_count ?? directVisits.length);
   const childCount = Number(loc.child_visit_count ?? childVisits.length);
   const childLocationCount = Number(loc.child_location_count ?? (loc.children || []).length);
+  const inspirationItem = locationDetailInspirationItem(loc);
   return `<div class="section location-detail-card">
     <div class="location-profile-top">
       <div class="location-profile-icon">${locationIcon(loc.location_type)}</div>
@@ -453,6 +543,7 @@ function renderLocationDetailProfile(loc, directVisits, childVisits) {
           <span class="location-detail-badge">${escapeHtml(locVisitSummary(loc))}</span>
           <span class="location-detail-badge ${hasGps ? 'ok' : 'warn'}">${hasGps ? 'GPS zapisany' : 'Bez GPS'}</span>
           <span class="location-detail-badge ${qualityTone}">${quality.complete ? 'Kompletne' : `${quality.score}% kompletności`}</span>
+          ${inspirationItem ? `<span class="location-detail-badge inspiration">${escapeHtml(locationInspirationStatusLabel(inspirationItem.status))}</span>` : ''}
         </div>
       </div>
     </div>
@@ -463,6 +554,7 @@ function renderLocationDetailProfile(loc, directVisits, childVisits) {
       </div>
       ${locationQuickActionsHtml(loc)}
     </div>
+    ${renderLocationInspirationPanel(loc)}
     ${renderMetricGrid([
       { label: 'Pierwsza wizyta', value: loc.first_visit ? fmtDate(loc.first_visit) : '—' },
       { label: 'Ostatnia wizyta', value: loc.last_visit ? fmtDate(loc.last_visit) : '—' },
@@ -1679,12 +1771,12 @@ async function addExistingLocationInspiration(locationId) {
     if (res.error) { toastApiError(res, 'Nie udalo sie dodac miejsca do inspiracji'); return; }
     closeModal(document.getElementById('existing-inspiration-overlay'));
     toast('Dodano do listy marzen', 'success');
-    renderLocationInspirations();
+    refreshLocationInspirationSurface(locationId);
   });
 }
 
 async function updateLocationInspiration(locationId, status) {
-  const item = (locationInspirationDataCache?.items || []).find(entry => Number(entry.id) === Number(locationId));
+  const item = getLocationInspirationItem(locationId);
   const payload = {
     status,
     priority: Number(item?.priority || 2),
@@ -1694,11 +1786,11 @@ async function updateLocationInspiration(locationId, status) {
   const res = await apiPost(`/api/location-inspirations/${locationId}`, payload);
   if (res.error) { toastApiError(res, 'Nie udalo sie zmienic statusu'); return; }
   toast('Zmieniono status', 'success');
-  renderLocationInspirations();
+  refreshLocationInspirationSurface(locationId);
 }
 
 function openEditLocationInspirationModal(locationId) {
-  const item = (locationInspirationDataCache?.items || []).find(entry => Number(entry.id) === Number(locationId));
+  const item = getLocationInspirationItem(locationId);
   if (!item) { toast('Nie znaleziono inspiracji', 'error'); return; }
   document.getElementById('edit-inspiration-overlay')?.remove();
   const overlay = document.createElement('div');
@@ -1729,7 +1821,7 @@ async function saveLocationInspirationMeta(locationId) {
   }
   closeModal(document.getElementById('edit-inspiration-overlay'));
   toast('Zapisano inspiracje', 'success');
-  renderLocationInspirations();
+  refreshLocationInspirationSurface(locationId);
 }
 
 async function removeLocationInspiration(locationId) {
@@ -1743,7 +1835,7 @@ async function removeLocationInspiration(locationId) {
   const res = await apiDelete(`/api/location-inspirations/${locationId}`);
   if (res.error) { toastApiError(res, 'Nie udalo sie usunac inspiracji'); return; }
   toast('Usunieto z inspiracji', 'success');
-  renderLocationInspirations();
+  refreshLocationInspirationSurface(locationId);
 }
 
 function openNewLocationCollectionModal() {
@@ -1898,7 +1990,7 @@ async function addLocationToCollection(collectionId, locationId) {
   closeModal(document.getElementById('collection-detail-overlay'));
   toast('Dodano do kolekcji', 'success');
   setTimeout(() => openLocationCollectionModal(collectionId), 260);
-  renderLocationInspirations();
+  refreshLocationInspirationSurface(locationId);
 }
 
 async function removeLocationFromCollection(collectionId, locationId) {
@@ -1907,10 +1999,11 @@ async function removeLocationFromCollection(collectionId, locationId) {
   closeModal(document.getElementById('collection-detail-overlay'));
   toast('Usunieto z kolekcji', 'success');
   setTimeout(() => openLocationCollectionModal(collectionId), 260);
-  renderLocationInspirations();
+  refreshLocationInspirationSurface(locationId);
 }
 
 async function deleteLocationCollection(collectionId) {
+  const detailLocationId = currentTab === 'locationDetail' ? window._currentLocationDetail?.id : null;
   const ok = await askConfirm({
     title: 'Usunac kolekcje?',
     message: 'Miejsca zostana w bazie, zniknie tylko ta kolekcja.',
@@ -1922,7 +2015,8 @@ async function deleteLocationCollection(collectionId) {
   if (res.error) { toastApiError(res, 'Nie udalo sie usunac kolekcji'); return; }
   closeModal(document.getElementById('collection-detail-overlay'));
   toast('Usunieto kolekcje', 'success');
-  renderLocationInspirations();
+  if (detailLocationId) refreshLocationInspirationSurface(detailLocationId);
+  else renderLocationInspirations();
 }
 
 async function openAddInspirationToCollectionModal(locationId) {
@@ -1932,7 +2026,7 @@ async function openAddInspirationToCollectionModal(locationId) {
   if (!collections.length) {
     toast('Najpierw utworz kolekcje', 'info');
     currentLocationInspirationTab = 'collections';
-    renderLocationInspirations();
+    openLocationInspirationsView();
     return;
   }
   document.getElementById('inspiration-collection-overlay')?.remove();
@@ -1966,7 +2060,7 @@ async function addLocationToCollectionFromInspiration(collectionId, locationId) 
   if (res.error) { toastApiError(res, 'Nie udalo sie dodac do kolekcji'); return; }
   closeModal(document.getElementById('inspiration-collection-overlay'));
   toast('Dodano do kolekcji', 'success');
-  renderLocationInspirations();
+  refreshLocationInspirationSurface(locationId);
 }
 
 async function openLocation(id, options = {}) {
@@ -1993,6 +2087,7 @@ async function openLocation(id, options = {}) {
   const directVisits = Array.isArray(loc.visits) ? loc.visits : [];
   const childVisits = Array.isArray(loc.child_visits) ? loc.child_visits : [];
   const historyVisits = locationHistoryVisits(directVisits, childVisits);
+  window._currentLocationDetail = loc;
   const backButton = hasTravelMapReturnContext()
     ? '<button class="back-btn" onclick="returnToTravelMap()">‹ Trasa na mapie</button>'
     : '<button class="back-btn" onclick="showTab(\'locations\')">‹ Miejsca</button>';

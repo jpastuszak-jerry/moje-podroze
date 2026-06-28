@@ -1018,8 +1018,27 @@ class ApiContractSmokeTests(unittest.TestCase):
             'visit_count': 1,
             'last_visit': date(2025, 7, 23),
         }]
+        inspiration = {
+            'status': 'planning',
+            'priority': 1,
+            'season': 'wiosna',
+            'notes': 'Port i archipelag',
+            'created_at': datetime(2025, 1, 1, 12, 0),
+            'updated_at': datetime(2025, 1, 2, 12, 0),
+        }
+        collections = [{
+            'id': 22,
+            'name': 'Wyspy',
+            'description': 'Miejsca nad woda',
+            'note': 'Na kolejny wyjazd',
+            'sort_order': 1,
+        }]
 
-        with patch.object(locations, 'query', side_effect=[location_row, direct_visits, child_visits, children]):
+        with patch.object(
+            locations,
+            'query',
+            side_effect=[location_row, direct_visits, child_visits, children, inspiration, collections],
+        ):
             response = self.client.get('/api/locations/1')
 
         self.assertEqual(response.status_code, 200)
@@ -1032,6 +1051,11 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertEqual(data['last_visit'], '2025-07-23')
         self.assertEqual(data['visits'][0]['arrival_date'], '2025-07-18')
         self.assertEqual(data['children'][0]['last_visit'], '2025-07-23')
+        self.assertEqual(data['inspiration']['status'], 'planning')
+        self.assertEqual(data['inspiration']['priority'], 1)
+        self.assertEqual(data['inspiration']['updated_at'], '2025-01-02 12:00:00')
+        self.assertEqual(data['collections'][0]['name'], 'Wyspy')
+        self.assertEqual(data['collections'][0]['note'], 'Na kolejny wyjazd')
         self.assertLessEqual(
             {'complete', 'score', 'missing_count', 'missing_keys', 'missing'},
             set(data['quality']),

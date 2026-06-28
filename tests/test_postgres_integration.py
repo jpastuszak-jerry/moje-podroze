@@ -713,6 +713,14 @@ class PostgresIntegrationTests(unittest.TestCase):
             self.assertEqual(detail_payload['name'], 'Fixture city ideas')
             self.assertEqual(detail_payload['items'][0]['name'], 'Tallinn')
             self.assertEqual(detail_payload['items'][0]['note'], 'Na kolejny city break')
+
+            location_detail = self.client.get('/api/locations/3')
+            self.assertEqual(location_detail.status_code, 200)
+            location_payload = location_detail.get_json()
+            self.assertEqual(location_payload['inspiration']['status'], 'planning')
+            self.assertEqual(location_payload['inspiration']['priority'], 1)
+            self.assertEqual(location_payload['collections'][0]['name'], 'Fixture city ideas')
+            self.assertEqual(location_payload['collections'][0]['note'], 'Na kolejny city break')
         finally:
             self.client.delete(f'/api/location-collections/{collection_id}')
             self.client.delete('/api/location-inspirations/3')

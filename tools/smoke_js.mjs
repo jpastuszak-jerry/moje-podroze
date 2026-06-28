@@ -1040,6 +1040,19 @@ const locationProfileHtml = context.renderLocationDetailProfile({
   last_visit: '2025-07-21',
   address: 'Market Square',
   notes: 'Port i centrum.',
+  inspiration: {
+    status: 'planning',
+    priority: 1,
+    season: 'wiosna',
+    notes: 'Port, sauna i spokojny spacer.',
+  },
+  collections: [{
+    id: 22,
+    name: 'Wyspy',
+    description: 'Miejsca na wodzie i przy wodzie.',
+    note: 'Na kolejny city break',
+    sort_order: 1,
+  }],
   quality: {
     complete: true,
     score: 100,
@@ -1060,6 +1073,11 @@ assert.match(locationProfileHtml, /Pierwsza wizyta/, 'location detail profile sh
 assert.match(locationProfileHtml, /Google Maps/, 'location detail profile keeps external map link');
 assert.match(locationProfileHtml, /Paszport miejsca/, 'location detail profile shows a place passport');
 assert.match(locationProfileHtml, /Kompletne/, 'location detail profile shows data completeness status');
+assert.match(locationProfileHtml, /Inspiracje/, 'location detail profile shows inspiration status');
+assert.match(locationProfileHtml, /openEditLocationInspirationModal\(10\)/, 'location detail profile can edit inspiration metadata');
+assert.match(locationProfileHtml, /updateLocationInspiration\(10, 'want'\)/, 'location detail profile can change inspiration status');
+assert.match(locationProfileHtml, /openAddInspirationToCollectionModal\(10\)/, 'location detail profile can add a place to collections');
+assert.match(locationProfileHtml, /openLocationCollectionModal\(22\)/, 'location detail profile links current collections');
 const longLocationText = 'Długi opis miejsca. '.repeat(20);
 const expandableLocationText = context.renderLocationExpandableText(longLocationText);
 assert.match(expandableLocationText, /<details class="location-expandable-text">/, 'long location descriptions are collapsible');
@@ -1085,6 +1103,7 @@ const incompleteLocationProfileHtml = context.renderLocationDetailProfile({
 }, [], []);
 assert.match(incompleteLocationProfileHtml, /Uzupe.* GPS/, 'location detail profile exposes a GPS quick action');
 assert.match(incompleteLocationProfileHtml, /Brak wizyt/, 'location detail profile explains missing visits');
+assert.match(incompleteLocationProfileHtml, /addExistingLocationInspiration\(12\)/, 'location detail profile can add a non-inspired place to inspirations');
 const locationVisitsHtml = context.renderLocationVisitSection('Wizyty', [{
   id: 1,
   travel_name: 'Finlandia',

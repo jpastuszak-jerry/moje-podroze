@@ -738,6 +738,7 @@ body.auth-page {
 }
 .location-detail-badge.ok { background: var(--green-light); color: var(--green); }
 .location-detail-badge.warn { background: var(--orange-light); color: var(--orange); }
+.location-detail-badge.inspiration { background: var(--purple-light); color: var(--purple); }
 .location-passport {
   display: grid; grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px; align-items: start;
@@ -769,6 +770,36 @@ body.auth-page {
   text-align: right;
 }
 .location-action-hint.ok { color: var(--green); font-weight: 800; }
+.location-inspiration-panel {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px; align-items: start;
+  padding: 11px; border: 1px solid rgba(127,127,127,0.12);
+  border-radius: 10px; background: var(--bg);
+}
+.location-inspiration-panel.empty { background: var(--card); }
+.location-inspiration-main { min-width: 0; }
+.location-inspiration-title {
+  color: var(--text); font-size: 13px; line-height: 1.35; font-weight: 850;
+  overflow-wrap: anywhere;
+}
+.location-inspiration-sub,
+.location-inspiration-note-detail,
+.location-inspiration-empty {
+  margin-top: 4px; color: var(--text2); font-size: 12px; line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.location-inspiration-chips {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+}
+.location-inspiration-chip {
+  min-height: 26px; padding: 4px 8px; border-radius: 13px;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  background: var(--green-light); color: var(--green);
+  font: inherit; font-size: 11px; font-weight: 800; cursor: pointer;
+}
+.location-inspiration-actions {
+  min-width: 210px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end;
+}
 .location-metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .location-metric {
   min-width: 0; padding: 10px; border-radius: 10px;
@@ -2244,6 +2275,8 @@ button.yearbook-highlight { cursor: pointer; }
   .location-passport { grid-template-columns: 1fr; }
   .location-action-row { min-width: 0; justify-content: flex-start; }
   .location-action-hint { max-width: none; text-align: left; }
+  .location-inspiration-panel { grid-template-columns: 1fr; }
+  .location-inspiration-actions { min-width: 0; justify-content: flex-start; }
   .location-metrics-grid,
   .location-meta-list { grid-template-columns: 1fr; }
   .location-profile-title,

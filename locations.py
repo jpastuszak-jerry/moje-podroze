@@ -612,6 +612,19 @@ def get_location(lid):
         GROUP BY child.id, child.name, lt.name
         ORDER BY child.name
     """, (lid,))]
+    inspiration = query("""
+        SELECT status, priority, season, notes, created_at, updated_at
+        FROM location_inspirations
+        WHERE location_id = %s
+    """, (lid,), one=True)
+    loc['inspiration'] = dict(inspiration) if inspiration else None
+    loc['collections'] = [dict(r) for r in query("""
+        SELECT lc.id, lc.name, lc.description, lci.note, lci.sort_order
+        FROM location_collection_items lci
+        JOIN location_collections lc ON lc.id = lci.collection_id
+        WHERE lci.location_id = %s
+        ORDER BY lc.name
+    """, (lid,))]
 
     all_visits = loc['visits'] + loc['child_visits']
     loc['visit_count'] = len({v.get('id') for v in all_visits if v.get('id') is not None})
@@ -633,6 +646,9 @@ def get_location(lid):
     loc['last_visit'] = str(last_visit) if last_visit else None
     loc['child_location_count'] = len(loc['children'])
     loc['quality'] = _location_quality(loc)
+    if loc['inspiration']:
+        loc['inspiration']['priority'] = int(loc['inspiration'].get('priority') or 2)
+        _stringify_fields(loc['inspiration'], ('created_at', 'updated_at'))
 
     for v in loc['visits']:
         for key in ('start_date', 'end_date', 'arrival_date', 'departure_date'):
