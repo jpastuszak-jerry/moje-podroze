@@ -9,6 +9,16 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   uczestnikami, mapa i statystykami.
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
+- Ostatnio domkniete lokalnie: pierwszy kontrolowany podzial najwiekszego
+  modulu frontendu. Caly obszar `Inspiracje i kolekcje` zostal przeniesiony z
+  `static/js/locations.js` do `static/js/location_inspirations.js`, bez zmiany
+  globalnego API i zachowania widokow. `locations.js` zmniejszyl sie z 2728 do
+  1791 linii, a shell laduje nowy modul bezposrednio po nim. Smoke JS pilnuje
+  granicy odpowiedzialnosci, funkcji glownego widoku i szczegolow kolekcji, a
+  test shella sprawdza kolejnosc skryptow. Korzysc: dalsze zmiany miejsc nie
+  musza przechodzic przez prawie 3-tysieczny plik, a obszar inspiracji mozna
+  rozwijac i testowac osobno. Lokalnie przeszly: skladnia obu plikow JS, smoke
+  JS, Ruff, kompilacja Pythona, 79 testow (10 skipow) i `git diff --check`.
 - Ostatnio domkniete lokalnie: pakiet stabilizacji backendu i bezpieczenstwa.
   Blad migracji schematu zatrzymuje teraz start procesu zamiast uruchamiac
   aplikacje na potencjalnie niezgodnej bazie. Nieoczekiwane bledy DB sa

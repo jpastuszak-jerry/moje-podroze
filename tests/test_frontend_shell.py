@@ -38,6 +38,7 @@ class FrontendShellSmokeTests(unittest.TestCase):
             '/static/js/map.js?v=shellsmoke',
             '/static/js/travels.js?v=shellsmoke',
             '/static/js/locations.js?v=shellsmoke',
+            '/static/js/location_inspirations.js?v=shellsmoke',
             '/static/js/dictionaries.js?v=shellsmoke',
             '/static/js/persons.js?v=shellsmoke',
             '/static/js/stats_yearbook.js?v=shellsmoke',

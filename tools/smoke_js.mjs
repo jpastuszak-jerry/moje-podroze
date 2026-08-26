@@ -11,6 +11,7 @@ const componentsPath = path.join(repoRoot, 'static', 'js', 'components.js');
 const dictionariesPath = path.join(repoRoot, 'static', 'js', 'dictionaries.js');
 const personsPath = path.join(repoRoot, 'static', 'js', 'persons.js');
 const locationsPath = path.join(repoRoot, 'static', 'js', 'locations.js');
+const locationInspirationsPath = path.join(repoRoot, 'static', 'js', 'location_inspirations.js');
 const mapPath = path.join(repoRoot, 'static', 'js', 'map.js');
 const travelsPath = path.join(repoRoot, 'static', 'js', 'travels.js');
 const todoPath = path.join(repoRoot, 'static', 'js', 'todo.js');
@@ -132,6 +133,7 @@ function decodeHtmlAttribute(value) {
 const appCssSource = fs.readFileSync(appCssPath, 'utf8');
 const utilsSource = fs.readFileSync(utilsPath, 'utf8');
 const locationsSource = fs.readFileSync(locationsPath, 'utf8');
+const locationInspirationsSource = fs.readFileSync(locationInspirationsPath, 'utf8');
 const mapSource = fs.readFileSync(mapPath, 'utf8');
 const travelsSource = fs.readFileSync(travelsPath, 'utf8');
 const wizardSource = fs.readFileSync(wizardPath, 'utf8');
@@ -859,6 +861,10 @@ assert.match(personsListHtml, /modal-row-button neutral/, 'persons modal keeps e
 assert.match(personsListHtml, /person-row-info/, 'persons modal uses shared picker row content');
 
 vm.runInContext(fs.readFileSync(locationsPath, 'utf8'), context, { filename: locationsPath });
+vm.runInContext(fs.readFileSync(locationInspirationsPath, 'utf8'), context, { filename: locationInspirationsPath });
+assert.doesNotMatch(locationsSource, /function renderLocationInspirations\(/, 'location inspirations stay outside the core locations module');
+assert.match(locationInspirationsSource, /function renderLocationInspirations\(/, 'location inspirations module exposes its main view');
+assert.match(locationInspirationsSource, /function openLocationCollectionModal\(/, 'location inspirations module owns collection details');
 assert.match(locationsSource, /overlay\._returnToTravelMap[\s\S]*hasTravelMapReturnContext\(\)/, 'location editor remembers when it was opened from a travel map');
 assert.match(locationsSource, /if \(returnToMap\) returnToTravelMap\(\)/, 'successful location edits return to the remembered travel map');
 assert.match(locationsSource, /function closeEditLocationModal\(\)[\s\S]*discardTravelMapReturnContext\(\)/, 'cancelling a GPS edit directly on the map discards stale return state');
