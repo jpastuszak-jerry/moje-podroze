@@ -9,6 +9,16 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   uczestnikami, mapa i statystykami.
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
+- Ostatnio domkniete lokalnie: pakiet stabilizacji backendu i bezpieczenstwa.
+  Blad migracji schematu zatrzymuje teraz start procesu zamiast uruchamiac
+  aplikacje na potencjalnie niezgodnej bazie. Nieoczekiwane bledy DB sa
+  logowane po stronie serwera, ale odpowiedz HTTP nie ujawnia tresci wyjatku.
+  Mutacje przegladarkowe z obcego `Origin` sa odrzucane 403; dodatkowe legalne
+  originy mozna podac przez `TRUSTED_ORIGINS`. CI kompiluje tez
+  `stats_yearbook.py` i `schema_migrations.py`, a `ruff.toml` stabilizuje
+  dotychczasowy zestaw regul niezaleznie od wersji Ruffa. Lokalnie przeszly:
+  Ruff, kompilacja Pythona, 79 testow (10 skipow), smoke JS i
+  `git diff --check`.
 - Aktualny glowny kierunek: po domknieciu efektownego Rocznika 2.0 najlepsze
   kolejne prace to male domkniecia UX/statystyk albo dalsze centrum brakow
   miejsc, bez otwierania duzego nowego obszaru.

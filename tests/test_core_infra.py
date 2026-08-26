@@ -132,6 +132,18 @@ class CoreInfrastructureTests(unittest.TestCase):
         self.assertEqual(db.commits, 1)
         self.assertEqual(core.get_db_write_version(), 1)
 
+    def test_db_error_response_hides_internal_database_details(self):
+        app = Flask(__name__)
+        error = RuntimeError('relation secret_table does not exist')
+
+        with app.app_context(), patch.object(app.logger, 'exception') as logged:
+            response, status = core.db_error_response(error)
+
+        self.assertEqual(status, 500)
+        self.assertEqual(response.get_json(), {'error': 'Błąd bazy danych'})
+        self.assertNotIn('secret_table', response.get_data(as_text=True))
+        logged.assert_called_once_with('Błąd bazy danych', exc_info=error)
+
     def test_schema_index_statements_cover_fk_and_active_record_queries(self):
         statements = '\n'.join(core.SCHEMA_INDEX_STATEMENTS)
         for fragment in (
@@ -215,7 +227,7 @@ class CoreInfrastructureTests(unittest.TestCase):
         )
         run_migrations.assert_called_once_with(db.last_cursor)
 
-    def test_ensure_schema_does_not_crash_when_migration_connection_is_closed(self):
+    def test_ensure_schema_fails_startup_when_migration_connection_is_closed(self):
         class ClosedMigrationDb(FakeDb):
             def cursor(self):
                 self.closed = 1
@@ -230,6 +242,7 @@ class CoreInfrastructureTests(unittest.TestCase):
             patch.object(core, 'DATABASE_URL', 'postgresql://example'),
             patch.object(core.psycopg2, 'connect', return_value=db),
             patch('builtins.print') as printed,
+            self.assertRaisesRegex(RuntimeError, 'Database schema migration failed'),
         ):
             core.ensure_schema()
 

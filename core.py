@@ -121,7 +121,8 @@ def db_error_response(e, default_msg='Błąd bazy danych'):
         return jsonify({'error': 'Nie można usunąć - pozycja jest w użyciu'}), 409
     if 'unique' in msg or 'duplicate' in msg:
         return jsonify({'error': 'Pozycja o tej nazwie już istnieje'}), 409
-    return jsonify({'error': f'{default_msg}: {str(e)[:200]}'}), 500
+    current_app.logger.exception(default_msg, exc_info=e)
+    return jsonify({'error': default_msg}), 500
 
 
 def etag_json(payload):
@@ -175,6 +176,7 @@ def ensure_schema():
             except Exception as rollback_error:
                 print('[schema] rollback failed:', rollback_error)
         print('[schema] migration failed:', e)
+        raise RuntimeError('Database schema migration failed') from e
     finally:
         if conn and not getattr(conn, 'closed', False):
             conn.close()

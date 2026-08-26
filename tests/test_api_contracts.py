@@ -358,6 +358,33 @@ class AdminAuthSmokeTests(unittest.TestCase):
         self.assertEqual(response.headers['Cache-Control'], 'no-store')
         self.assertEqual(response.get_json()['error'], 'unauthorized')
 
+    def test_cross_origin_login_is_rejected_before_password_check(self):
+        with (
+            patch.object(app_module, 'ADMIN_PASSWORD_HASH', generate_password_hash('secret')),
+            patch.object(app_module, 'ADMIN_PASSWORD', None),
+        ):
+            response = self.client.post(
+                '/api/auth/login',
+                json={'password': 'secret'},
+                headers={'Origin': 'https://attacker.example'},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {'error': 'cross-origin request rejected'})
+
+    def test_same_origin_login_is_allowed(self):
+        with (
+            patch.object(app_module, 'ADMIN_PASSWORD_HASH', generate_password_hash('secret')),
+            patch.object(app_module, 'ADMIN_PASSWORD', None),
+        ):
+            response = self.client.post(
+                '/api/auth/login',
+                json={'password': 'secret'},
+                headers={'Origin': 'http://localhost'},
+            )
+
+        self.assertEqual(response.status_code, 200)
+
     def test_admin_login_status_and_logout_flow(self):
         with (
             patch.object(app_module, 'ADMIN_PASSWORD_HASH', generate_password_hash('secret')),

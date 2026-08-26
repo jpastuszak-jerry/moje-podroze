@@ -18,6 +18,7 @@ from hmac import compare_digest
 from math import ceil
 from pathlib import Path
 from threading import Lock
+from urllib.parse import urlsplit
 
 from flask import Flask, Response, jsonify, render_template, request, session
 from flask.json.provider import DefaultJSONProvider
@@ -207,6 +208,41 @@ PUBLIC_ENDPOINTS = {
     'auth_logout',
     'static',
 }
+
+MUTATING_METHODS = {'POST', 'PUT', 'PATCH', 'DELETE'}
+
+
+def _normalized_origin(value):
+    try:
+        parsed = urlsplit(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        return None
+    return f'{parsed.scheme.lower()}://{parsed.netloc.lower()}'
+
+
+def trusted_request_origins():
+    origins = {_normalized_origin(request.host_url)}
+    origins.update(
+        _normalized_origin(value.strip())
+        for value in os.environ.get('TRUSTED_ORIGINS', '').split(',')
+        if value.strip()
+    )
+    return {origin for origin in origins if origin}
+
+
+@app.before_request
+def reject_cross_origin_mutations():
+    """Reject browser writes coming from an origin other than this app."""
+    if request.method not in MUTATING_METHODS:
+        return None
+    origin = request.headers.get('Origin')
+    if not origin:
+        return None
+    if _normalized_origin(origin) in trusted_request_origins():
+        return None
+    return jsonify({'error': 'cross-origin request rejected'}), 403
 
 
 @app.route('/')
