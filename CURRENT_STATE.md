@@ -9,6 +9,14 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   uczestnikami, mapa i statystykami.
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
+- Ostatnio domkniete lokalnie: karty w `Miejsca do uzupelnienia` pokazuja
+  teraz konkretne powiazane podroze jako przyciski otwierajace ich szczegoly.
+  Miejsce bez wizyt ma czytelna akcje `Brak podrozy · otworz miejsce` zamiast
+  martwego przejscia. `/api/locations/todo` dolacza uporzadkowana liste
+  unikalnych podrozy w istniejacej preagregacji SQL, bez dodatkowych requestow
+  z frontendu i bez duplikatow z wizyt przez miejsca podrzedne. Lokalnie
+  przeszly: skladnia JS, smoke JS, Ruff, kompilacja Pythona, 79 testow
+  (10 skipow) i `git diff --check`.
 - Ostatnio domkniete lokalnie: pierwszy kontrolowany podzial najwiekszego
   modulu frontendu. Caly obszar `Inspiracje i kolekcje` zostal przeniesiony z
   `static/js/locations.js` do `static/js/location_inspirations.js`, bez zmiany

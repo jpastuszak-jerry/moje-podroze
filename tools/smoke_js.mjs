@@ -1170,6 +1170,7 @@ context.api = async path => {
       location_type: 'miasto',
       country_name: 'Finlandia',
       visit_count: 3,
+      travels: [{ id: 71, name: 'Finlandia 2025' }, { id: 72, name: 'Helsinki 2026' }],
       missing_count: 3,
       missing_keys: ['missing_gps', 'missing_address', 'missing_notes'],
       missing: ['Bez GPS', 'Bez adresu', 'Bez notatek'],
@@ -1179,6 +1180,7 @@ context.api = async path => {
       location_type: 'miasto',
       country_name: 'Włochy',
       visit_count: 0,
+      travels: [],
       missing_count: 2,
       missing_keys: ['missing_gps', 'not_visited'],
       missing: ['Bez GPS', 'Bez wizyt'],
@@ -1199,6 +1201,9 @@ assert.match(locationTodoView.innerHTML, /badge-purple/, 'location todo renders 
 assert.match(locationTodoView.innerHTML, /worklist-action-btn/, 'location todo cards expose quick action buttons');
 assert.match(locationTodoView.innerHTML, /openLocationTodoAction\(10, 'missing_gps'\)/, 'location todo GPS action targets the edit modal');
 assert.match(locationTodoView.innerHTML, /openLocationTodoAction\(11, 'not_visited'\)/, 'location todo visit action targets the location detail');
+assert.match(locationTodoView.innerHTML, /openTravel\(71\)/, 'location todo links directly to a related travel');
+assert.match(locationTodoView.innerHTML, /Podróż: Finlandia 2025/, 'location todo labels related travel links');
+assert.match(locationTodoView.innerHTML, /Brak podróży · otwórz miejsce/, 'unvisited locations keep a direct location fallback');
 assert.ok(
   locationTodoView.innerHTML.indexOf('Catania') < locationTodoView.innerHTML.indexOf('Helsinki'),
   'location todo applies visit-count sorting from route params',

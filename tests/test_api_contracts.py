@@ -851,6 +851,7 @@ class ApiContractSmokeTests(unittest.TestCase):
                 'longitude': None,
                 'parent_location_id': None,
                 'visit_count': 0,
+                'travels': [],
             },
             {
                 'id': 2,
@@ -863,6 +864,7 @@ class ApiContractSmokeTests(unittest.TestCase):
                 'longitude': 24.7536,
                 'parent_location_id': None,
                 'visit_count': 1,
+                'travels': [{'id': 7, 'name': 'Tallinn 2025'}],
             },
         ]
 
@@ -883,10 +885,12 @@ class ApiContractSmokeTests(unittest.TestCase):
             {
                 'id', 'name', 'country_name', 'location_type',
                 'missing', 'missing_keys', 'missing_count', 'visit_count',
+                'travels',
             },
             set(data['needs_attention'][0]),
         )
         self.assertEqual(data['needs_attention'][0]['visit_count'], 0)
+        self.assertEqual(data['needs_attention'][0]['travels'], [])
 
     def test_locations_todo_reuses_preaggregated_visit_counts(self):
         rows = [{
@@ -900,6 +904,10 @@ class ApiContractSmokeTests(unittest.TestCase):
             'longitude': 24.94,
             'parent_location_id': None,
             'visit_count': 2,
+            'travels': [
+                {'id': 7, 'name': 'Finlandia 2025'},
+                {'id': 8, 'name': 'Helsinki 2026'},
+            ],
         }]
         captured = []
 
@@ -918,7 +926,9 @@ class ApiContractSmokeTests(unittest.TestCase):
         sql = captured[0]
         self.assertIn('WITH location_visit_targets AS', sql)
         self.assertIn('location_visit_counts AS', sql)
-        self.assertIn('COUNT(DISTINCT travel_id) AS visit_count', sql)
+        self.assertIn('SELECT DISTINCT location_id, travel_id, travel_name', sql)
+        self.assertIn('JSONB_AGG(', sql)
+        self.assertIn("JSONB_BUILD_OBJECT('id', travel_id, 'name', travel_name)", sql)
         self.assertIn('LEFT JOIN location_visit_counts vc ON vc.location_id = l.id', sql)
         self.assertNotIn('COUNT(DISTINCT tl.travel_id) AS direct_visits', sql)
         self.assertNotIn('COUNT(DISTINCT child_tl.travel_id) AS child_visits', sql)

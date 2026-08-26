@@ -103,7 +103,8 @@ LOCATION_VISIT_STATS_CTE = """
 LOCATION_VISIT_COUNT_CTE = """
     WITH location_visit_targets AS (
         SELECT l.id AS location_id,
-               tl.travel_id
+               tl.travel_id,
+               t.name AS travel_name
         FROM travel_locations tl
         JOIN locations l ON l.id = tl.location_id AND l.deleted_at IS NULL
         JOIN travels t ON t.id = tl.travel_id AND t.deleted_at IS NULL
@@ -111,16 +112,25 @@ LOCATION_VISIT_COUNT_CTE = """
         UNION ALL
 
         SELECT parent.id AS location_id,
-               tl.travel_id
+               tl.travel_id,
+               t.name AS travel_name
         FROM travel_locations tl
         JOIN locations child ON child.id = tl.location_id AND child.deleted_at IS NULL
         JOIN locations parent ON parent.id = child.parent_location_id AND parent.deleted_at IS NULL
         JOIN travels t ON t.id = tl.travel_id AND t.deleted_at IS NULL
     ),
+    location_visit_unique AS (
+        SELECT DISTINCT location_id, travel_id, travel_name
+        FROM location_visit_targets
+    ),
     location_visit_counts AS (
         SELECT location_id,
-               COUNT(DISTINCT travel_id) AS visit_count
-        FROM location_visit_targets
+               COUNT(*) AS visit_count,
+               JSONB_AGG(
+                   JSONB_BUILD_OBJECT('id', travel_id, 'name', travel_name)
+                   ORDER BY travel_name, travel_id
+               ) AS travels
+        FROM location_visit_unique
         GROUP BY location_id
     )
 """
@@ -213,7 +223,8 @@ def _build_locations_todo_payload():
     rows = [dict(r) for r in query(LOCATION_VISIT_COUNT_CTE + """
         SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type,
                l.address, l.notes, l.latitude, l.longitude, l.parent_location_id,
-               COALESCE(vc.visit_count, 0) AS visit_count
+               COALESCE(vc.visit_count, 0) AS visit_count,
+               COALESCE(vc.travels, '[]'::jsonb) AS travels
         FROM locations l
         JOIN countries c ON l.country_id = c.id
         JOIN location_types lt ON l.location_type_id = lt.id
@@ -253,6 +264,7 @@ def _build_locations_todo_payload():
                 'missing_keys': missing_keys,
                 'missing_count': len(missing),
                 'visit_count': int(loc.get('visit_count') or 0),
+                'travels': loc.get('travels') or [],
             })
 
     needs_attention.sort(key=lambda loc: (loc['missing_count'], loc['country_name'], loc['name']), reverse=True)

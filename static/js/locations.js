@@ -970,6 +970,18 @@ function locationTodoActionsHtml(item) {
   </div>`;
 }
 
+function locationTodoTravelsHtml(item) {
+  const travels = Array.isArray(item.travels) ? item.travels : [];
+  if (!travels.length) {
+    return `<div class="worklist-card-actions">
+      <button type="button" class="worklist-action-btn" onclick="event.stopPropagation(); openLocation(${item.id})">Brak podróży · otwórz miejsce</button>
+    </div>`;
+  }
+  return `<div class="worklist-card-actions">
+    ${travels.map(travel => `<button type="button" class="worklist-action-btn" onclick="event.stopPropagation(); openTravel(${travel.id})">Podróż: ${escapeHtml(travel.name || '(bez nazwy)')}</button>`).join('')}
+  </div>`;
+}
+
 function locationTodoCardHtml(item, labels) {
   const missingCount = Number(item.missing_count || (item.missing_keys || []).length || 0);
   const missingLabel = polishPlural(missingCount, 'brak', 'braki', 'braków');
@@ -980,7 +992,7 @@ function locationTodoCardHtml(item, labels) {
     editOnclick: `openEditLocationModal(${item.id})`,
     subtitle: `${item.location_type || ''} · ${item.country_name || ''} · ${item.visit_count || 0} wizyt · ${missingCount} ${missingLabel}`,
     badges: locationTodoBadgeItems(item, labels),
-    actionsHtml: locationTodoActionsHtml(item),
+    actionsHtml: locationTodoTravelsHtml(item) + locationTodoActionsHtml(item),
   });
 }
 
