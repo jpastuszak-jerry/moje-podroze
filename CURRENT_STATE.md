@@ -9,7 +9,8 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   uczestnikami, mapa i statystykami.
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
-- Ostatnio domkniete lokalnie: pierwszy przyrost `Centrum jakosci danych 2.0`.
+- Ostatnio domkniete i wypchniete na GitHub w commicie `84fa828 Improve
+  location quality workflow`: pierwszy przyrost `Centrum jakosci danych 2.0`.
   Z listy `Miejsca do uzupelnienia` mozna teraz przypisac miejsce bez wizyt
   bezposrednio do wybranej podrozy, uzupelnic daty pobytu i opcjonalnie dodac
   miejsce nadrzedne. Szybka edycja GPS/adresu/notatek oraz przypisanie do
@@ -18,7 +19,11 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   zapytaniu, bez dodatkowego requestu. Pozostale cztery inicjatywy maturity
   oraz dalsze przyrosty centrum jakosci sa zapisane w `BACKLOG.md`. Lokalnie
   przeszly: skladnia JS, smoke JS, Ruff, kompilacja Pythona, 79 testow
-  (10 skipow) i `git diff --check`.
+  (10 skipow) i `git diff --check`. GitHub Actions zakonczyl sie sukcesem,
+  produkcja `/healthz` potwierdzila build `84fa828`, bezsekretowy smoke
+  produkcji przeszedl 12/12, a produkcyjny `locations.js` zawiera nowy picker
+  i kontekst powrotu. Browser potwierdzil ekran logowania bez bledow konsoli;
+  prywatny flow wymaga jeszcze krotkiej kontroli po zalogowaniu.
 - Ostatnio domkniete lokalnie: karty w `Miejsca do uzupelnienia` pokazuja
   teraz konkretne powiazane podroze jako przyciski otwierajace ich szczegoly.
   Miejsce bez wizyt ma czytelna akcje `Brak podrozy · otworz miejsce` zamiast
