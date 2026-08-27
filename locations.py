@@ -223,11 +223,13 @@ def _build_locations_todo_payload():
     rows = [dict(r) for r in query(LOCATION_VISIT_COUNT_CTE + """
         SELECT l.id, l.name, c.name AS country_name, lt.name AS location_type,
                l.address, l.notes, l.latitude, l.longitude, l.parent_location_id,
+               parent.name AS parent_name,
                COALESCE(vc.visit_count, 0) AS visit_count,
                COALESCE(vc.travels, '[]'::jsonb) AS travels
         FROM locations l
         JOIN countries c ON l.country_id = c.id
         JOIN location_types lt ON l.location_type_id = lt.id
+        LEFT JOIN locations parent ON parent.id = l.parent_location_id
         LEFT JOIN location_visit_counts vc ON vc.location_id = l.id
         WHERE l.deleted_at IS NULL
         ORDER BY c.name, l.name
@@ -260,6 +262,8 @@ def _build_locations_todo_payload():
                 'name': loc['name'],
                 'country_name': loc['country_name'],
                 'location_type': loc['location_type'],
+                'parent_location_id': loc.get('parent_location_id'),
+                'parent_name': loc.get('parent_name'),
                 'missing': missing,
                 'missing_keys': missing_keys,
                 'missing_count': len(missing),

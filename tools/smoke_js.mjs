@@ -1200,7 +1200,8 @@ assert.match(locationTodoView.innerHTML, /badge-orange/, 'location todo renders 
 assert.match(locationTodoView.innerHTML, /badge-purple/, 'location todo renders colored address badges');
 assert.match(locationTodoView.innerHTML, /worklist-action-btn/, 'location todo cards expose quick action buttons');
 assert.match(locationTodoView.innerHTML, /openLocationTodoAction\(10, 'missing_gps'\)/, 'location todo GPS action targets the edit modal');
-assert.match(locationTodoView.innerHTML, /openLocationTodoAction\(11, 'not_visited'\)/, 'location todo visit action targets the location detail');
+assert.match(locationTodoView.innerHTML, /openLocationTodoAction\(11, 'not_visited'\)/, 'location todo assignment action targets the unvisited place');
+assert.match(locationTodoView.innerHTML, /openEditLocationModal\(10, \{ returnToLocationTodo: true \}\)/, 'location todo edit keeps the worklist return context');
 assert.match(locationTodoView.innerHTML, /openTravel\(71\)/, 'location todo links directly to a related travel');
 assert.match(locationTodoView.innerHTML, /Podróż: Finlandia 2025/, 'location todo labels related travel links');
 assert.match(locationTodoView.innerHTML, /Brak podróży · otwórz miejsce/, 'unvisited locations keep a direct location fallback');
@@ -1229,6 +1230,9 @@ vm.runInContext(
 await context.renderLocationTodo({ group: 'missing' });
 assert.match(locationTodoView.innerHTML, /worklist-group-title">Bez GPS/, 'location todo can group by missing type');
 assert.equal(locationTodoApiCalls, 1, 'location todo controls reuse the loaded worklist');
+assert.match(locationsSource, /function openLocationTodoTravelPicker\(locationId\)[\s\S]*getTravelList\(\)/, 'location todo reuses the cached travel list for assignment');
+assert.match(locationsSource, /confirmOverlay\._returnToLocationTodo = true/, 'location assignment preserves the worklist return context');
+assert.match(locationsSource, /if \(returnToLocationTodo\) renderLocationTodo\(\)/, 'successful worklist edits and assignments return to the worklist');
 
 const inspirationView = elementStub();
 context.document.getElementById = id => (id === 'view' ? inspirationView : null);

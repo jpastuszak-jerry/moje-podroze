@@ -2,6 +2,30 @@
 
 Lista rzeczy do zrobienia po ostatnich pracach nad statystykami, lista "Do uzupelnienia" i poprawkami stabilnosci. Priorytety sa praktyczne: najpierw rzeczy, ktore zwiekszaja wiarygodnosc danych i wygode pracy, potem wieksze zmiany architektoniczne.
 
+## Roadmapa maturity - 2026-08-27
+
+Kolejnosc zaakceptowana po przekrojowym przegladzie produktu:
+
+1. **Centrum jakosci danych 2.0 - IN PROGRESS.** Pierwszy przyrost: szybka
+   edycja GPS/opisu/notatek ma wracac do tej samej listy z zachowaniem
+   filtrow; miejsce bez wizyt mozna przypisac do wybranej podrozy i uzupelnic
+   daty pobytu. Kolejne mozliwe przyrosty: oznaczenie braku jako swiadomie
+   pominietego, operacje seryjne i licznik ostatnio poprawionych rekordow.
+2. **Browser E2E w CI - NEXT.** Playwright dla logowania, CRUD podrozy,
+   dodania miejsca, soft delete/restore, inspiracji, mapy i centrum brakow;
+   co najmniej jeden viewport mobilny. Kryterium: test blokuje merge przy
+   regresji krytycznej sciezki.
+3. **Zweryfikowany backup i restore - PLANNED.** Import backupu z dry-run,
+   walidacja wersji, automatyczny backup przed zapisem i test odtworzenia na
+   tymczasowym schemacie PostgreSQL. Kryterium: raport utworzonych,
+   zmienionych i pominietych rekordow oraz powtarzalny test restore.
+4. **Role owner/viewer i bezpieczny podglad - PLANNED.** Viewer bez mutacji,
+   redakcja kosztow/prywatnych notatek i opcjonalny czasowy link do wybranej
+   podrozy. Kryterium: egzekwowanie roli jednoczesnie w API, UI i cache PWA.
+5. **Kontrolowana praca offline - PARKING.** Zaczac tylko od lokalnych szkicow
+   tekstowych, jawnego stanu synchronizacji i obslugi konfliktu; nie otwierac
+   od razu pelnej kolejki wszystkich mutacji.
+
 ## Aktualny audyt backlogu - 2026-06-17
 
 Ten plik jest juz bardziej mapa decyzji i historia roadmapy niz prosta lista

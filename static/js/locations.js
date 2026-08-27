@@ -778,7 +778,7 @@ const LOCATION_TODO_ACTIONS = {
   missing_gps: { label: 'GPS', focus: 'gps' },
   missing_address: { label: 'Adres', focus: 'address' },
   missing_notes: { label: 'Notatki', focus: 'notes' },
-  not_visited: { label: 'Wizyty', view: 'visits' },
+  not_visited: { label: 'Przypisz', view: 'assign' },
 };
 
 function openLocationTodoView() {
@@ -956,8 +956,69 @@ function locationTodoBadgeItems(item, labels) {
 function openLocationTodoAction(id, missingKey) {
   const action = LOCATION_TODO_ACTIONS[missingKey];
   if (!action) return openLocation(id);
-  if (action.view === 'visits') return openLocation(id);
-  return openEditLocationModal(id, { focus: action.focus });
+  if (action.view === 'assign') return openLocationTodoTravelPicker(id);
+  return openEditLocationModal(id, { focus: action.focus, returnToLocationTodo: true });
+}
+
+async function openLocationTodoTravelPicker(locationId) {
+  if (!beginOverlayOpen('location-todo-travel-picker-overlay')) return;
+  try {
+    const [data, travels] = await Promise.all([getLocationTodoData(), getTravelList()]);
+    const location = (data?.needs_attention || []).find(item => Number(item.id) === Number(locationId));
+    if (!location) { toast('Nie znaleziono miejsca na liście braków', 'error'); return; }
+    if (!Array.isArray(travels) || !travels.length) {
+      toast('Najpierw dodaj podróż', 'info');
+      return;
+    }
+    document.getElementById('location-todo-travel-picker-overlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'location-todo-travel-picker-overlay';
+    overlay._location = location;
+    overlay._travels = travels;
+    overlay.innerHTML = `<div class="modal"><div class="modal-handle"></div>
+      <div class="modal-header"><span class="modal-title">Przypisz do podróży</span>
+        <button class="modal-save" onclick="closeModal(document.getElementById('location-todo-travel-picker-overlay'))">Anuluj</button></div>
+      <div class="form-section">
+        <div class="form-hint">${escapeHtml(location.name)} · wybierz podróż</div>
+        <div class="modal-scroll-list">
+          ${travels.map(travel => renderPickerRow({
+            onclick: `selectLocationTodoTravel(${travel.id})`,
+            iconHtml: purposeIcon(travel.purpose),
+            iconClass: 'picker-row-icon',
+            title: travel.name,
+            subtitle: `${fmtDate(travel.start_date)} – ${fmtDate(travel.end_date)}`,
+          })).join('')}
+        </div>
+      </div></div>`;
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay) closeModal(overlay);
+    });
+    document.body.appendChild(overlay);
+    attachDragToDismiss(overlay, '.modal', () => closeModal(overlay));
+  } finally {
+    finishOverlayOpen('location-todo-travel-picker-overlay');
+  }
+}
+
+function selectLocationTodoTravel(travelId) {
+  const overlay = document.getElementById('location-todo-travel-picker-overlay');
+  const location = overlay?._location;
+  const travel = (overlay?._travels || []).find(item => Number(item.id) === Number(travelId));
+  if (!location || !travel) return;
+  closeModal(overlay);
+  openConfirmAddLocation(
+    travel.id,
+    location.id,
+    location.name,
+    location.location_type,
+    travel.start_date,
+    travel.end_date,
+    location.parent_location_id || null,
+    location.parent_name || '',
+  );
+  const confirmOverlay = document.getElementById('loc-confirm-overlay');
+  if (confirmOverlay) confirmOverlay._returnToLocationTodo = true;
 }
 
 function locationTodoActionsHtml(item) {
@@ -989,7 +1050,7 @@ function locationTodoCardHtml(item, labels) {
     onclick: `openLocation(${item.id})`,
     iconHtml: locationIcon(item.location_type),
     title: item.name || '(bez nazwy)',
-    editOnclick: `openEditLocationModal(${item.id})`,
+    editOnclick: `openEditLocationModal(${item.id}, { returnToLocationTodo: true })`,
     subtitle: `${item.location_type || ''} · ${item.country_name || ''} · ${item.visit_count || 0} wizyt · ${missingCount} ${missingLabel}`,
     badges: locationTodoBadgeItems(item, labels),
     actionsHtml: locationTodoTravelsHtml(item) + locationTodoActionsHtml(item),
@@ -1273,6 +1334,7 @@ async function openEditLocationModal(id, options = {}) {
   overlay._currentParentId = loc.parent_location_id || null;
   overlay._returnToTravelMap = options.returnToTravelMap === true
     || (options.returnToTravelMap !== false && hasTravelMapReturnContext());
+  overlay._returnToLocationTodo = options.returnToLocationTodo === true;
   overlay.addEventListener('click', e => { if (e.target === overlay) closeEditLocationModal(); });
   document.body.appendChild(overlay);
   attachDragToDismiss(overlay, '.modal', closeEditLocationModal);
@@ -1354,6 +1416,7 @@ async function saveEditLocation(id) {
   const origLabel = btn?.textContent;
   const overlay = document.getElementById('edit-loc-overlay');
   const returnToMap = Boolean(overlay?._returnToTravelMap);
+  const returnToLocationTodo = Boolean(overlay?._returnToLocationTodo);
   try {
     const name = document.getElementById('el-name').value.trim();
     const countryId = document.getElementById('el-country').value;
@@ -1376,6 +1439,7 @@ async function saveEditLocation(id) {
     closeModal(overlay);
     toast('Zapisano', 'success');
     if (returnToMap) returnToTravelMap();
+    else if (returnToLocationTodo) renderLocationTodo();
     else openLocation(id);
   } catch(err) {
     toast('Nieoczekiwany błąd: ' + err.message, 'error');
@@ -1668,6 +1732,7 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
   let arrival = document.getElementById('lc-arrival').value || null;
   let departure = document.getElementById('lc-departure').value || null;
   const notes = document.getElementById('lc-notes').value.trim() || null;
+  const returnToLocationTodo = Boolean(document.getElementById('loc-confirm-overlay')?._returnToLocationTodo);
   const addParent = parentId && document.getElementById('lc-add-parent')?.checked;
   let basePayload = { location_id: locationId, arrival_date: arrival, departure_date: departure, notes };
   let res = await apiPost(`/api/travels/${travelId}/locations`, basePayload);
@@ -1701,7 +1766,8 @@ async function saveLocationToTravel(travelId, locationId, locationName, location
   }
   document.getElementById('loc-confirm-overlay')?.remove();
   document.getElementById('loc-picker-overlay')?.remove();
-  openTravel(travelId);
+  if (returnToLocationTodo) renderLocationTodo();
+  else openTravel(travelId);
 }
 
 /* ── Kosz (soft delete) ───────────────────────────────────── */

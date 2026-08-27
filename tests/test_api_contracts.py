@@ -850,6 +850,7 @@ class ApiContractSmokeTests(unittest.TestCase):
                 'latitude': None,
                 'longitude': None,
                 'parent_location_id': None,
+                'parent_name': None,
                 'visit_count': 0,
                 'travels': [],
             },
@@ -863,6 +864,7 @@ class ApiContractSmokeTests(unittest.TestCase):
                 'latitude': 59.437,
                 'longitude': 24.7536,
                 'parent_location_id': None,
+                'parent_name': None,
                 'visit_count': 1,
                 'travels': [{'id': 7, 'name': 'Tallinn 2025'}],
             },
@@ -884,6 +886,7 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertLessEqual(
             {
                 'id', 'name', 'country_name', 'location_type',
+                'parent_location_id', 'parent_name',
                 'missing', 'missing_keys', 'missing_count', 'visit_count',
                 'travels',
             },
@@ -903,6 +906,7 @@ class ApiContractSmokeTests(unittest.TestCase):
             'latitude': 60.17,
             'longitude': 24.94,
             'parent_location_id': None,
+            'parent_name': None,
             'visit_count': 2,
             'travels': [
                 {'id': 7, 'name': 'Finlandia 2025'},
@@ -930,6 +934,7 @@ class ApiContractSmokeTests(unittest.TestCase):
         self.assertIn('JSONB_AGG(', sql)
         self.assertIn("JSONB_BUILD_OBJECT('id', travel_id, 'name', travel_name)", sql)
         self.assertIn('LEFT JOIN location_visit_counts vc ON vc.location_id = l.id', sql)
+        self.assertIn('LEFT JOIN locations parent ON parent.id = l.parent_location_id', sql)
         self.assertNotIn('COUNT(DISTINCT tl.travel_id) AS direct_visits', sql)
         self.assertNotIn('COUNT(DISTINCT child_tl.travel_id) AS child_visits', sql)
         self.assertNotIn('GROUP BY l.id, l.name, c.name', sql)

@@ -9,6 +9,16 @@ Krotki stan projektu dla nowych sesji. Szczegoly historyczne zostaja w
   uczestnikami, mapa i statystykami.
 - Backend: Flask + PostgreSQL Neon, deploy na Render przez `gunicorn app:app`.
 - Frontend: vanilla JS SPA bez frameworka, globalne skrypty w `templates/index.html`.
+- Ostatnio domkniete lokalnie: pierwszy przyrost `Centrum jakosci danych 2.0`.
+  Z listy `Miejsca do uzupelnienia` mozna teraz przypisac miejsce bez wizyt
+  bezposrednio do wybranej podrozy, uzupelnic daty pobytu i opcjonalnie dodac
+  miejsce nadrzedne. Szybka edycja GPS/adresu/notatek oraz przypisanie do
+  podrozy wracaja po zapisie do listy brakow, zachowujac jej aktywne filtry i
+  grupowanie. API listy dolacza nazwe miejsca nadrzednego w istniejacym
+  zapytaniu, bez dodatkowego requestu. Pozostale cztery inicjatywy maturity
+  oraz dalsze przyrosty centrum jakosci sa zapisane w `BACKLOG.md`. Lokalnie
+  przeszly: skladnia JS, smoke JS, Ruff, kompilacja Pythona, 79 testow
+  (10 skipow) i `git diff --check`.
 - Ostatnio domkniete lokalnie: karty w `Miejsca do uzupelnienia` pokazuja
   teraz konkretne powiazane podroze jako przyciski otwierajace ich szczegoly.
   Miejsce bez wizyt ma czytelna akcje `Brak podrozy · otworz miejsce` zamiast
